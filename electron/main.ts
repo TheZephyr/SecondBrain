@@ -11,8 +11,8 @@ const isDev = process.env.NODE_ENV === 'development'
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1400,
+    height: 900,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -58,13 +58,45 @@ async function initDatabase() {
     db = new SQL.Database()
   }
 
-  // Create games table
+  // Create all tables
   db.run(`
     CREATE TABLE IF NOT EXISTS games (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       release_date TEXT,
       genre TEXT,
+      rating INTEGER,
+      status TEXT,
+      note TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS books (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      author TEXT,
+      publication_year INTEGER,
+      genre TEXT,
+      pages INTEGER,
+      rating INTEGER,
+      status TEXT,
+      note TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS movies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      director TEXT,
+      release_year INTEGER,
+      genre TEXT,
+      duration INTEGER,
       rating INTEGER,
       status TEXT,
       note TEXT,
@@ -83,22 +115,26 @@ function saveDatabase(dbPath: string) {
   fs.writeFileSync(dbPath, buffer)
 }
 
-// IPC Handlers for database operations
-ipcMain.handle('db:getGames', () => {
-  if (!db) return []
-  const result = db.exec('SELECT * FROM games ORDER BY title')
+function execToArray(query: string) {
+  const result = db.exec(query)
   if (result.length === 0) return []
   
   const columns = result[0].columns
   const values = result[0].values
   
   return values.map((row: any[]) => {
-    const game: any = {}
+    const obj: any = {}
     columns.forEach((col: string, index: number) => {
-      game[col] = row[index]
+      obj[col] = row[index]
     })
-    return game
+    return obj
   })
+}
+
+// ==================== GAMES IPC HANDLERS ====================
+ipcMain.handle('db:getGames', () => {
+  if (!db) return []
+  return execToArray('SELECT * FROM games ORDER BY title')
 })
 
 ipcMain.handle('db:addGame', (_, game) => {
@@ -139,6 +175,108 @@ ipcMain.handle('db:deleteGame', (_, id) => {
   if (!db) return false
   
   db.run('DELETE FROM games WHERE id = ?', [id])
+  
+  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
+  saveDatabase(dbPath)
+  
+  return true
+})
+
+// ==================== BOOKS IPC HANDLERS ====================
+ipcMain.handle('db:getBooks', () => {
+  if (!db) return []
+  return execToArray('SELECT * FROM books ORDER BY title')
+})
+
+ipcMain.handle('db:addBook', (_, book) => {
+  if (!db) return null
+  
+  db.run(
+    `INSERT INTO books (title, author, publication_year, genre, pages, rating, status, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [book.title, book.author, book.publicationYear, book.genre, book.pages, book.rating, book.status, book.note]
+  )
+  
+  const result = db.exec('SELECT last_insert_rowid() as id')
+  const newId = result[0].values[0][0]
+  
+  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
+  saveDatabase(dbPath)
+  
+  return { id: newId, ...book }
+})
+
+ipcMain.handle('db:updateBook', (_, book) => {
+  if (!db) return false
+  
+  db.run(
+    `UPDATE books 
+     SET title = ?, author = ?, publication_year = ?, genre = ?, pages = ?, rating = ?, status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [book.title, book.author, book.publicationYear, book.genre, book.pages, book.rating, book.status, book.note, book.id]
+  )
+  
+  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
+  saveDatabase(dbPath)
+  
+  return true
+})
+
+ipcMain.handle('db:deleteBook', (_, id) => {
+  if (!db) return false
+  
+  db.run('DELETE FROM books WHERE id = ?', [id])
+  
+  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
+  saveDatabase(dbPath)
+  
+  return true
+})
+
+// ==================== MOVIES IPC HANDLERS ====================
+ipcMain.handle('db:getMovies', () => {
+  if (!db) return []
+  return execToArray('SELECT * FROM movies ORDER BY title')
+})
+
+ipcMain.handle('db:addMovie', (_, movie) => {
+  if (!db) return null
+  
+  db.run(
+    `INSERT INTO movies (title, director, release_year, genre, duration, rating, status, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [movie.title, movie.director, movie.releaseYear, movie.genre, movie.duration, movie.rating, movie.status, movie.note]
+  )
+  
+  const result = db.exec('SELECT last_insert_rowid() as id')
+  const newId = result[0].values[0][0]
+  
+  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
+  saveDatabase(dbPath)
+  
+  return { id: newId, ...movie }
+})
+
+ipcMain.handle('db:updateMovie', (_, movie) => {
+  if (!db) return false
+  
+  db.run(
+    `UPDATE movies 
+     SET title = ?, director = ?, release_year = ?, genre = ?, duration = ?, rating = ?, status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [movie.title, movie.director, movie.releaseYear, movie.genre, movie.duration, movie.rating, movie.status, movie.note, movie.id]
+  )
+  
+  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
+  saveDatabase(dbPath)
+  
+  return true
+})
+
+ipcMain.handle('db:deleteMovie', (_, id) => {
+  if (!db) return false
+  
+  db.run('DELETE FROM movies WHERE id = ?', [id])
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
