@@ -1,11 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
-import fs from 'fs'
-import initSqlJs from 'sql.js'
+import Database from 'better-sqlite3'
 
 let mainWindow: BrowserWindow | null = null
-let db: any = null
-let SQL: any = null
+let db: Database.Database | null = null
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -16,13 +14,20 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      enableRemoteModule: false,
+      sandbox: false
     }
   })
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools()
+    // Open DevTools after a delay to avoid focus issues
+    mainWindow.webContents.once('did-finish-load', () => {
+      setTimeout(() => {
+        mainWindow?.webContents.openDevTools()
+      }, 500)
+    })
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
@@ -32,31 +37,12 @@ function createWindow() {
   })
 }
 
-async function initDatabase() {
+function initDatabase() {
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  
-  const wasmPath = isDev
-    ? path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm')
-    : path.join(__dirname, 'sql-wasm.wasm')
-  
-  SQL = await initSqlJs({
-    locateFile: (file: string) => {
-      if (file === 'sql-wasm.wasm') {
-        return wasmPath
-      }
-      return file
-    }
-  })
-  
-  if (fs.existsSync(dbPath)) {
-    const buffer = fs.readFileSync(dbPath)
-    db = new SQL.Database(buffer)
-  } else {
-    db = new SQL.Database()
-  }
+  db = new Database(dbPath)
 
   // Create collections table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS collections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -66,7 +52,7 @@ async function initDatabase() {
   `)
 
   // Create fields table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS fields (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       collection_id INTEGER NOT NULL,
@@ -79,7 +65,7 @@ async function initDatabase() {
   `)
 
   // Create items table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       collection_id INTEGER NOT NULL,
@@ -89,66 +75,29 @@ async function initDatabase() {
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `)
-  
-  saveDatabase(dbPath)
-}
-
-function saveDatabase(dbPath: string) {
-  if (!db) return
-  const data = db.export()
-  const buffer = Buffer.from(data)
-  fs.writeFileSync(dbPath, buffer)
-}
-
-function execToArray(query: string, params: any[] = []) {
-  const result = db.exec(query, params)
-  if (result.length === 0) return []
-  
-  const columns = result[0].columns
-  const values = result[0].values
-  
-  return values.map((row: any[]) => {
-    const obj: any = {}
-    columns.forEach((col: string, index: number) => {
-      obj[col] = row[index]
-    })
-    return obj
-  })
 }
 
 // ==================== COLLECTIONS ====================
 ipcMain.handle('db:getCollections', () => {
   if (!db) return []
-  return execToArray('SELECT * FROM collections ORDER BY created_at ASC')
+  const stmt = db.prepare('SELECT * FROM collections ORDER BY created_at ASC')
+  return stmt.all()
 })
 
 ipcMain.handle('db:addCollection', (_, collection) => {
   if (!db) return null
   
-  db.run(
-    'INSERT INTO collections (name, icon) VALUES (?, ?)',
-    [collection.name, collection.icon || '📁']
-  )
+  const stmt = db.prepare('INSERT INTO collections (name, icon) VALUES (?, ?)')
+  const info = stmt.run(collection.name, collection.icon || '📁')
   
-  const result = db.exec('SELECT last_insert_rowid() as id')
-  const newId = result[0].values[0][0]
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
-  
-  return { id: newId, name: collection.name, icon: collection.icon }
+  return { id: info.lastInsertRowid, name: collection.name, icon: collection.icon }
 })
 
 ipcMain.handle('db:updateCollection', (_, collection) => {
   if (!db) return false
   
-  db.run(
-    'UPDATE collections SET name = ?, icon = ? WHERE id = ?',
-    [collection.name, collection.icon, collection.id]
-  )
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
+  const stmt = db.prepare('UPDATE collections SET name = ?, icon = ? WHERE id = ?')
+  stmt.run(collection.name, collection.icon, collection.id)
   
   return true
 })
@@ -156,12 +105,9 @@ ipcMain.handle('db:updateCollection', (_, collection) => {
 ipcMain.handle('db:deleteCollection', (_, id) => {
   if (!db) return false
   
-  db.run('DELETE FROM collections WHERE id = ?', [id])
-  db.run('DELETE FROM fields WHERE collection_id = ?', [id])
-  db.run('DELETE FROM items WHERE collection_id = ?', [id])
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
+  db.prepare('DELETE FROM collections WHERE id = ?').run(id)
+  db.prepare('DELETE FROM fields WHERE collection_id = ?').run(id)
+  db.prepare('DELETE FROM items WHERE collection_id = ?').run(id)
   
   return true
 })
@@ -169,46 +115,35 @@ ipcMain.handle('db:deleteCollection', (_, id) => {
 // ==================== FIELDS ====================
 ipcMain.handle('db:getFields', (_, collectionId) => {
   if (!db) return []
+  
   const stmt = db.prepare('SELECT * FROM fields WHERE collection_id = ? ORDER BY order_index ASC')
-  stmt.bind([collectionId])
-  
-  const fields = []
-  while (stmt.step()) {
-    const row = stmt.getAsObject()
-    fields.push(row)
-  }
-  stmt.free()
-  
-  return fields
+  return stmt.all(collectionId)
 })
 
 ipcMain.handle('db:addField', (_, field) => {
   if (!db) return null
   
-  db.run(
-    'INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)',
-    [field.collectionId, field.name, field.type, field.options || null, field.orderIndex || 0]
+  const stmt = db.prepare(
+    'INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)'
+  )
+  const info = stmt.run(
+    field.collectionId,
+    field.name,
+    field.type,
+    field.options || null,
+    field.orderIndex || 0
   )
   
-  const result = db.exec('SELECT last_insert_rowid() as id')
-  const newId = result[0].values[0][0]
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
-  
-  return { id: newId, ...field }
+  return { id: info.lastInsertRowid, ...field }
 })
 
 ipcMain.handle('db:updateField', (_, field) => {
   if (!db) return false
   
-  db.run(
-    'UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?',
-    [field.name, field.type, field.options || null, field.orderIndex || 0, field.id]
+  const stmt = db.prepare(
+    'UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?'
   )
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
+  stmt.run(field.name, field.type, field.options || null, field.orderIndex || 0, field.id)
   
   return true
 })
@@ -216,10 +151,7 @@ ipcMain.handle('db:updateField', (_, field) => {
 ipcMain.handle('db:deleteField', (_, id) => {
   if (!db) return false
   
-  db.run('DELETE FROM fields WHERE id = ?', [id])
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
+  db.prepare('DELETE FROM fields WHERE id = ?').run(id)
   
   return true
 })
@@ -227,53 +159,32 @@ ipcMain.handle('db:deleteField', (_, id) => {
 // ==================== ITEMS ====================
 ipcMain.handle('db:getItems', (_, collectionId) => {
   if (!db) return []
+  
   const stmt = db.prepare('SELECT * FROM items WHERE collection_id = ? ORDER BY created_at DESC')
-  stmt.bind([collectionId])
+  const items = stmt.all(collectionId)
   
-  const items = []
-  while (stmt.step()) {
-    const row = stmt.getAsObject()
-    items.push({
-      ...row,
-      data: JSON.parse(row.data)
-    })
-  }
-  stmt.free()
-  
-  return items
+  return items.map((item: any) => ({
+    ...item,
+    data: JSON.parse(item.data)
+  }))
 })
 
 ipcMain.handle('db:addItem', (_, item) => {
   if (!db) return null
   
   const dataJson = JSON.stringify(item.data)
+  const stmt = db.prepare('INSERT INTO items (collection_id, data) VALUES (?, ?)')
+  const info = stmt.run(item.collectionId, dataJson)
   
-  db.run(
-    'INSERT INTO items (collection_id, data) VALUES (?, ?)',
-    [item.collectionId, dataJson]
-  )
-  
-  const result = db.exec('SELECT last_insert_rowid() as id')
-  const newId = result[0].values[0][0]
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
-  
-  return { id: newId, collection_id: item.collectionId, data: item.data }
+  return { id: info.lastInsertRowid, collection_id: item.collectionId, data: item.data }
 })
 
 ipcMain.handle('db:updateItem', (_, item) => {
   if (!db) return false
   
   const dataJson = JSON.stringify(item.data)
-  
-  db.run(
-    'UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [dataJson, item.id]
-  )
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
+  const stmt = db.prepare('UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+  stmt.run(dataJson, item.id)
   
   return true
 })
@@ -281,16 +192,13 @@ ipcMain.handle('db:updateItem', (_, item) => {
 ipcMain.handle('db:deleteItem', (_, id) => {
   if (!db) return false
   
-  db.run('DELETE FROM items WHERE id = ?', [id])
-  
-  const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-  saveDatabase(dbPath)
+  db.prepare('DELETE FROM items WHERE id = ?').run(id)
   
   return true
 })
 
-app.whenReady().then(async () => {
-  await initDatabase()
+app.whenReady().then(() => {
+  initDatabase()
   createWindow()
 
   app.on('activate', () => {
@@ -301,11 +209,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  if (db) {
-    const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
-    saveDatabase(dbPath)
-    db.close()
-  }
+  if (db) db.close()
   if (process.platform !== 'darwin') {
     app.quit()
   }

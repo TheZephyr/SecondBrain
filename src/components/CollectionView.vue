@@ -286,15 +286,21 @@ function cancelItemForm() {
 }
 
 async function saveItem() {
+  console.log('saveItem called', formData.value)
+  
+  // Convert Vue reactive proxy to plain object
+  const plainData = JSON.parse(JSON.stringify(formData.value))
+  
   if (editingItem.value) {
     await window.electronAPI.updateItem({
       id: editingItem.value.id,
-      data: formData.value
+      data: plainData
     })
   } else {
+    console.log('Adding new item...', { collectionId: props.collection.id, data: plainData })
     await window.electronAPI.addItem({
       collectionId: props.collection.id,
-      data: formData.value
+      data: plainData
     })
   }
 

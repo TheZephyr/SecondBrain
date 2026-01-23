@@ -18,7 +18,7 @@ async function buildElectron() {
     platform: 'node',
     target: 'node18',
     outfile: 'dist-electron/main.js',
-    external: ['electron'],
+    external: ['electron', 'better-sqlite3'],
     format: 'cjs'
   });
 
