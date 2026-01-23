@@ -1,21 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Games
-  getGames: () => ipcRenderer.invoke('db:getGames'),
-  addGame: (game: any) => ipcRenderer.invoke('db:addGame', game),
-  updateGame: (game: any) => ipcRenderer.invoke('db:updateGame', game),
-  deleteGame: (id: number) => ipcRenderer.invoke('db:deleteGame', id),
+  // Collections
+  getCollections: () => ipcRenderer.invoke('db:getCollections'),
+  addCollection: (collection: any) => ipcRenderer.invoke('db:addCollection', collection),
+  updateCollection: (collection: any) => ipcRenderer.invoke('db:updateCollection', collection),
+  deleteCollection: (id: number) => ipcRenderer.invoke('db:deleteCollection', id),
   
-  // Books
-  getBooks: () => ipcRenderer.invoke('db:getBooks'),
-  addBook: (book: any) => ipcRenderer.invoke('db:addBook', book),
-  updateBook: (book: any) => ipcRenderer.invoke('db:updateBook', book),
-  deleteBook: (id: number) => ipcRenderer.invoke('db:deleteBook', id),
+  // Fields
+  getFields: (collectionId: number) => ipcRenderer.invoke('db:getFields', collectionId),
+  addField: (field: any) => ipcRenderer.invoke('db:addField', field),
+  updateField: (field: any) => ipcRenderer.invoke('db:updateField', field),
+  deleteField: (id: number) => ipcRenderer.invoke('db:deleteField', id),
   
-  // Movies
-  getMovies: () => ipcRenderer.invoke('db:getMovies'),
-  addMovie: (movie: any) => ipcRenderer.invoke('db:addMovie', movie),
-  updateMovie: (movie: any) => ipcRenderer.invoke('db:updateMovie', movie),
-  deleteMovie: (id: number) => ipcRenderer.invoke('db:deleteMovie', id)
+  // Items
+  getItems: (collectionId: number) => ipcRenderer.invoke('db:getItems', collectionId),
+  addItem: (item: any) => ipcRenderer.invoke('db:addItem', item),
+  updateItem: (item: any) => ipcRenderer.invoke('db:updateItem', item),
+  deleteItem: (id: number) => ipcRenderer.invoke('db:deleteItem', id)
 })

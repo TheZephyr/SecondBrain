@@ -35,12 +35,10 @@ function createWindow() {
 async function initDatabase() {
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   
-  // Find the correct path to sql-wasm.wasm
   const wasmPath = isDev
     ? path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm')
     : path.join(__dirname, 'sql-wasm.wasm')
   
-  // Initialize SQL.js with the wasm file location
   SQL = await initSqlJs({
     locateFile: (file: string) => {
       if (file === 'sql-wasm.wasm') {
@@ -50,7 +48,6 @@ async function initDatabase() {
     }
   })
   
-  // Check if database file exists
   if (fs.existsSync(dbPath)) {
     const buffer = fs.readFileSync(dbPath)
     db = new SQL.Database(buffer)
@@ -58,50 +55,38 @@ async function initDatabase() {
     db = new SQL.Database()
   }
 
-  // Create all tables
+  // Create collections table
   db.run(`
-    CREATE TABLE IF NOT EXISTS games (
+    CREATE TABLE IF NOT EXISTS collections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      release_date TEXT,
-      genre TEXT,
-      rating INTEGER,
-      status TEXT,
-      note TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      name TEXT NOT NULL,
+      icon TEXT DEFAULT '📁',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
 
+  // Create fields table
   db.run(`
-    CREATE TABLE IF NOT EXISTS books (
+    CREATE TABLE IF NOT EXISTS fields (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      author TEXT,
-      publication_year INTEGER,
-      genre TEXT,
-      pages INTEGER,
-      rating INTEGER,
-      status TEXT,
-      note TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      collection_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      options TEXT,
+      order_index INTEGER DEFAULT 0,
+      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `)
 
+  // Create items table
   db.run(`
-    CREATE TABLE IF NOT EXISTS movies (
+    CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      director TEXT,
-      release_year INTEGER,
-      genre TEXT,
-      duration INTEGER,
-      rating INTEGER,
-      status TEXT,
-      note TEXT,
+      collection_id INTEGER NOT NULL,
+      data TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `)
   
@@ -115,8 +100,8 @@ function saveDatabase(dbPath: string) {
   fs.writeFileSync(dbPath, buffer)
 }
 
-function execToArray(query: string) {
-  const result = db.exec(query)
+function execToArray(query: string, params: any[] = []) {
+  const result = db.exec(query, params)
   if (result.length === 0) return []
   
   const columns = result[0].columns
@@ -131,19 +116,18 @@ function execToArray(query: string) {
   })
 }
 
-// ==================== GAMES IPC HANDLERS ====================
-ipcMain.handle('db:getGames', () => {
+// ==================== COLLECTIONS ====================
+ipcMain.handle('db:getCollections', () => {
   if (!db) return []
-  return execToArray('SELECT * FROM games ORDER BY title')
+  return execToArray('SELECT * FROM collections ORDER BY created_at ASC')
 })
 
-ipcMain.handle('db:addGame', (_, game) => {
+ipcMain.handle('db:addCollection', (_, collection) => {
   if (!db) return null
   
   db.run(
-    `INSERT INTO games (title, release_date, genre, rating, status, note)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [game.title, game.releaseDate, game.genre, game.rating, game.status, game.note]
+    'INSERT INTO collections (name, icon) VALUES (?, ?)',
+    [collection.name, collection.icon || '📁']
   )
   
   const result = db.exec('SELECT last_insert_rowid() as id')
@@ -152,17 +136,15 @@ ipcMain.handle('db:addGame', (_, game) => {
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
   
-  return { id: newId, ...game }
+  return { id: newId, name: collection.name, icon: collection.icon }
 })
 
-ipcMain.handle('db:updateGame', (_, game) => {
+ipcMain.handle('db:updateCollection', (_, collection) => {
   if (!db) return false
   
   db.run(
-    `UPDATE games 
-     SET title = ?, release_date = ?, genre = ?, rating = ?, status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [game.title, game.releaseDate, game.genre, game.rating, game.status, game.note, game.id]
+    'UPDATE collections SET name = ?, icon = ? WHERE id = ?',
+    [collection.name, collection.icon, collection.id]
   )
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
@@ -171,10 +153,12 @@ ipcMain.handle('db:updateGame', (_, game) => {
   return true
 })
 
-ipcMain.handle('db:deleteGame', (_, id) => {
+ipcMain.handle('db:deleteCollection', (_, id) => {
   if (!db) return false
   
-  db.run('DELETE FROM games WHERE id = ?', [id])
+  db.run('DELETE FROM collections WHERE id = ?', [id])
+  db.run('DELETE FROM fields WHERE collection_id = ?', [id])
+  db.run('DELETE FROM items WHERE collection_id = ?', [id])
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
@@ -182,19 +166,28 @@ ipcMain.handle('db:deleteGame', (_, id) => {
   return true
 })
 
-// ==================== BOOKS IPC HANDLERS ====================
-ipcMain.handle('db:getBooks', () => {
+// ==================== FIELDS ====================
+ipcMain.handle('db:getFields', (_, collectionId) => {
   if (!db) return []
-  return execToArray('SELECT * FROM books ORDER BY title')
+  const stmt = db.prepare('SELECT * FROM fields WHERE collection_id = ? ORDER BY order_index ASC')
+  stmt.bind([collectionId])
+  
+  const fields = []
+  while (stmt.step()) {
+    const row = stmt.getAsObject()
+    fields.push(row)
+  }
+  stmt.free()
+  
+  return fields
 })
 
-ipcMain.handle('db:addBook', (_, book) => {
+ipcMain.handle('db:addField', (_, field) => {
   if (!db) return null
   
   db.run(
-    `INSERT INTO books (title, author, publication_year, genre, pages, rating, status, note)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [book.title, book.author, book.publicationYear, book.genre, book.pages, book.rating, book.status, book.note]
+    'INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)',
+    [field.collectionId, field.name, field.type, field.options || null, field.orderIndex || 0]
   )
   
   const result = db.exec('SELECT last_insert_rowid() as id')
@@ -203,17 +196,15 @@ ipcMain.handle('db:addBook', (_, book) => {
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
   
-  return { id: newId, ...book }
+  return { id: newId, ...field }
 })
 
-ipcMain.handle('db:updateBook', (_, book) => {
+ipcMain.handle('db:updateField', (_, field) => {
   if (!db) return false
   
   db.run(
-    `UPDATE books 
-     SET title = ?, author = ?, publication_year = ?, genre = ?, pages = ?, rating = ?, status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [book.title, book.author, book.publicationYear, book.genre, book.pages, book.rating, book.status, book.note, book.id]
+    'UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?',
+    [field.name, field.type, field.options || null, field.orderIndex || 0, field.id]
   )
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
@@ -222,10 +213,10 @@ ipcMain.handle('db:updateBook', (_, book) => {
   return true
 })
 
-ipcMain.handle('db:deleteBook', (_, id) => {
+ipcMain.handle('db:deleteField', (_, id) => {
   if (!db) return false
   
-  db.run('DELETE FROM books WHERE id = ?', [id])
+  db.run('DELETE FROM fields WHERE id = ?', [id])
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
@@ -233,19 +224,33 @@ ipcMain.handle('db:deleteBook', (_, id) => {
   return true
 })
 
-// ==================== MOVIES IPC HANDLERS ====================
-ipcMain.handle('db:getMovies', () => {
+// ==================== ITEMS ====================
+ipcMain.handle('db:getItems', (_, collectionId) => {
   if (!db) return []
-  return execToArray('SELECT * FROM movies ORDER BY title')
+  const stmt = db.prepare('SELECT * FROM items WHERE collection_id = ? ORDER BY created_at DESC')
+  stmt.bind([collectionId])
+  
+  const items = []
+  while (stmt.step()) {
+    const row = stmt.getAsObject()
+    items.push({
+      ...row,
+      data: JSON.parse(row.data)
+    })
+  }
+  stmt.free()
+  
+  return items
 })
 
-ipcMain.handle('db:addMovie', (_, movie) => {
+ipcMain.handle('db:addItem', (_, item) => {
   if (!db) return null
   
+  const dataJson = JSON.stringify(item.data)
+  
   db.run(
-    `INSERT INTO movies (title, director, release_year, genre, duration, rating, status, note)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [movie.title, movie.director, movie.releaseYear, movie.genre, movie.duration, movie.rating, movie.status, movie.note]
+    'INSERT INTO items (collection_id, data) VALUES (?, ?)',
+    [item.collectionId, dataJson]
   )
   
   const result = db.exec('SELECT last_insert_rowid() as id')
@@ -254,17 +259,17 @@ ipcMain.handle('db:addMovie', (_, movie) => {
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
   
-  return { id: newId, ...movie }
+  return { id: newId, collection_id: item.collectionId, data: item.data }
 })
 
-ipcMain.handle('db:updateMovie', (_, movie) => {
+ipcMain.handle('db:updateItem', (_, item) => {
   if (!db) return false
   
+  const dataJson = JSON.stringify(item.data)
+  
   db.run(
-    `UPDATE movies 
-     SET title = ?, director = ?, release_year = ?, genre = ?, duration = ?, rating = ?, status = ?, note = ?, updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [movie.title, movie.director, movie.releaseYear, movie.genre, movie.duration, movie.rating, movie.status, movie.note, movie.id]
+    'UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [dataJson, item.id]
   )
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
@@ -273,10 +278,10 @@ ipcMain.handle('db:updateMovie', (_, movie) => {
   return true
 })
 
-ipcMain.handle('db:deleteMovie', (_, id) => {
+ipcMain.handle('db:deleteItem', (_, id) => {
   if (!db) return false
   
-  db.run('DELETE FROM movies WHERE id = ?', [id])
+  db.run('DELETE FROM items WHERE id = ?', [id])
   
   const dbPath = path.join(app.getPath('userData'), 'secondbrain.db')
   saveDatabase(dbPath)
