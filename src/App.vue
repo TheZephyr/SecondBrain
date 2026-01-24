@@ -4,8 +4,13 @@
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h1>🧠 Second Brain</h1>
-          <p class="subtitle">Your Personal Organizer</p>
+          <div class="logo">
+            <Brain :size="32" />
+            <div>
+              <h1>Second Brain</h1>
+              <p class="subtitle">Personal Organizer</p>
+            </div>
+          </div>
         </div>
 
         <nav class="nav-menu">
@@ -13,11 +18,13 @@
             :class="['nav-item', { active: currentView === 'dashboard' }]"
             @click="currentView = 'dashboard'"
           >
-            <span class="nav-icon">🏠</span>
+            <LayoutDashboard :size="20" />
             <span class="nav-label">Dashboard</span>
           </button>
 
           <div class="nav-separator"></div>
+
+          <div class="nav-section-title">Collections</div>
 
           <button
             v-for="collection in collections"
@@ -25,12 +32,12 @@
             :class="['nav-item', { active: currentView === 'collection-' + collection.id }]"
             @click="selectCollection(collection)"
           >
-            <span class="nav-icon">{{ collection.icon }}</span>
+            <component :is="getIcon(collection.icon)" :size="20" />
             <span class="nav-label">{{ collection.name }}</span>
           </button>
 
           <button class="nav-item nav-add" @click="showNewCollectionModal = true">
-            <span class="nav-icon">➕</span>
+            <Plus :size="20" />
             <span class="nav-label">New Collection</span>
           </button>
         </nav>
@@ -58,13 +65,19 @@
     </div>
 
     <!-- New Collection Modal -->
-    <div v-if="showNewCollectionModal" class="modal">
+    <div v-if="showNewCollectionModal" class="modal-overlay" @click.self="cancelNewCollection">
       <div class="modal-content">
-        <h3>Create New Collection</h3>
+        <div class="modal-header">
+          <h3>Create New Collection</h3>
+          <button @click="cancelNewCollection" class="btn-close">
+            <X :size="20" />
+          </button>
+        </div>
+        
         <form @submit.prevent="createCollection">
           <div class="form-group">
             <label>Collection Name *</label>
-            <input v-model="newCollection.name" type="text" required placeholder="My Collection" />
+            <input v-model="newCollection.name" type="text" required placeholder="My Collection" autofocus />
           </div>
 
           <div class="form-group">
@@ -72,19 +85,20 @@
             <div class="icon-picker">
               <button
                 v-for="icon in iconOptions"
-                :key="icon"
+                :key="icon.value"
                 type="button"
-                :class="['icon-option', { selected: newCollection.icon === icon }]"
-                @click="newCollection.icon = icon"
+                :class="['icon-option', { selected: newCollection.icon === icon.value }]"
+                @click="newCollection.icon = icon.value"
+                :title="icon.label"
               >
-                {{ icon }}
+                <component :is="icon.component" :size="24" />
               </button>
             </div>
           </div>
 
           <div class="form-actions">
-            <button type="button" @click="cancelNewCollection" class="btn-cancel">Cancel</button>
-            <button type="submit" class="btn-save">Create</button>
+            <button type="button" @click="cancelNewCollection" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">Create Collection</button>
           </div>
         </form>
       </div>
@@ -94,6 +108,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { 
+  Brain, LayoutDashboard, Plus, X,
+  Folder, Gamepad2, Book, Film, Music, 
+  ChefHat, Dumbbell, Plane, FileText, 
+  Briefcase, Palette, Wrench, Home, 
+  DollarSign, BarChart3, Target
+} from 'lucide-vue-next'
 import Dashboard from './components/Dashboard.vue'
 import CollectionView from './components/CollectionView.vue'
 
@@ -104,10 +125,50 @@ const showNewCollectionModal = ref(false)
 
 const newCollection = ref({
   name: '',
-  icon: '📁'
+  icon: 'folder'
 })
 
-const iconOptions = ['📁', '🎮', '📚', '🎬', '🎵', '🍳', '💪', '✈️', '📝', '💼', '🎨', '🔧', '🏠', '💰', '📊', '🎯']
+const iconOptions = [
+  { value: 'folder', label: 'Folder', component: Folder },
+  { value: 'gamepad2', label: 'Games', component: Gamepad2 },
+  { value: 'book', label: 'Books', component: Book },
+  { value: 'film', label: 'Movies', component: Film },
+  { value: 'music', label: 'Music', component: Music },
+  { value: 'chefhat', label: 'Recipes', component: ChefHat },
+  { value: 'dumbbell', label: 'Fitness', component: Dumbbell },
+  { value: 'plane', label: 'Travel', component: Plane },
+  { value: 'filetext', label: 'Notes', component: FileText },
+  { value: 'briefcase', label: 'Work', component: Briefcase },
+  { value: 'palette', label: 'Art', component: Palette },
+  { value: 'wrench', label: 'Projects', component: Wrench },
+  { value: 'home', label: 'Home', component: Home },
+  { value: 'dollarsign', label: 'Finance', component: DollarSign },
+  { value: 'barchart3', label: 'Analytics', component: BarChart3 },
+  { value: 'target', label: 'Goals', component: Target }
+]
+
+const iconMap: any = {
+  folder: Folder,
+  gamepad2: Gamepad2,
+  book: Book,
+  film: Film,
+  music: Music,
+  chefhat: ChefHat,
+  dumbbell: Dumbbell,
+  plane: Plane,
+  filetext: FileText,
+  briefcase: Briefcase,
+  palette: Palette,
+  wrench: Wrench,
+  home: Home,
+  dollarsign: DollarSign,
+  barchart3: BarChart3,
+  target: Target
+}
+
+function getIcon(iconName: string) {
+  return iconMap[iconName] || Folder
+}
 
 async function loadCollections() {
   collections.value = await window.electronAPI.getCollections()
@@ -128,15 +189,14 @@ async function createCollection() {
   
   await loadCollections()
   showNewCollectionModal.value = false
-  newCollection.value = { name: '', icon: '📁' }
+  newCollection.value = { name: '', icon: 'folder' }
   
-  // Auto-select the newly created collection
   selectCollection(created)
 }
 
 function cancelNewCollection() {
   showNewCollectionModal.value = false
-  newCollection.value = { name: '', icon: '📁' }
+  newCollection.value = { name: '', icon: 'folder' }
 }
 
 function handleCollectionDeleted() {
@@ -151,6 +211,23 @@ onMounted(() => {
 </script>
 
 <style>
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #242424;
+  --bg-hover: #2a2a2a;
+  --border-color: #333;
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent-primary: #8b5cf6;
+  --accent-hover: #7c3aed;
+  --accent-light: rgba(139, 92, 246, 0.1);
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -158,8 +235,9 @@ onMounted(() => {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: #f5f5f5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   overflow: hidden;
 }
 
@@ -178,97 +256,132 @@ body {
 /* Sidebar */
 .sidebar {
   width: 260px;
-  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-header {
-  padding: 30px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar-header h1 {
-  font-size: 28px;
-  margin-bottom: 5px;
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--accent-primary);
+}
+
+.logo h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
 }
 
 .subtitle {
-  font-size: 14px;
-  opacity: 0.8;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .nav-menu {
   flex: 1;
-  padding: 20px 0;
+  padding: 12px 8px;
   overflow-y: auto;
+}
+
+.nav-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.nav-section-title {
+  padding: 12px 12px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
 }
 
 .nav-separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 10px 20px;
+  background: var(--border-color);
+  margin: 8px 12px;
 }
 
 .nav-item {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 15px 25px;
+  gap: 12px;
+  padding: 10px 12px;
   background: none;
   border: none;
-  color: white;
-  font-size: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s;
-  border-left: 3px solid transparent;
+  transition: all 0.2s;
+  border-radius: 6px;
   text-align: left;
+  margin-bottom: 2px;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  background: rgba(255, 255, 255, 0.2);
-  border-left-color: white;
-  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent-primary);
 }
 
 .nav-add {
-  margin-top: 10px;
-  opacity: 0.8;
+  margin-top: 8px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-color);
 }
 
 .nav-add:hover {
-  opacity: 1;
-}
-
-.nav-icon {
-  font-size: 24px;
-  min-width: 24px;
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-light);
 }
 
 .nav-label {
-  font-size: 16px;
+  font-size: 14px;
+  flex: 1;
 }
 
 .sidebar-footer {
-  padding: 20px;
+  padding: 16px;
   text-align: center;
-  font-size: 12px;
-  opacity: 0.6;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
 }
 
 /* Main Content */
 .main-content {
   flex: 1;
   overflow: auto;
-  background: #f5f5f5;
+  background: var(--bg-primary);
+}
+
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
 }
 
 .content-wrapper {
@@ -276,31 +389,83 @@ body {
 }
 
 /* Modal */
-.modal {
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
-  background: white;
-  padding: 30px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s;
 }
 
-.modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #2c3e50;
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.modal-content form {
+  padding: 20px;
 }
 
 .form-group {
@@ -310,77 +475,96 @@ body {
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 600;
-  color: #2c3e50;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .form-group input {
   width: 100%;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.2s;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--accent-primary);
+  background: var(--bg-primary);
 }
 
 .icon-picker {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
 }
 
 .icon-option {
   padding: 12px;
-  border: 2px solid #e0e0e0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: white;
   cursor: pointer;
-  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
   transition: all 0.2s;
 }
 
 .icon-option:hover {
-  border-color: #667eea;
-  transform: scale(1.1);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: scale(1.05);
 }
 
 .icon-option.selected {
-  border-color: #667eea;
-  background: #f0f0ff;
+  border-color: var(--accent-primary);
+  background: var(--accent-light);
+  color: var(--accent-primary);
 }
 
 .form-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
-  margin-top: 25px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
 }
 
-.btn-cancel,
-.btn-save {
-  padding: 10px 24px;
+.btn-primary,
+.btn-secondary {
+  padding: 10px 20px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
-.btn-cancel {
-  background: #e0e0e0;
-  color: #666;
-}
-
-.btn-save {
-  background: #667eea;
+.btn-primary {
+  background: var(--accent-primary);
   color: white;
 }
 
-.btn-save:hover {
-  background: #5568d3;
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 </style>

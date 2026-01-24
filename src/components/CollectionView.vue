@@ -2,29 +2,45 @@
   <div class="collection-view">
     <div class="header">
       <div class="header-left">
-        <h2>{{ collection.icon }} {{ collection.name }}</h2>
-        <button @click="showFieldsManager = true" class="btn-manage-fields">⚙️ Manage Fields</button>
+        <div class="collection-icon">
+          <component :is="getIcon(collection.icon)" :size="28" />
+        </div>
+        <h2>{{ collection.name }}</h2>
       </div>
       <div class="header-right">
-        <button @click="showAddItemForm = true" class="btn-add">+ Add Item</button>
-        <button @click="showCollectionSettings = true" class="btn-settings">⋯</button>
+        <button @click="showFieldsManager = true" class="btn-icon" title="Manage Fields">
+          <Settings :size="18" />
+        </button>
+        <button @click="showAddItemForm = true" class="btn-primary">
+          <Plus :size="18" />
+          <span>Add Item</span>
+        </button>
+        <button @click="showCollectionSettings = true" class="btn-icon" title="Collection Settings">
+          <MoreVertical :size="18" />
+        </button>
       </div>
     </div>
 
     <!-- Empty Fields State -->
     <div v-if="fields.length === 0" class="empty-fields">
-      <div class="empty-icon">📋</div>
+      <div class="empty-icon">
+        <Columns :size="64" :stroke-width="1.5" />
+      </div>
       <h3>No Fields Yet</h3>
-      <p>Add fields to define the structure of your collection</p>
-      <button @click="showFieldsManager = true" class="btn-primary">Add Fields</button>
+      <p>Define the structure of your collection by adding fields</p>
+      <button @click="showFieldsManager = true" class="btn-primary">
+        <Plus :size="18" />
+        <span>Add Fields</span>
+      </button>
     </div>
 
     <!-- Search -->
     <div v-else-if="items.length > 0 || searchQuery" class="search-bar">
+      <Search :size="18" class="search-icon" />
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="🔍 Search..."
+        placeholder="Search..."
         class="search-input"
       />
     </div>
@@ -41,31 +57,44 @@
         <tbody>
           <tr v-for="item in filteredItems" :key="item.id">
             <td v-for="field in fields" :key="field.id">
-              {{ formatFieldValue(item.data[field.name], field.type) }}
+              <span class="cell-content">{{ formatFieldValue(item.data[field.name], field.type) }}</span>
             </td>
             <td class="actions-cell">
-              <button @click="editItem(item)" class="btn-edit">✏️</button>
-              <button @click="deleteItem(item.id)" class="btn-delete">🗑️</button>
+              <button @click="editItem(item)" class="btn-icon-small" title="Edit">
+                <Pencil :size="16" />
+              </button>
+              <button @click="deleteItem(item.id)" class="btn-icon-small danger" title="Delete">
+                <Trash2 :size="16" />
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
       <div v-else-if="items.length === 0" class="empty-state">
-        <p>No items yet. Click "Add Item" to get started! 📝</p>
+        <FileText :size="48" :stroke-width="1.5" />
+        <p>No items yet. Click "Add Item" to get started!</p>
       </div>
       <div v-else class="empty-state">
+        <Search :size="48" :stroke-width="1.5" />
         <p>No items match your search.</p>
       </div>
     </div>
 
     <div v-if="items.length > 0" class="stats">
-      Total Items: {{ items.length }} | Showing: {{ filteredItems.length }}
+      <Database :size="14" />
+      <span>{{ items.length }} total • {{ filteredItems.length }} showing</span>
     </div>
 
     <!-- Add/Edit Item Modal -->
-    <div v-if="showAddItemForm" class="modal">
+    <div v-if="showAddItemForm" class="modal-overlay" @click.self="cancelItemForm">
       <div class="modal-content">
-        <h3>{{ editingItem ? 'Edit Item' : 'Add New Item' }}</h3>
+        <div class="modal-header">
+          <h3>{{ editingItem ? 'Edit Item' : 'Add New Item' }}</h3>
+          <button @click="cancelItemForm" class="btn-close">
+            <X :size="20" />
+          </button>
+        </div>
+        
         <form @submit.prevent="saveItem">
           <div v-for="field in fields" :key="field.id" class="form-group">
             <label>{{ field.name }}</label>
@@ -73,16 +102,19 @@
               v-if="field.type === 'text'"
               v-model="formData[field.name]"
               type="text"
+              :placeholder="'Enter ' + field.name.toLowerCase()"
             />
             <textarea
               v-else-if="field.type === 'textarea'"
               v-model="formData[field.name]"
-              rows="3"
+              rows="4"
+              :placeholder="'Enter ' + field.name.toLowerCase()"
             ></textarea>
             <input
               v-else-if="field.type === 'number'"
               v-model.number="formData[field.name]"
               type="number"
+              :placeholder="'Enter ' + field.name.toLowerCase()"
             />
             <input
               v-else-if="field.type === 'date'"
@@ -101,96 +133,127 @@
           </div>
 
           <div class="form-actions">
-            <button type="button" @click="cancelItemForm" class="btn-cancel">Cancel</button>
-            <button type="submit" class="btn-save">{{ editingItem ? 'Update' : 'Add' }}</button>
+            <button type="button" @click="cancelItemForm" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn-primary">
+              {{ editingItem ? 'Update' : 'Add' }}
+            </button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Fields Manager Modal -->
-    <div v-if="showFieldsManager" class="modal">
+    <div v-if="showFieldsManager" class="modal-overlay" @click.self="showFieldsManager = false">
       <div class="modal-content modal-large">
-        <h3>Manage Fields</h3>
+        <div class="modal-header">
+          <h3>Manage Fields</h3>
+          <button @click="showFieldsManager = false" class="btn-close">
+            <X :size="20" />
+          </button>
+        </div>
         
-        <div class="fields-list">
-          <div v-for="field in fields" :key="field.id" class="field-item">
-            <span class="field-name">{{ field.name }}</span>
-            <span class="field-type">{{ field.type }}</span>
-            <button @click="deleteField(field.id)" class="btn-delete-small">🗑️</button>
+        <div class="modal-body">
+          <div class="fields-list">
+            <div v-for="field in fields" :key="field.id" class="field-item">
+              <GripVertical :size="16" class="field-grip" />
+              <span class="field-name">{{ field.name }}</span>
+              <span class="field-type-badge">{{ field.type }}</span>
+              <button @click="deleteField(field.id)" class="btn-icon-small danger" title="Delete field">
+                <Trash2 :size="14" />
+              </button>
+            </div>
+            <div v-if="fields.length === 0" class="no-fields">
+              <Columns :size="32" :stroke-width="1.5" />
+              <p>No fields yet. Add your first field below.</p>
+            </div>
           </div>
-          <div v-if="fields.length === 0" class="no-fields">
-            <p>No fields yet. Add your first field below.</p>
+
+          <div class="add-field-section">
+            <div class="section-title">
+              <Plus :size="16" />
+              <span>Add New Field</span>
+            </div>
+            <div class="add-field-form">
+              <input
+                v-model="newField.name"
+                type="text"
+                placeholder="Field name"
+                class="field-name-input"
+              />
+              <select v-model="newField.type" class="field-type-select">
+                <option value="text">Text</option>
+                <option value="textarea">Text Area</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="select">Select</option>
+              </select>
+              <button @click="addField" type="button" class="btn-primary">Add</button>
+            </div>
+            
+            <div v-if="newField.type === 'select'" class="select-options">
+              <input
+                v-model="newField.options"
+                type="text"
+                placeholder="Options (comma-separated: Option1, Option2, Option3)"
+                class="options-input"
+              />
+            </div>
           </div>
         </div>
 
-        <div class="add-field-form">
-          <h4>Add New Field</h4>
-          <div class="form-row">
-            <input
-              v-model="newField.name"
-              type="text"
-              placeholder="Field name"
-              class="field-name-input"
-            />
-            <select v-model="newField.type" class="field-type-select">
-              <option value="text">Text</option>
-              <option value="textarea">Text Area</option>
-              <option value="number">Number</option>
-              <option value="date">Date</option>
-              <option value="select">Select</option>
-            </select>
-            <button @click="addField" class="btn-add-field">Add</button>
-          </div>
-          
-          <div v-if="newField.type === 'select'" class="select-options">
-            <input
-              v-model="newField.options"
-              type="text"
-              placeholder="Options (comma-separated: Option1, Option2, Option3)"
-              class="options-input"
-            />
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button @click="showFieldsManager = false" class="btn-save">Done</button>
+        <div class="modal-footer">
+          <button @click="showFieldsManager = false" class="btn-primary">Done</button>
         </div>
       </div>
     </div>
 
     <!-- Collection Settings Modal -->
-    <div v-if="showCollectionSettings" class="modal">
+    <div v-if="showCollectionSettings" class="modal-overlay" @click.self="cancelSettings">
       <div class="modal-content">
-        <h3>Collection Settings</h3>
-        
-        <div class="settings-section">
-          <h4>Rename Collection</h4>
-          <input v-model="collectionName" type="text" class="settings-input" />
+        <div class="modal-header">
+          <h3>Collection Settings</h3>
+          <button @click="cancelSettings" class="btn-close">
+            <X :size="20" />
+          </button>
         </div>
+        
+        <div class="modal-body">
+          <div class="settings-section">
+            <label>Collection Name</label>
+            <input v-model="collectionName" type="text" placeholder="Collection name" />
+          </div>
 
-        <div class="settings-section">
-          <h4>Change Icon</h4>
-          <div class="icon-picker">
-            <button
-              v-for="icon in iconOptions"
-              :key="icon"
-              :class="['icon-option', { selected: collectionIcon === icon }]"
-              @click="collectionIcon = icon"
-            >
-              {{ icon }}
+          <div class="settings-section">
+            <label>Icon</label>
+            <div class="icon-picker">
+              <button
+                v-for="icon in iconOptions"
+                :key="icon.value"
+                :class="['icon-option', { selected: collectionIcon === icon.value }]"
+                @click="collectionIcon = icon.value"
+                type="button"
+              >
+                <component :is="icon.component" :size="24" />
+              </button>
+            </div>
+          </div>
+
+          <div class="danger-zone">
+            <div class="danger-header">
+              <AlertTriangle :size="20" />
+              <h4>Danger Zone</h4>
+            </div>
+            <p class="danger-text">Once you delete a collection, there is no going back.</p>
+            <button @click="confirmDeleteCollection" class="btn-danger">
+              <Trash2 :size="16" />
+              <span>Delete Collection</span>
             </button>
           </div>
         </div>
 
-        <div class="danger-zone">
-          <h4>Danger Zone</h4>
-          <button @click="confirmDeleteCollection" class="btn-danger">Delete Collection</button>
-        </div>
-
-        <div class="form-actions">
-          <button @click="cancelSettings" class="btn-cancel">Cancel</button>
-          <button @click="saveSettings" class="btn-save">Save Changes</button>
+        <div class="modal-footer">
+          <button @click="cancelSettings" class="btn-secondary">Cancel</button>
+          <button @click="saveSettings" class="btn-primary">Save Changes</button>
         </div>
       </div>
     </div>
@@ -199,6 +262,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import {
+  Settings, Plus, MoreVertical, Columns, Search,
+  Pencil, Trash2, X, FileText, Database,
+  GripVertical, AlertTriangle,
+  Folder, Gamepad2, Book, Film, Music, 
+  ChefHat, Dumbbell, Plane, 
+  Briefcase, Palette, Wrench, Home, 
+  DollarSign, BarChart3, Target
+} from 'lucide-vue-next'
 
 const props = defineProps<{
   collection: any
@@ -224,7 +296,45 @@ const newField = ref({
 const collectionName = ref('')
 const collectionIcon = ref('')
 
-const iconOptions = ['📁', '🎮', '📚', '🎬', '🎵', '🍳', '💪', '✈️', '📝', '💼', '🎨', '🔧', '🏠', '💰', '📊', '🎯']
+const iconOptions = [
+  { value: 'folder', component: Folder },
+  { value: 'gamepad2', component: Gamepad2 },
+  { value: 'book', component: Book },
+  { value: 'film', component: Film },
+  { value: 'music', component: Music },
+  { value: 'chefhat', component: ChefHat },
+  { value: 'dumbbell', component: Dumbbell },
+  { value: 'plane', component: Plane },
+  { value: 'briefcase', component: Briefcase },
+  { value: 'palette', component: Palette },
+  { value: 'wrench', component: Wrench },
+  { value: 'home', component: Home },
+  { value: 'dollarsign', component: DollarSign },
+  { value: 'barchart3', component: BarChart3 },
+  { value: 'target', component: Target }
+]
+
+const iconMap: any = {
+  folder: Folder,
+  gamepad2: Gamepad2,
+  book: Book,
+  film: Film,
+  music: Music,
+  chefhat: ChefHat,
+  dumbbell: Dumbbell,
+  plane: Plane,
+  briefcase: Briefcase,
+  palette: Palette,
+  wrench: Wrench,
+  home: Home,
+  dollarsign: DollarSign,
+  barchart3: BarChart3,
+  target: Target
+}
+
+function getIcon(iconName: string) {
+  return iconMap[iconName] || Folder
+}
 
 const filteredItems = computed(() => {
   if (!searchQuery.value) return items.value
@@ -286,9 +396,6 @@ function cancelItemForm() {
 }
 
 async function saveItem() {
-  console.log('saveItem called', formData.value)
-  
-  // Convert Vue reactive proxy to plain object
   const plainData = JSON.parse(JSON.stringify(formData.value))
   
   if (editingItem.value) {
@@ -297,7 +404,6 @@ async function saveItem() {
       data: plainData
     })
   } else {
-    console.log('Adding new item...', { collectionId: props.collection.id, data: plainData })
     await window.electronAPI.addItem({
       collectionId: props.collection.id,
       data: plainData
@@ -345,7 +451,7 @@ async function saveSettings() {
   })
   
   showCollectionSettings.value = false
-  window.location.reload() // Reload to update sidebar
+  window.location.reload()
 }
 
 async function confirmDeleteCollection() {
@@ -369,439 +475,4 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.collection-view {
-  padding: 30px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  gap: 20px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.header-right {
-  display: flex;
-  gap: 10px;
-}
-
-.header h2 {
-  font-size: 32px;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.btn-manage-fields {
-  padding: 8px 16px;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.btn-manage-fields:hover {
-  background: #e0e0e0;
-}
-
-.btn-add {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.btn-add:hover {
-  background: #5568d3;
-}
-
-.btn-settings {
-  background: #f0f0f0;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-.btn-settings:hover {
-  background: #e0e0e0;
-}
-
-.empty-fields {
-  text-align: center;
-  padding: 80px 40px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-}
-
-.empty-fields h3 {
-  font-size: 24px;
-  color: #2c3e50;
-  margin-bottom: 10px;
-}
-
-.empty-fields p {
-  color: #666;
-  margin-bottom: 20px;
-}
-
-.btn-primary {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 12px 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.search-bar {
-  margin-bottom: 20px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.table-container {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f8f9fa;
-}
-
-th {
-  padding: 15px;
-  text-align: left;
-  font-weight: 600;
-  color: #2c3e50;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.actions-col {
-  width: 100px;
-}
-
-td {
-  padding: 15px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-tr:hover {
-  background: #f8f9fa;
-}
-
-.actions-cell {
-  white-space: nowrap;
-}
-
-.btn-edit,
-.btn-delete {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 5px 10px;
-  opacity: 0.7;
-}
-
-.btn-edit:hover,
-.btn-delete:hover {
-  opacity: 1;
-}
-
-.empty-state {
-  padding: 60px 20px;
-  text-align: center;
-  color: #999;
-}
-
-.stats {
-  margin-top: 20px;
-  text-align: center;
-  color: #666;
-  font-size: 14px;
-}
-
-/* Modal Styles */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-large {
-  max-width: 800px;
-}
-
-.modal-content h3 {
-  margin-top: 0;
-  color: #2c3e50;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 25px;
-}
-
-.btn-cancel,
-.btn-save {
-  padding: 10px 24px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.btn-cancel {
-  background: #e0e0e0;
-  color: #666;
-}
-
-.btn-save {
-  background: #667eea;
-  color: white;
-}
-
-/* Fields Manager */
-.fields-list {
-  margin-bottom: 30px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 15px;
-  min-height: 100px;
-}
-
-.field-item {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  margin-bottom: 8px;
-}
-
-.field-name {
-  flex: 1;
-  font-weight: 600;
-}
-
-.field-type {
-  color: #666;
-  font-size: 14px;
-  background: white;
-  padding: 4px 12px;
-  border-radius: 4px;
-}
-
-.btn-delete-small {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  opacity: 0.7;
-}
-
-.btn-delete-small:hover {
-  opacity: 1;
-}
-
-.no-fields {
-  text-align: center;
-  color: #999;
-  padding: 20px;
-}
-
-.add-field-form h4 {
-  margin-bottom: 15px;
-  color: #2c3e50;
-}
-
-.form-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.field-name-input {
-  flex: 2;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-}
-
-.field-type-select {
-  flex: 1;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  background: white;
-}
-
-.btn-add-field {
-  padding: 10px 20px;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.select-options {
-  margin-top: 10px;
-}
-
-.options-input {
-  width: 100%;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-}
-
-/* Settings */
-.settings-section {
-  margin-bottom: 30px;
-}
-
-.settings-section h4 {
-  margin-bottom: 10px;
-  color: #2c3e50;
-}
-
-.settings-input {
-  width: 100%;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.icon-picker {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
-}
-
-.icon-option {
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  background: white;
-  cursor: pointer;
-  font-size: 24px;
-  transition: all 0.2s;
-}
-
-.icon-option:hover {
-  border-color: #667eea;
-}
-
-.icon-option.selected {
-  border-color: #667eea;
-  background: #f0f0ff;
-}
-
-.danger-zone {
-  margin-top: 40px;
-  padding-top: 30px;
-  border-top: 2px solid #ffebee;
-}
-
-.danger-zone h4 {
-  color: #d32f2f;
-  margin-bottom: 15px;
-}
-
-.btn-danger {
-  background: #d32f2f;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.btn-danger:hover {
-  background: #b71c1c;
-}
-</style>
+<style src="./CollectionView.css" scoped></style>
