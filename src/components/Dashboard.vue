@@ -44,12 +44,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { 
-  FolderOpen, Database, ChevronRight,
-  Folder, Gamepad2, Book, Film, Music, 
-  ChefHat, Dumbbell, Plane, FileText, 
-  Briefcase, Palette, Wrench, Home, 
-  DollarSign, BarChart3, Target
+  FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
+import { useIcons } from '../composables/useIcons'
+
+const { getIcon } = useIcons()
 
 const props = defineProps<{
   collections: any[]
@@ -58,29 +57,6 @@ const props = defineProps<{
 defineEmits(['select-collection'])
 
 const collectionStats = ref<Map<number, number>>(new Map())
-
-const iconMap: any = {
-  folder: Folder,
-  gamepad2: Gamepad2,
-  book: Book,
-  film: Film,
-  music: Music,
-  chefhat: ChefHat,
-  dumbbell: Dumbbell,
-  plane: Plane,
-  filetext: FileText,
-  briefcase: Briefcase,
-  palette: Palette,
-  wrench: Wrench,
-  home: Home,
-  dollarsign: DollarSign,
-  barchart3: BarChart3,
-  target: Target
-}
-
-function getIcon(iconName: string) {
-  return iconMap[iconName] || Folder
-}
 
 const collectionsWithStats = computed(() => {
   return props.collections.map(collection => ({
