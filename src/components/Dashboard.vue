@@ -43,42 +43,40 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useStore } from '../store'
 import { 
   FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
 import { useIcons } from '../composables/useIcons'
 
 const { getIcon } = useIcons()
-
-const props = defineProps<{
-  collections: any[]
-}>()
+const store = useStore()
+const { collections } = storeToRefs(store)
 
 defineEmits(['select-collection'])
 
 const collectionStats = ref<Map<number, number>>(new Map())
 
 const collectionsWithStats = computed(() => {
-  return props.collections.map(collection => ({
+  return collections.value.map(collection => ({
     ...collection,
     itemCount: collectionStats.value.get(collection.id) || 0
   }))
 })
 
 async function loadStats() {
-  for (const collection of props.collections) {
+  for (const collection of collections.value) {
+    // This is a temporary solution to get the item count.
+    // A better approach would be to have a dedicated API endpoint for this.
     const items = await window.electronAPI.getItems(collection.id)
     collectionStats.value.set(collection.id, items.length)
   }
 }
 
-watch(() => props.collections, () => {
+watch(collections, () => {
   loadStats()
 }, { immediate: true })
-
-onMounted(() => {
-  loadStats()
-})
 </script>
 
 <style scoped>

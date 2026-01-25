@@ -274,6 +274,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useStore } from '../store'
 import {
   Settings, Plus, MoreVertical, Columns, Search,
   Pencil, Trash2, X, FileText, Database,
@@ -282,6 +284,8 @@ import {
 import { useIcons } from '../composables/useIcons'
 
 const { getIcon, iconOptions } = useIcons()
+const store = useStore()
+const { fields, items, selectedCollection } = storeToRefs(store)
 
 const props = defineProps<{
   collection: any
@@ -289,8 +293,6 @@ const props = defineProps<{
 
 const emit = defineEmits(['collection-deleted'])
 
-const fields = ref<any[]>([])
-const items = ref<any[]>([])
 const searchQuery = ref('')
 const showAddItemForm = ref(false)
 const showFieldsManager = ref(false)
@@ -320,18 +322,10 @@ const filteredItems = computed(() => {
   })
 })
 
-async function loadFields() {
-  fields.value = await window.electronAPI.getFields(props.collection.id)
-}
-
-async function loadItems() {
-  items.value = await window.electronAPI.getItems(props.collection.id)
-}
-
 async function addField() {
   if (!newField.value.name.trim()) return
 
-  await window.electronAPI.addField({
+  await store.addField({
     collectionId: props.collection.id,
     name: newField.value.name,
     type: newField.value.type,
@@ -339,15 +333,13 @@ async function addField() {
     orderIndex: fields.value.length
   })
 
-  await loadFields()
   newField.value = { name: '', type: 'text', options: '' }
 }
 
-async function deleteField(fieldId: number) {
+async function deleteField(field: any) {
   if (!confirm('Delete this field? All data in this field will be lost.')) return
   
-  await window.electronAPI.deleteField(fieldId)
-  await loadFields()
+  await store.deleteField(field)
 }
 
 function getSelectOptions(field: any) {
@@ -372,18 +364,17 @@ async function saveItem() {
   const plainData = JSON.parse(JSON.stringify(formData.value))
   
   if (editingItem.value) {
-    await window.electronAPI.updateItem({
+    await store.updateItem({
       id: editingItem.value.id,
       data: plainData
     })
   } else {
-    await window.electronAPI.addItem({
+    await store.addItem({
       collectionId: props.collection.id,
       data: plainData
     })
   }
 
-  await loadItems()
   cancelItemForm()
 }
 
@@ -393,11 +384,10 @@ function editItem(item: any) {
   showAddItemForm.value = true
 }
 
-async function deleteItem(itemId: number) {
+async function deleteItem(item: any) {
   if (!confirm('Delete this item?')) return
   
-  await window.electronAPI.deleteItem(itemId)
-  await loadItems()
+  await store.deleteItem(item)
 }
 
 function formatFieldValue(value: any, type: string) {
@@ -417,20 +407,19 @@ function cancelSettings() {
 }
 
 async function saveSettings() {
-  await window.electronAPI.updateCollection({
+  await store.updateCollection({
     id: props.collection.id,
     name: collectionName.value,
     icon: collectionIcon.value
   })
   
   showCollectionSettings.value = false
-  window.location.reload()
 }
 
 async function confirmDeleteCollection() {
   if (!confirm(`Delete "${props.collection.name}" and all its data? This cannot be undone.`)) return
   
-  await window.electronAPI.deleteCollection(props.collection.id)
+  await store.deleteCollection(props.collection.id)
   emit('collection-deleted')
 }
 
@@ -459,21 +448,21 @@ async function handleDrop(dropIndex: number) {
 
   // Update order_index for all fields
   for (let i = 0; i < reorderedFields.length; i++) {
-    await window.electronAPI.updateField({
+    await store.updateField({
       ...reorderedFields[i],
       orderIndex: i
     })
   }
 
-  await loadFields()
   handleDragEnd()
 }
 
-watch(() => props.collection, () => {
-  loadFields()
-  loadItems()
-  collectionName.value = props.collection.name
-  collectionIcon.value = props.collection.icon
+watch(() => props.collection, (newCollection) => {
+  if (newCollection) {
+    store.selectCollection(newCollection)
+    collectionName.value = newCollection.name
+    collectionIcon.value = newCollection.icon
+  }
 }, { immediate: true })
 
 watch(() => showFieldsManager.value, (isOpen) => {
@@ -502,8 +491,10 @@ watch(() => showAddItemForm.value, (isOpen) => {
 
 onMounted(() => {
   resetFormData()
-  collectionName.value = props.collection.name
-  collectionIcon.value = props.collection.icon
+  if (props.collection) {
+    collectionName.value = props.collection.name
+    collectionIcon.value = props.collection.icon
+  }
 })
 </script>
 

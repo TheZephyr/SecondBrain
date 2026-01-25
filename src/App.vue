@@ -16,7 +16,7 @@
         <nav class="nav-menu">
           <button
             :class="['nav-item', { active: currentView === 'dashboard' }]"
-            @click="currentView = 'dashboard'"
+            @click="showDashboard"
           >
             <LayoutDashboard :size="20" />
             <span class="nav-label">Dashboard</span>
@@ -30,7 +30,7 @@
             v-for="collection in collections"
             :key="collection.id"
             :class="['nav-item', { active: currentView === 'collection-' + collection.id }]"
-            @click="selectCollection(collection)"
+            @click="handleSelectCollection(collection)"
           >
             <component :is="getIcon(collection.icon)" :size="20" />
             <span class="nav-label">{{ collection.name }}</span>
@@ -53,7 +53,7 @@
           <Dashboard 
             v-if="currentView === 'dashboard'" 
             :collections="collections"
-            @select-collection="selectCollection"
+            @select-collection="handleSelectCollection"
           />
           <CollectionView 
             v-else-if="selectedCollection"
@@ -107,7 +107,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useStore } from './store'
 import { 
   Brain, LayoutDashboard, Plus, X
 } from 'lucide-vue-next'
@@ -116,10 +118,10 @@ import CollectionView from './components/CollectionView.vue'
 import { useIcons } from './composables/useIcons'
 
 const { iconOptions, getIcon } = useIcons()
+const store = useStore()
+const { collections, selectedCollection } = storeToRefs(store)
 
 const currentView = ref('dashboard')
-const collections = ref<any[]>([])
-const selectedCollection = ref<any>(null)
 const showNewCollectionModal = ref(false)
 
 const newCollection = ref({
@@ -127,28 +129,30 @@ const newCollection = ref({
   icon: 'folder'
 })
 
-async function loadCollections() {
-  collections.value = await window.electronAPI.getCollections()
+function handleSelectCollection(collection: any) {
+  store.selectCollection(collection)
+  currentView.value = `collection-${collection.id}`
 }
 
-function selectCollection(collection: any) {
-  selectedCollection.value = collection
-  currentView.value = 'collection-' + collection.id
+function showDashboard() {
+  store.selectCollection(null)
+  currentView.value = 'dashboard'
 }
 
 async function createCollection() {
   if (!newCollection.value.name.trim()) return
   
-  const created = await window.electronAPI.addCollection({
+  const created = await store.addCollection({
     name: newCollection.value.name,
     icon: newCollection.value.icon
   })
   
-  await loadCollections()
   showNewCollectionModal.value = false
   newCollection.value = { name: '', icon: 'folder' }
   
-  selectCollection(created)
+  if (created) {
+    handleSelectCollection(created)
+  }
 }
 
 function cancelNewCollection() {
@@ -157,13 +161,11 @@ function cancelNewCollection() {
 }
 
 function handleCollectionDeleted() {
-  loadCollections()
-  currentView.value = 'dashboard'
-  selectedCollection.value = null
+  showDashboard()
 }
 
 onMounted(() => {
-  loadCollections()
+  store.loadCollections()
 })
 </script>
 
