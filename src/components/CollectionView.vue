@@ -154,7 +154,17 @@
         
         <div class="modal-body">
           <div class="fields-list">
-            <div v-for="field in fields" :key="field.id" class="field-item">
+            <div 
+              v-for="(field, index) in fields" 
+              :key="field.id" 
+              class="field-item"
+              draggable="true"
+              @dragstart="handleDragStart(index)"
+              @dragover.prevent="handleDragOver(index)"
+              @drop="handleDrop(index)"
+              @dragend="handleDragEnd"
+              :class="{ 'dragging': draggedIndex === index }"
+            >
               <GripVertical :size="16" class="field-grip" />
               <span class="field-name">{{ field.name }}</span>
               <span class="field-type-badge">{{ field.type }}</span>
@@ -179,6 +189,8 @@
                 type="text"
                 placeholder="Field name"
                 class="field-name-input"
+                ref="fieldNameInput"
+                @click="$event.target.focus()"
               />
               <select v-model="newField.type" class="field-type-select">
                 <option value="text">Text</option>
@@ -295,6 +307,8 @@ const newField = ref({
 
 const collectionName = ref('')
 const collectionIcon = ref('')
+const draggedIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
 
 const iconOptions = [
   { value: 'folder', component: Folder },
@@ -461,12 +475,71 @@ async function confirmDeleteCollection() {
   emit('collection-deleted')
 }
 
+function handleDragStart(index: number) {
+  draggedIndex.value = index
+}
+
+function handleDragOver(index: number) {
+  dragOverIndex.value = index
+}
+
+function handleDragEnd() {
+  draggedIndex.value = null
+  dragOverIndex.value = null
+}
+
+async function handleDrop(dropIndex: number) {
+  if (draggedIndex.value === null || draggedIndex.value === dropIndex) {
+    handleDragEnd()
+    return
+  }
+
+  const reorderedFields = [...fields.value]
+  const [movedField] = reorderedFields.splice(draggedIndex.value, 1)
+  reorderedFields.splice(dropIndex, 0, movedField)
+
+  // Update order_index for all fields
+  for (let i = 0; i < reorderedFields.length; i++) {
+    await window.electronAPI.updateField({
+      ...reorderedFields[i],
+      orderIndex: i
+    })
+  }
+
+  await loadFields()
+  handleDragEnd()
+}
+
 watch(() => props.collection, () => {
   loadFields()
   loadItems()
   collectionName.value = props.collection.name
   collectionIcon.value = props.collection.icon
 }, { immediate: true })
+
+watch(() => showFieldsManager.value, (isOpen) => {
+  if (isOpen) {
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      const input = document.querySelector('.field-name-input') as HTMLInputElement
+      if (input) {
+        input.focus()
+      }
+    }, 100)
+  }
+})
+
+watch(() => showAddItemForm.value, (isOpen) => {
+  if (isOpen) {
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      const input = document.querySelector('.modal-content form input') as HTMLInputElement
+      if (input) {
+        input.focus()
+      }
+    }, 100)
+  }
+})
 
 onMounted(() => {
   resetFormData()
