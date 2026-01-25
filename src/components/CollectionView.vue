@@ -63,7 +63,7 @@
               <button @click="editItem(item)" class="btn-icon-small" title="Edit">
                 <Pencil :size="16" />
               </button>
-              <button @click="deleteItem(item.id)" class="btn-icon-small danger" title="Delete">
+              <button @click="deleteItem(item)" class="btn-icon-small danger" title="Delete">
                 <Trash2 :size="16" />
               </button>
             </td>
