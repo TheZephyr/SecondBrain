@@ -43,9 +43,7 @@
         </nav>
 
         <div class="sidebar-footer">
-          <p>v 0.2.0</p>
-          <!-- TODO: FIX APP VERSION -->
-          <!-- <p>v{{ __APP_VERSION__ }}</p> -->
+          <p>v{{ appVersion }}</p>
         </div>
       </aside>
 
@@ -109,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStore } from './store'
 import { 
@@ -122,6 +120,8 @@ import { useIcons } from './composables/useIcons'
 const { iconOptions, getIcon } = useIcons()
 const store = useStore()
 const { collections, selectedCollection } = storeToRefs(store)
+
+const appVersion = __APP_VERSION__
 
 const currentView = ref('dashboard')
 const showNewCollectionModal = ref(false)
