@@ -43,7 +43,9 @@
         </nav>
 
         <div class="sidebar-footer">
-          <p>v{{ __APP_VERSION__ }}</p>
+          <p>v 0.2.0</p>
+          <!-- TODO: FIX APP VERSION -->
+          <!-- <p>v{{ __APP_VERSION__ }}</p> -->
         </div>
       </aside>
 
