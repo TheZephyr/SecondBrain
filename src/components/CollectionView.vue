@@ -306,7 +306,7 @@
       </div>
     </div>
 
-    <!-- Collection Settings Modal -->
+    <!-- Collection Settings Modal (Redesigned) -->
     <div v-if="showCollectionSettings" class="modal-overlay" @click.self="cancelSettings">
       <div class="modal-content">
         <div class="modal-header">
@@ -317,36 +317,106 @@
         </div>
         
         <div class="modal-body">
-          <div class="settings-section">
-            <label>Collection Name</label>
-            <input v-model="collectionName" type="text" placeholder="Collection name" />
+          <!-- Collection Settings Section -->
+          <div class="settings-accordion-section">
+            <button 
+              class="accordion-header"
+              :class="{ 'active': accordionSections.general }"
+              @click="toggleAccordion('general')"
+            >
+              <div class="accordion-title">
+                <Settings2 :size="18" />
+                <span>Collection Settings</span>
+              </div>
+              <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.general }" />
+            </button>
+            
+            <div v-show="accordionSections.general" class="accordion-content">
+              <div class="settings-section">
+                <label>Collection Name</label>
+                <input v-model="collectionName" type="text" placeholder="Collection name" />
+              </div>
+
+              <div class="settings-section">
+                <label>Icon</label>
+                <div class="icon-picker">
+                  <button
+                    v-for="icon in iconOptions"
+                    :key="icon.value"
+                    :class="['icon-option', { selected: collectionIcon === icon.value }]"
+                    @click="collectionIcon = icon.value"
+                    type="button"
+                  >
+                    <component :is="icon.component" :size="24" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="settings-section">
-            <label>Icon</label>
-            <div class="icon-picker">
-              <button
-                v-for="icon in iconOptions"
-                :key="icon.value"
-                :class="['icon-option', { selected: collectionIcon === icon.value }]"
-                @click="collectionIcon = icon.value"
-                type="button"
-              >
-                <component :is="icon.component" :size="24" />
+          <!-- Export Data Section -->
+          <div class="settings-accordion-section">
+            <button 
+              class="accordion-header"
+              :class="{ 'active': accordionSections.export }"
+              @click="toggleAccordion('export')"
+            >
+              <div class="accordion-title">
+                <Download :size="18" />
+                <span>Export Data</span>
+              </div>
+              <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.export }" />
+            </button>
+            
+            <div v-show="accordionSections.export" class="accordion-content">
+              <div class="settings-section">
+                <label>Export Format</label>
+                <select v-model="exportFormat" class="export-format-select">
+                  <option value="csv">CSV (Comma Separated Values)</option>
+                  <option value="json">JSON (JavaScript Object Notation)</option>
+                </select>
+              </div>
+
+              <div class="export-info">
+                <p v-if="exportFormat === 'csv'">
+                  Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
+                </p>
+                <p v-else>
+                  Export all items as a JSON file. Data will be exported as an array of objects with full type preservation.
+                </p>
+              </div>
+
+              <button @click="handleExport" class="btn-primary export-button" :disabled="isExporting">
+                <Download :size="16" v-if="!isExporting" />
+                <span v-if="isExporting">Exporting...</span>
+                <span v-else>Export {{ items.length }} {{ items.length === 1 ? 'item' : 'items' }}</span>
               </button>
             </div>
           </div>
 
-          <div class="danger-zone">
-            <div class="danger-header">
-              <AlertTriangle :size="20" />
-              <h4>Danger Zone</h4>
-            </div>
-            <p class="danger-text">Once you delete a collection, there is no going back.</p>
-            <button @click="confirmDeleteCollection" class="btn-danger">
-              <Trash2 :size="16" />
-              <span>Delete Collection</span>
+          <!-- Danger Zone Section -->
+          <div class="settings-accordion-section">
+            <button 
+              class="accordion-header"
+              :class="{ 'active': accordionSections.danger }"
+              @click="toggleAccordion('danger')"
+            >
+              <div class="accordion-title">
+                <AlertTriangle :size="18" />
+                <span>Danger Zone</span>
+              </div>
+              <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.danger }" />
             </button>
+            
+            <div v-show="accordionSections.danger" class="accordion-content">
+              <div class="danger-zone">
+                <p class="danger-text">Once you delete a collection, there is no going back.</p>
+                <button @click="confirmDeleteCollection" class="btn-danger">
+                  <Trash2 :size="16" />
+                  <span>Delete Collection</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -378,7 +448,8 @@ import { useStore } from '../store'
 import {
   Settings, Plus, MoreVertical, Columns, Search,
   Pencil, Trash2, X, FileText, Database,
-  GripVertical, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown
+  GripVertical, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown,
+  Download, Settings2
 } from 'lucide-vue-next'
 import { useIcons } from '../composables/useIcons'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -409,6 +480,21 @@ const collectionIcon = ref('')
 const draggedIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 
+// Export state
+const exportFormat = ref<'csv' | 'json'>('csv')
+const isExporting = ref(false)
+
+// Accordion state
+const accordionSections = ref({
+  general: true,  // Expanded by default
+  export: false,
+  danger: false
+})
+
+function toggleAccordion(section: 'general' | 'export' | 'danger') {
+  accordionSections.value[section] = !accordionSections.value[section]
+}
+
 // Sorting state
 type SortDirection = 'asc' | 'desc'
 type SortCriterion = {
@@ -426,8 +512,8 @@ function compareValues(a: any, b: any, fieldType: string, direction: SortDirecti
   const bEmpty = b === null || b === undefined || b === ''
   
   if (aEmpty && bEmpty) return 0
-  if (aEmpty) return 1  // a goes to end
-  if (bEmpty) return -1 // b goes to end
+  if (aEmpty) return 1
+  if (bEmpty) return -1
   
   let comparison = 0
   
@@ -493,7 +579,6 @@ const filteredItems = computed(() => {
     })
   }
   
-  // Apply sorting
   result = sortItems(result)
   
   return result
@@ -507,6 +592,103 @@ const confirmDialog = ref({
   variant: 'danger' as 'danger' | 'warning' | 'info',
   onConfirm: () => {}
 })
+
+// Export functions
+function escapeCSVValue(value: any): string {
+  if (value === null || value === undefined) {
+    return '""'
+  }
+  
+  const stringValue = String(value)
+  const escapedValue = stringValue.replace(/"/g, '""')
+  return `"${escapedValue}"`
+}
+
+function generateCSV(): string {
+  const orderedFields = [...fields.value].sort((a, b) => a.order_index - b.order_index)
+  
+  // Header row
+  const headers = orderedFields.map(field => escapeCSVValue(field.name))
+  const csvLines = [headers.join(',')]
+  
+  // Data rows
+  for (const item of items.value) {
+    const row = orderedFields.map(field => {
+      const value = item.data[field.name]
+      return escapeCSVValue(value)
+    })
+    csvLines.push(row.join(','))
+  }
+  
+  return csvLines.join('\n')
+}
+
+function generateJSON(): string {
+  const orderedFields = [...fields.value].sort((a, b) => a.order_index - b.order_index)
+  
+  const exportData = items.value.map(item => {
+    const orderedData: any = {}
+    for (const field of orderedFields) {
+      orderedData[field.name] = item.data[field.name] ?? ''
+    }
+    return orderedData
+  })
+  
+  return JSON.stringify(exportData, null, 2)
+}
+
+function getDefaultFilename(): string {
+  const date = new Date().toISOString().split('T')[0]
+  const safeName = props.collection.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+  const extension = exportFormat.value
+  return `${safeName}-${date}.${extension}`
+}
+
+async function handleExport() {
+  isExporting.value = true
+  
+  try {
+    const extension = exportFormat.value
+    const filters = [
+      { 
+        name: exportFormat.value === 'csv' ? 'CSV Files' : 'JSON Files', 
+        extensions: [extension] 
+      },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+    
+    const filePath = await window.electronAPI.showSaveDialog({
+      title: `Export ${props.collection.name}`,
+      defaultPath: getDefaultFilename(),
+      filters
+    })
+    
+    if (!filePath) {
+      isExporting.value = false
+      return
+    }
+    
+    let content: string
+    if (exportFormat.value === 'csv') {
+      content = generateCSV()
+    } else {
+      content = generateJSON()
+    }
+    
+    const success = await window.electronAPI.writeFile(filePath, content)
+    
+    if (success) {
+      // Could show a success message here
+      console.log('Export successful!')
+    } else {
+      console.error('Export failed')
+    }
+  } catch (error) {
+    console.error('Export error:', error)
+  } finally {
+    isExporting.value = false
+  }
+}
 
 async function addField() {
   if (!newField.value.name.trim()) return
@@ -700,7 +882,6 @@ function handleHeaderClick(fieldName: string) {
     }
   }
   
-  // Save preferences
   saveSortPreferences()
 }
 
@@ -1139,7 +1320,11 @@ onUnmounted(() => {
 
 /* Settings Section */
 .settings-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
 }
 
 .settings-section label {
@@ -1150,7 +1335,8 @@ onUnmounted(() => {
   color: var(--text-secondary);
 }
 
-.settings-section input {
+.settings-section input,
+.settings-section select {
   width: 100%;
   padding: 10px 12px;
   background: var(--bg-tertiary);
@@ -1160,33 +1346,111 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-/* Danger Zone */
-.danger-zone {
-  margin-top: 32px;
-  padding: 20px;
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+/* Accordion Sections */
+.settings-accordion-section {
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
 }
 
-.danger-header {
+.accordion-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-primary);
+}
+
+.accordion-header:hover {
+  background: var(--bg-hover);
+}
+
+.accordion-header.active {
+  background: var(--bg-hover);
+}
+
+.accordion-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--danger);
-  margin-bottom: 12px;
-}
-
-.danger-header h4 {
+  gap: 10px;
   font-size: 14px;
   font-weight: 600;
-  margin: 0;
+}
+
+.accordion-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.accordion-chevron.open {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  padding: 20px;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Export Section */
+.export-format-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.export-info {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.export-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.export-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Danger Zone */
+.danger-zone {
+  padding: 0;
 }
 
 .danger-text {
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 16px;
+  line-height: 1.5;
 }
 
 /* Sort Dropdown */

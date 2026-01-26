@@ -1,3 +1,9 @@
+export interface SaveDialogOptions {
+  title?: string
+  defaultPath?: string
+  filters?: { name: string; extensions: string[] }[]
+}
+
 export interface IElectronAPI {
   // Collections
   getCollections: () => Promise<any[]>
@@ -16,6 +22,10 @@ export interface IElectronAPI {
   addItem: (item: any) => Promise<any>
   updateItem: (item: any) => Promise<boolean>
   deleteItem: (id: number) => Promise<boolean>
+  
+  // Export
+  showSaveDialog: (options: SaveDialogOptions) => Promise<string | null>
+  writeFile: (filePath: string, content: string) => Promise<boolean>
 }
 
 declare global {

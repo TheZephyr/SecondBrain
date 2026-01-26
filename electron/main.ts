@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'path'
+import fs from 'fs'
 import Database from 'better-sqlite3'
 
 let mainWindow: BrowserWindow | null = null
@@ -15,7 +16,6 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      enableRemoteModule: false,
       sandbox: false
     }
   })
@@ -195,6 +195,29 @@ ipcMain.handle('db:deleteItem', (_, id) => {
   db.prepare('DELETE FROM items WHERE id = ?').run(id)
   
   return true
+})
+
+// ==================== EXPORT ====================
+ipcMain.handle('export:showSaveDialog', async (_, options) => {
+  if (!mainWindow) return null
+  
+  const result = await dialog.showSaveDialog(mainWindow, options)
+  
+  if (result.canceled || !result.filePath) {
+    return null
+  }
+  
+  return result.filePath
+})
+
+ipcMain.handle('export:writeFile', async (_, filePath, content) => {
+  try {
+    fs.writeFileSync(filePath, content, 'utf-8')
+    return true
+  } catch (error) {
+    console.error('Error writing file:', error)
+    return false
+  }
 })
 
 app.whenReady().then(() => {

@@ -17,5 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getItems: (collectionId: number) => ipcRenderer.invoke('db:getItems', collectionId),
   addItem: (item: any) => ipcRenderer.invoke('db:addItem', item),
   updateItem: (item: any) => ipcRenderer.invoke('db:updateItem', item),
-  deleteItem: (id: number) => ipcRenderer.invoke('db:deleteItem', id)
+  deleteItem: (id: number) => ipcRenderer.invoke('db:deleteItem', id),
+  
+  // Export
+  showSaveDialog: (options: any) => ipcRenderer.invoke('export:showSaveDialog', options),
+  writeFile: (filePath: string, content: string) => ipcRenderer.invoke('export:writeFile', filePath, content)
 })
