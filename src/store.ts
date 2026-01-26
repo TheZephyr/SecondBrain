@@ -42,15 +42,18 @@ export const useStore = defineStore('main', () => {
   }
 
   async function updateField(field: any) {
+    if (!selectedCollection.value) return
+    
     await window.electronAPI.updateField(field)
-    await loadFields(field.collectionId)
+    await loadFields(selectedCollection.value.id)
   }
 
-  async function deleteField(field: any) {
-    await window.electronAPI.deleteField(field.id)
-    await loadFields(field.collectionId)
+  async function deleteField(fieldId: number) {
+    if (!selectedCollection.value) return
+    
+    await window.electronAPI.deleteField(fieldId)
+    await loadFields(selectedCollection.value.id)
   }
-
 
   async function loadItems(collectionId: number) {
     items.value = await window.electronAPI.getItems(collectionId)

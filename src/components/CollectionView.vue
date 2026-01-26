@@ -168,7 +168,7 @@
               <GripVertical :size="16" class="field-grip" />
               <span class="field-name">{{ field.name }}</span>
               <span class="field-type-badge">{{ field.type }}</span>
-              <button @click="deleteField(field.id)" class="btn-icon-small danger" title="Delete field">
+              <button @click="deleteField(field)" class="btn-icon-small danger" title="Delete field">
                 <Trash2 :size="14" />
               </button>
             </div>
@@ -270,6 +270,18 @@
       </div>
     </div>
   </div>
+
+  <!-- Confirmation Dialog -->
+  <ConfirmDialog
+    :is-open="confirmDialog.isOpen"
+    :title="confirmDialog.title"
+    :message="confirmDialog.message"
+    :confirm-text="confirmDialog.confirmText"
+    :variant="confirmDialog.variant"
+    @confirm="confirmDialog.onConfirm"
+    @cancel="confirmDialog.isOpen = false"
+  />
+
 </template>
 
 <script setup lang="ts">
@@ -282,10 +294,11 @@ import {
   GripVertical, AlertTriangle
 } from 'lucide-vue-next'
 import { useIcons } from '../composables/useIcons'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 const { getIcon, iconOptions } = useIcons()
 const store = useStore()
-const { fields, items, selectedCollection } = storeToRefs(store)
+const { fields, items } = storeToRefs(store)
 
 const props = defineProps<{
   collection: any
@@ -299,13 +312,11 @@ const showFieldsManager = ref(false)
 const showCollectionSettings = ref(false)
 const editingItem = ref<any>(null)
 const formData = ref<any>({})
-
 const newField = ref({
   name: '',
   type: 'text',
   options: ''
 })
-
 const collectionName = ref('')
 const collectionIcon = ref('')
 const draggedIndex = ref<number | null>(null)
@@ -320,6 +331,15 @@ const filteredItems = computed(() => {
       String(value).toLowerCase().includes(query)
     )
   })
+})
+
+const confirmDialog = ref({
+  isOpen: false,
+  title: '',
+  message: '',
+  confirmText: 'Confirm',
+  variant: 'danger' as 'danger' | 'warning' | 'info',
+  onConfirm: () => {}
 })
 
 async function addField() {
@@ -337,9 +357,17 @@ async function addField() {
 }
 
 async function deleteField(field: any) {
-  if (!confirm('Delete this field? All data in this field will be lost.')) return
-  
-  await store.deleteField(field)
+  confirmDialog.value = {
+    isOpen: true,
+    title: 'Delete Field',
+    message: `Delete "${field.name}" field? All data in this field will be lost.`,
+    confirmText: 'Delete',
+    variant: 'danger',
+    onConfirm: async () => {
+      await store.deleteField(field.id)
+      confirmDialog.value.isOpen = false
+    }
+  }
 }
 
 function getSelectOptions(field: any) {
@@ -385,9 +413,17 @@ function editItem(item: any) {
 }
 
 async function deleteItem(item: any) {
-  if (!confirm('Delete this item?')) return
-  
-  await store.deleteItem(item)
+  confirmDialog.value = {
+    isOpen: true,
+    title: 'Delete Item',
+    message: 'Are you sure you want to delete this item? This action cannot be undone.',
+    confirmText: 'Delete',
+    variant: 'danger',
+    onConfirm: async () => {
+      await store.deleteItem(item)
+      confirmDialog.value.isOpen = false
+    }
+  }
 }
 
 function formatFieldValue(value: any, type: string) {
@@ -417,10 +453,18 @@ async function saveSettings() {
 }
 
 async function confirmDeleteCollection() {
-  if (!confirm(`Delete "${props.collection.name}" and all its data? This cannot be undone.`)) return
-  
-  await store.deleteCollection(props.collection.id)
-  emit('collection-deleted')
+  confirmDialog.value = {
+    isOpen: true,
+    title: 'Delete Collection',
+    message: `Delete "${props.collection.name}" and all its data? This cannot be undone.`,
+    confirmText: 'Delete Collection',
+    variant: 'danger',
+    onConfirm: async () => {
+      await store.deleteCollection(props.collection.id)
+      confirmDialog.value.isOpen = false
+      emit('collection-deleted')
+    }
+  }
 }
 
 function handleDragStart(index: number) {
