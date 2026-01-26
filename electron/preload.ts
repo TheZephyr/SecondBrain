@@ -21,5 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Export
   showSaveDialog: (options: any) => ipcRenderer.invoke('export:showSaveDialog', options),
-  writeFile: (filePath: string, content: string) => ipcRenderer.invoke('export:writeFile', filePath, content)
+  writeFile: (filePath: string, content: string) => ipcRenderer.invoke('export:writeFile', filePath, content),
+  
+  // Import
+  showOpenDialog: (options: any) => ipcRenderer.invoke('import:showOpenDialog', options),
+  readFile: (filePath: string) => ipcRenderer.invoke('import:readFile', filePath)
 })

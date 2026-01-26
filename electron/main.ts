@@ -16,6 +16,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      enableRemoteModule: false,
       sandbox: false
     }
   })
@@ -217,6 +218,29 @@ ipcMain.handle('export:writeFile', async (_, filePath, content) => {
   } catch (error) {
     console.error('Error writing file:', error)
     return false
+  }
+})
+
+// ==================== IMPORT ====================
+ipcMain.handle('import:showOpenDialog', async (_, options) => {
+  if (!mainWindow) return null
+  
+  const result = await dialog.showOpenDialog(mainWindow, options)
+  
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+  
+  return result.filePaths[0]
+})
+
+ipcMain.handle('import:readFile', async (_, filePath) => {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return content
+  } catch (error) {
+    console.error('Error reading file:', error)
+    return null
   }
 })
 

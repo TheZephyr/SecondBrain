@@ -4,6 +4,12 @@ export interface SaveDialogOptions {
   filters?: { name: string; extensions: string[] }[]
 }
 
+export interface OpenDialogOptions {
+  title?: string
+  filters?: { name: string; extensions: string[] }[]
+  properties?: string[]
+}
+
 export interface IElectronAPI {
   // Collections
   getCollections: () => Promise<any[]>
@@ -26,6 +32,10 @@ export interface IElectronAPI {
   // Export
   showSaveDialog: (options: SaveDialogOptions) => Promise<string | null>
   writeFile: (filePath: string, content: string) => Promise<boolean>
+  
+  // Import
+  showOpenDialog: (options: OpenDialogOptions) => Promise<string | null>
+  readFile: (filePath: string) => Promise<string | null>
 }
 
 declare global {

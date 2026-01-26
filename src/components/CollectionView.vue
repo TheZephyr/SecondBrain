@@ -394,6 +394,136 @@
             </div>
           </div>
 
+          <!-- Import Data Section -->
+          <div class="settings-accordion-section">
+            <button 
+              class="accordion-header"
+              :class="{ 'active': accordionSections.import }"
+              @click="toggleAccordion('import')"
+            >
+              <div class="accordion-title">
+                <Upload :size="18" />
+                <span>Import Data</span>
+              </div>
+              <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.import }" />
+            </button>
+            
+            <div v-show="accordionSections.import" class="accordion-content">
+              <!-- File Selection -->
+              <div v-if="!importPreview" class="import-select-section">
+                <div class="settings-section">
+                  <label>Import Format</label>
+                  <select v-model="importFormat" class="export-format-select">
+                    <option value="csv">CSV (Comma Separated Values)</option>
+                    <option value="json">JSON (JavaScript Object Notation)</option>
+                  </select>
+                </div>
+
+                <div class="settings-section">
+                  <label>Import Mode</label>
+                  <div class="radio-group">
+                    <label class="radio-option">
+                      <input type="radio" v-model="importMode" value="append" />
+                      <div class="radio-content">
+                        <span class="radio-title">Append</span>
+                        <span class="radio-desc">Add imported items to existing data</span>
+                      </div>
+                    </label>
+                    <label class="radio-option">
+                      <input type="radio" v-model="importMode" value="replace" />
+                      <div class="radio-content">
+                        <span class="radio-title">Replace</span>
+                        <span class="radio-desc">Delete all existing items and import new data</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <button @click="handleSelectFile" class="btn-primary export-button">
+                  <Upload :size="16" />
+                  <span>Select File to Import</span>
+                </button>
+              </div>
+
+              <!-- Import Preview -->
+              <div v-else class="import-preview-section">
+                <div class="preview-header">
+                  <div class="preview-title">
+                    <FileText :size="20" />
+                    <span>Import Preview</span>
+                  </div>
+                  <button @click="cancelImport" class="btn-icon-small" title="Cancel">
+                    <X :size="16" />
+                  </button>
+                </div>
+
+                <div class="preview-stats">
+                  <div class="preview-stat">
+                    <span class="stat-label">Items to import:</span>
+                    <span class="stat-value">{{ importPreview.itemCount }}</span>
+                  </div>
+                  <div class="preview-stat">
+                    <span class="stat-label">Import mode:</span>
+                    <span class="stat-value">{{ importMode === 'append' ? 'Append' : 'Replace' }}</span>
+                  </div>
+                </div>
+
+                <div v-if="fields.length === 0" class="preview-info info">
+                  <AlertTriangle :size="16" />
+                  <p>This collection has no fields. Fields will be automatically created from the import file.</p>
+                </div>
+
+                <div v-if="importPreview.matchedFields.length > 0" class="preview-info success">
+                  <div class="info-header">
+                    <span>✓ Matched Fields ({{ importPreview.matchedFields.length }})</span>
+                  </div>
+                  <div class="field-tags">
+                    <span v-for="field in importPreview.matchedFields" :key="field" class="field-tag matched">
+                      {{ field }}
+                    </span>
+                  </div>
+                </div>
+
+                <div v-if="importPreview.newFields.length > 0" class="preview-info warning">
+                  <div class="info-header">
+                    <AlertTriangle :size="16" />
+                    <span>New Fields ({{ importPreview.newFields.length }})</span>
+                  </div>
+                  <p>These fields will be added to your collection:</p>
+                  <div class="field-tags">
+                    <span v-for="field in importPreview.newFields" :key="field" class="field-tag new">
+                      {{ field }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="preview-sample">
+                  <div class="sample-header">Sample Data (first 3 items)</div>
+                  <div class="sample-items">
+                    <div v-for="(item, index) in importPreview.sample" :key="index" class="sample-item">
+                      <div class="sample-item-header">Item {{ index + 1 }}</div>
+                      <div class="sample-fields">
+                        <div v-for="(value, key) in item" :key="key" class="sample-field">
+                          <span class="sample-key">{{ key }}:</span>
+                          <span class="sample-value">{{ value || '(empty)' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="import-actions">
+                  <button @click="cancelImport" class="btn-secondary">Cancel</button>
+                  <button @click="handleImport" class="btn-primary" :disabled="isImporting">
+                    <Upload :size="16" v-if="!isImporting" />
+                    <span v-if="isImporting">Importing...</span>
+                    <span v-else>Import {{ importPreview.itemCount }} items</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Danger Zone Section -->
           <div class="settings-accordion-section">
             <button 
@@ -449,7 +579,7 @@ import {
   Settings, Plus, MoreVertical, Columns, Search,
   Pencil, Trash2, X, FileText, Database,
   GripVertical, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown,
-  Download, Settings2
+  Download, Settings2, Upload
 } from 'lucide-vue-next'
 import { useIcons } from '../composables/useIcons'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -484,14 +614,28 @@ const dragOverIndex = ref<number | null>(null)
 const exportFormat = ref<'csv' | 'json'>('csv')
 const isExporting = ref(false)
 
+// Import state
+const importFormat = ref<'csv' | 'json'>('csv')
+const importMode = ref<'append' | 'replace'>('append')
+const isImporting = ref(false)
+const selectedFile = ref<string | null>(null)
+const importPreview = ref<{
+  itemCount: number
+  fields: string[]
+  newFields: string[]
+  matchedFields: string[]
+  sample: any[]
+} | null>(null)
+
 // Accordion state
 const accordionSections = ref({
   general: true,  // Expanded by default
   export: false,
+  import: false,
   danger: false
 })
 
-function toggleAccordion(section: 'general' | 'export' | 'danger') {
+function toggleAccordion(section: 'general' | 'export' | 'import' | 'danger') {
   accordionSections.value[section] = !accordionSections.value[section]
 }
 
@@ -540,7 +684,6 @@ function compareValues(a: any, b: any, fieldType: string, direction: SortDirecti
     case 'textarea':
     case 'select':
     default:
-      // Case-insensitive string comparison
       comparison = String(a).toLowerCase().localeCompare(String(b).toLowerCase())
       break
   }
@@ -687,6 +830,248 @@ async function handleExport() {
     console.error('Export error:', error)
   } finally {
     isExporting.value = false
+  }
+}
+
+// ==================== IMPORT FUNCTIONS ====================
+
+async function handleSelectFile() {
+  try {
+    const extension = importFormat.value
+    const filters = [
+      { 
+        name: importFormat.value === 'csv' ? 'CSV Files' : 'JSON Files', 
+        extensions: [extension] 
+      },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+    
+    const filePath = await window.electronAPI.showOpenDialog({
+      title: 'Select File to Import',
+      filters
+    })
+    
+    if (!filePath) {
+      return
+    }
+    
+    selectedFile.value = filePath
+    
+    // Read and parse file
+    const content = await window.electronAPI.readFile(filePath)
+    if (!content) {
+      console.error('Failed to read file')
+      return
+    }
+    
+    // Parse the file
+    let parsedData: any[] = []
+    let fileFields: string[] = []
+    
+    if (importFormat.value === 'csv') {
+      // Simple CSV parser
+      const lines = content.trim().split('\n')
+      if (lines.length === 0) {
+        console.error('Empty CSV file')
+        return
+      }
+      
+      // Parse header
+      const headerLine = lines[0]
+      fileFields = parseCSVLine(headerLine)
+      
+      // Parse data rows
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i])
+        const row: any = {}
+        for (let j = 0; j < fileFields.length; j++) {
+          row[fileFields[j]] = values[j] || ''
+        }
+        parsedData.push(row)
+      }
+    } else {
+      // JSON parser
+      parsedData = JSON.parse(content)
+      if (!Array.isArray(parsedData)) {
+        console.error('JSON must be an array')
+        return
+      }
+      
+      // Extract field names from first item
+      if (parsedData.length > 0) {
+        fileFields = Object.keys(parsedData[0])
+      }
+    }
+    
+    // Generate preview
+    const currentFieldNames = fields.value.map(f => f.name)
+    const matchedFields = fileFields.filter(f => currentFieldNames.includes(f))
+    const newFields = fileFields.filter(f => !currentFieldNames.includes(f))
+    
+    importPreview.value = {
+      itemCount: parsedData.length,
+      fields: fileFields,
+      newFields,
+      matchedFields,
+      sample: parsedData.slice(0, 3)
+    }
+  } catch (error) {
+    console.error('Error selecting file:', error)
+    selectedFile.value = null
+    importPreview.value = null
+  }
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    const nextChar = line[i + 1]
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"'
+        i++
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Field separator
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  
+  result.push(current.trim())
+  return result
+}
+
+function cancelImport() {
+  selectedFile.value = null
+  importPreview.value = null
+  importFormat.value = 'csv'
+  importMode.value = 'append'
+}
+
+async function handleImport() {
+  if (!selectedFile.value || !importPreview.value) {
+    return
+  }
+  
+  isImporting.value = true
+  
+  try {
+    const content = await window.electronAPI.readFile(selectedFile.value)
+    if (!content) {
+      console.error('Failed to read file')
+      return
+    }
+    
+    let parsedData: any[] = []
+    let fileFields: string[] = []
+    
+    // Parse file
+    if (importFormat.value === 'csv') {
+      const lines = content.trim().split('\n')
+      const headerLine = lines[0]
+      fileFields = parseCSVLine(headerLine)
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i])
+        const row: any = {}
+        for (let j = 0; j < fileFields.length; j++) {
+          row[fileFields[j]] = values[j] || ''
+        }
+        parsedData.push(row)
+      }
+    } else {
+      parsedData = JSON.parse(content)
+      // Extract field names from first item
+      if (parsedData.length > 0) {
+        fileFields = Object.keys(parsedData[0])
+      }
+    }
+    
+    // Determine current and new fields
+    let currentFieldNames = fields.value.map(f => f.name)
+    const newFieldNames = fileFields.filter(f => !currentFieldNames.includes(f))
+    
+    // Create fields from import file (both for empty collections and new fields)
+    if (fields.value.length === 0) {
+      // Empty collection - create all fields from import file
+      for (let i = 0; i < fileFields.length; i++) {
+        await store.addField({
+          collectionId: props.collection.id,
+          name: fileFields[i],
+          type: 'text',
+          options: null,
+          orderIndex: i
+        })
+      }
+    } else if (newFieldNames.length > 0) {
+      // Collection has fields - add only the new ones
+      const nextOrderIndex = Math.max(...fields.value.map(f => f.order_index), -1) + 1
+      for (let i = 0; i < newFieldNames.length; i++) {
+        await store.addField({
+          collectionId: props.collection.id,
+          name: newFieldNames[i],
+          type: 'text',
+          options: null,
+          orderIndex: nextOrderIndex + i
+        })
+      }
+    }
+    
+    // Refresh current field names after adding new fields
+    currentFieldNames = fields.value.map(f => f.name)
+    const itemsToAdd = parsedData.map(row => {
+      const itemData: any = {}
+      
+      // Initialize all fields with empty values
+      for (const fieldName of currentFieldNames) {
+        itemData[fieldName] = ''
+      }
+      
+      // Fill in matched fields
+      for (const fieldName of fileFields) {
+        if (currentFieldNames.includes(fieldName)) {
+          itemData[fieldName] = row[fieldName] || ''
+        }
+      }
+      
+      return {
+        collectionId: props.collection.id,
+        data: itemData
+      }
+    })
+    
+    // Handle replace mode
+    if (importMode.value === 'replace') {
+      // Delete all existing items
+      for (const item of items.value) {
+        await store.deleteItem(item.id)
+      }
+    }
+    
+    // Add all items
+    for (const item of itemsToAdd) {
+      await store.addItem(item)
+    }
+    
+    // Success - reset import state
+    cancelImport()
+    console.log(`Successfully imported ${itemsToAdd.length} items`)
+  } catch (error) {
+    console.error('Import error:', error)
+  } finally {
+    isImporting.value = false
   }
 }
 
@@ -1439,6 +1824,239 @@ onUnmounted(() => {
 .export-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Import Section */
+.import-select-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radio-option:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-hover);
+}
+
+.radio-option input[type="radio"] {
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+.radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.radio-title {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.radio-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Import Preview */
+.import-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preview-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preview-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.preview-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.preview-info {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.preview-info.info {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-info.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--text-secondary);
+}
+
+.preview-info.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--text-secondary);
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.field-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.field-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.field-tag.matched {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success);
+}
+
+.field-tag.new {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning);
+}
+
+.preview-sample {
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.sample-header {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.sample-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sample-item {
+  padding: 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.sample-item-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.sample-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sample-field {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sample-key {
+  color: var(--text-muted);
+  min-width: 80px;
+  font-weight: 500;
+}
+
+.sample-value {
+  color: var(--text-primary);
+  flex: 1;
+  word-break: break-word;
+}
+
+.import-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
 }
 
 /* Danger Zone */
