@@ -34,15 +34,87 @@
       </button>
     </div>
 
-    <!-- Search -->
-    <div v-else-if="items.length > 0 || searchQuery" class="search-bar">
-      <Search :size="18" class="search-icon" />
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Search..."
-        class="search-input"
-      />
+    <!-- Search and Sort -->
+    <div v-else-if="items.length > 0 || searchQuery" class="search-sort-container">
+      <div class="search-bar">
+        <Search :size="18" class="search-icon" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search..."
+          class="search-input"
+        />
+      </div>
+      
+      <div class="sort-dropdown-container" v-if="fields.length > 0">
+        <button 
+          @click="showSortDropdown = !showSortDropdown" 
+          class="sort-button"
+          :class="{ 'active': sortCriteria.length > 0 }"
+        >
+          <ArrowUpDown :size="16" />
+          <span>Sort</span>
+          <ChevronDown :size="14" class="chevron" :class="{ 'open': showSortDropdown }" />
+        </button>
+        
+        <div v-if="showSortDropdown" class="sort-dropdown" @click.stop>
+          <div class="sort-dropdown-header">
+            <span>Sort by</span>
+            <button @click="showSortDropdown = false" class="btn-close-small">
+              <X :size="14" />
+            </button>
+          </div>
+          
+          <div class="sort-criteria-list">
+            <div 
+              v-for="(criterion, index) in sortCriteria" 
+              :key="index"
+              class="sort-criterion-item"
+            >
+              <div class="criterion-info">
+                <span class="criterion-field">{{ criterion.fieldName }}</span>
+                <span class="criterion-type">{{ getFieldType(criterion.fieldName) }}</span>
+              </div>
+              <div class="criterion-actions">
+                <button 
+                  @click="toggleCriterionDirection(index)"
+                  class="btn-icon-small"
+                  :title="criterion.direction === 'asc' ? 'Ascending' : 'Descending'"
+                >
+                  <component :is="criterion.direction === 'asc' ? ArrowUp : ArrowDown" :size="14" />
+                </button>
+                <button 
+                  @click="removeCriterion(index)"
+                  class="btn-icon-small danger"
+                  title="Remove"
+                >
+                  <X :size="14" />
+                </button>
+              </div>
+            </div>
+            <div v-if="sortCriteria.length === 0" class="no-sort-criteria">
+              <p>No sort criteria. Click a column header or add one below.</p>
+            </div>
+          </div>
+          
+          <div class="add-sort-section">
+            <select 
+              v-model="selectedFieldForSort" 
+              class="field-select"
+              @change="addSortCriterion"
+            >
+              <option value="">Add sort field...</option>
+              <option 
+                v-for="field in availableFieldsForSort" 
+                :key="field.id" 
+                :value="field.name"
+              >
+                {{ field.name }} ({{ field.type }})
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Items Table -->
@@ -50,7 +122,22 @@
       <table v-if="filteredItems.length > 0">
         <thead>
           <tr>
-            <th v-for="field in fields" :key="field.id">{{ field.name }}</th>
+            <th 
+              v-for="field in fields" 
+              :key="field.id"
+              class="sortable-header"
+              @click="handleHeaderClick(field.name)"
+            >
+              <div class="header-content">
+                <span>{{ field.name }}</span>
+                <component 
+                  :is="getSortIcon(field.name)" 
+                  :size="14" 
+                  class="sort-icon"
+                  :class="{ 'sort-active': getSortDirection(field.name) !== null }"
+                />
+              </div>
+            </th>
             <th class="actions-col">Actions</th>
           </tr>
         </thead>
@@ -285,13 +372,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStore } from '../store'
 import {
   Settings, Plus, MoreVertical, Columns, Search,
   Pencil, Trash2, X, FileText, Database,
-  GripVertical, AlertTriangle
+  GripVertical, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown
 } from 'lucide-vue-next'
 import { useIcons } from '../composables/useIcons'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -322,15 +409,94 @@ const collectionIcon = ref('')
 const draggedIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 
-const filteredItems = computed(() => {
-  if (!searchQuery.value) return items.value
+// Sorting state
+type SortDirection = 'asc' | 'desc'
+type SortCriterion = {
+  fieldName: string
+  direction: SortDirection
+}
 
-  const query = searchQuery.value.toLowerCase()
-  return items.value.filter(item => {
-    return Object.values(item.data).some(value =>
-      String(value).toLowerCase().includes(query)
-    )
+const sortCriteria = ref<SortCriterion[]>([])
+const showSortDropdown = ref(false)
+const selectedFieldForSort = ref('')
+
+function compareValues(a: any, b: any, fieldType: string, direction: SortDirection): number {
+  // Handle null/undefined/empty values - always sort to end
+  const aEmpty = a === null || a === undefined || a === ''
+  const bEmpty = b === null || b === undefined || b === ''
+  
+  if (aEmpty && bEmpty) return 0
+  if (aEmpty) return 1  // a goes to end
+  if (bEmpty) return -1 // b goes to end
+  
+  let comparison = 0
+  
+  switch (fieldType) {
+    case 'number':
+      const aNum = parseFloat(String(a))
+      const bNum = parseFloat(String(b))
+      if (isNaN(aNum) && isNaN(bNum)) comparison = 0
+      else if (isNaN(aNum)) comparison = 1
+      else if (isNaN(bNum)) comparison = -1
+      else comparison = aNum - bNum
+      break
+      
+    case 'date':
+      const aDate = new Date(a).getTime()
+      const bDate = new Date(b).getTime()
+      if (isNaN(aDate) && isNaN(bDate)) comparison = 0
+      else if (isNaN(aDate)) comparison = 1
+      else if (isNaN(bDate)) comparison = -1
+      else comparison = aDate - bDate
+      break
+      
+    case 'text':
+    case 'textarea':
+    case 'select':
+    default:
+      // Case-insensitive string comparison
+      comparison = String(a).toLowerCase().localeCompare(String(b).toLowerCase())
+      break
+  }
+  
+  return direction === 'asc' ? comparison : -comparison
+}
+
+function sortItems(items: any[]): any[] {
+  if (sortCriteria.value.length === 0) return items
+  
+  return [...items].sort((a, b) => {
+    for (const criterion of sortCriteria.value) {
+      const field = fields.value.find(f => f.name === criterion.fieldName)
+      if (!field) continue
+      
+      const aVal = a.data[criterion.fieldName]
+      const bVal = b.data[criterion.fieldName]
+      
+      const comparison = compareValues(aVal, bVal, field.type, criterion.direction)
+      if (comparison !== 0) return comparison
+    }
+    return 0
   })
+}
+
+const filteredItems = computed(() => {
+  let result = items.value
+  
+  // Apply search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(item => {
+      return Object.values(item.data).some(value =>
+        String(value).toLowerCase().includes(query)
+      )
+    })
+  }
+  
+  // Apply sorting
+  result = sortItems(result)
+  
+  return result
 })
 
 const confirmDialog = ref({
@@ -436,6 +602,108 @@ function formatFieldValue(value: any, type: string) {
   return value
 }
 
+function getSortDirection(fieldName: string): SortDirection | null {
+  const criterion = sortCriteria.value.find(c => c.fieldName === fieldName)
+  return criterion ? criterion.direction : null
+}
+
+function getSortIcon(fieldName: string) {
+  const direction = getSortDirection(fieldName)
+  if (direction === 'asc') return ArrowUp
+  if (direction === 'desc') return ArrowDown
+  return ArrowUpDown
+}
+
+function getStorageKey(collectionId: number): string {
+  return `sort_pref_${collectionId}`
+}
+
+function saveSortPreferences() {
+  if (!props.collection) return
+  const key = getStorageKey(props.collection.id)
+  localStorage.setItem(key, JSON.stringify(sortCriteria.value))
+}
+
+function loadSortPreferences() {
+  if (!props.collection) {
+    sortCriteria.value = []
+    return
+  }
+  
+  const key = getStorageKey(props.collection.id)
+  const saved = localStorage.getItem(key)
+  
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved)
+      // Validate that saved criteria still match existing fields
+      const validCriteria = parsed.filter((c: SortCriterion) => 
+        fields.value.some(f => f.name === c.fieldName)
+      )
+      sortCriteria.value = validCriteria
+    } catch (e) {
+      sortCriteria.value = []
+    }
+  } else {
+    sortCriteria.value = []
+  }
+}
+
+const availableFieldsForSort = computed(() => {
+  return fields.value.filter(field => 
+    !sortCriteria.value.some(c => c.fieldName === field.name)
+  )
+})
+
+function getFieldType(fieldName: string): string {
+  const field = fields.value.find(f => f.name === fieldName)
+  return field ? field.type : 'unknown'
+}
+
+function addSortCriterion() {
+  if (!selectedFieldForSort.value) return
+  
+  const fieldName = selectedFieldForSort.value
+  if (!sortCriteria.value.some(c => c.fieldName === fieldName)) {
+    sortCriteria.value.push({ fieldName, direction: 'asc' })
+    saveSortPreferences()
+  }
+  
+  selectedFieldForSort.value = ''
+}
+
+function toggleCriterionDirection(index: number) {
+  const criterion = sortCriteria.value[index]
+  criterion.direction = criterion.direction === 'asc' ? 'desc' : 'asc'
+  saveSortPreferences()
+}
+
+function removeCriterion(index: number) {
+  sortCriteria.value.splice(index, 1)
+  saveSortPreferences()
+}
+
+function handleHeaderClick(fieldName: string) {
+  const existingIndex = sortCriteria.value.findIndex(c => c.fieldName === fieldName)
+  
+  if (existingIndex === -1) {
+    // Field not in sort criteria - add it with 'asc'
+    sortCriteria.value.push({ fieldName, direction: 'asc' })
+  } else {
+    const current = sortCriteria.value[existingIndex]
+    if (current.direction === 'asc') {
+      // Toggle to 'desc'
+      current.direction = 'desc'
+    } else {
+      // Remove from sort criteria
+      sortCriteria.value.splice(existingIndex, 1)
+    }
+  }
+  
+  // Save preferences
+  saveSortPreferences()
+}
+
 function cancelSettings() {
   showCollectionSettings.value = false
   collectionName.value = props.collection.name
@@ -506,8 +774,19 @@ watch(() => props.collection, (newCollection) => {
     store.selectCollection(newCollection)
     collectionName.value = newCollection.name
     collectionIcon.value = newCollection.icon
+    // Load sort preferences after fields are loaded
+    setTimeout(() => {
+      loadSortPreferences()
+    }, 100)
   }
 }, { immediate: true })
+
+watch(() => fields.value, () => {
+  // Reload preferences when fields change to validate them
+  if (props.collection) {
+    loadSortPreferences()
+  }
+})
 
 watch(() => showFieldsManager.value, (isOpen) => {
   if (isOpen) {
@@ -533,12 +812,26 @@ watch(() => showAddItemForm.value, (isOpen) => {
   }
 })
 
+// Close dropdown when clicking outside
+const handleClickOutside = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.sort-dropdown-container')) {
+    showSortDropdown.value = false
+  }
+}
+
 onMounted(() => {
   resetFormData()
   if (props.collection) {
     collectionName.value = props.collection.name
     collectionIcon.value = props.collection.icon
   }
+  
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -611,9 +904,17 @@ onMounted(() => {
   font-size: 14px;
 }
 
+/* Search and Sort Container */
+.search-sort-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
 /* Search Bar */
 .search-bar {
-  margin-bottom: 20px;
+  flex: 1;
   position: relative;
 }
 
@@ -648,6 +949,35 @@ onMounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
+}
+
+/* Sortable Headers */
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.sortable-header:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sort-icon {
+  color: var(--text-muted);
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.sort-icon.sort-active {
+  color: var(--accent-primary);
 }
 
 .actions-col {
@@ -857,5 +1187,162 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 16px;
+}
+
+/* Sort Dropdown */
+.sort-dropdown-container {
+  position: relative;
+}
+
+.sort-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.sort-button:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+}
+
+.sort-button.active {
+  background: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.sort-button .chevron {
+  transition: transform 0.2s;
+  color: var(--text-muted);
+}
+
+.sort-button .chevron.open {
+  transform: rotate(180deg);
+}
+
+.sort-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  z-index: 100;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.sort-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-close-small {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-close-small:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.sort-criteria-list {
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.sort-criterion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  gap: 12px;
+}
+
+.criterion-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.criterion-field {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.criterion-type {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.criterion-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.no-sort-criteria {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.add-sort-section {
+  padding: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.field-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.field-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
 }
 </style>
