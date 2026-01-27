@@ -865,7 +865,7 @@ async function handleSelectFile() {
     }
 
     if (!content.trim()) {
-      alert('The selected file is empty.') // Rewrite this with a better UI notification
+      alert('The selected file is empty.')
       selectedFile.value = null
       return
     }
@@ -909,7 +909,7 @@ async function handleSelectFile() {
       }
     }
     
-    // Generate preview
+    // Generate preview with case-insensitive matching
     const matchedFields: string[] = []
     const newFields: string[] = []
     const fieldMap = new Map()
@@ -917,7 +917,7 @@ async function handleSelectFile() {
 
     fileFields.forEach(fileField => {
       if (fieldMap.has(fileField.toLowerCase())) {
-        matchedFields.push(fileField) // Keep original CSV header name for display
+        matchedFields.push(fileField)
       } else {
         newFields.push(fileField)
       }
@@ -1014,9 +1014,20 @@ async function handleImport() {
       }
     }
     
-    // Determine current and new fields
-    let currentFieldNames = fields.value.map(f => f.name)
-    const newFieldNames = fileFields.filter(f => !currentFieldNames.includes(f))
+    // Handle replace mode - delete all existing items FIRST
+    if (importMode.value === 'replace') {
+      const idsToDelete = items.value.map(item => item.id)
+      for (const id of idsToDelete) {
+        await store.deleteItem(id)
+      }
+    }
+    
+    // Create case-insensitive field mapping
+    const fieldMap = new Map<string, string>()
+    fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
+    
+    // Determine which fields are new (case-insensitive)
+    const newFieldNames = fileFields.filter(f => !fieldMap.has(f.toLowerCase()))
     
     // Create fields from import file (both for empty collections and new fields)
     if (fields.value.length === 0) {
@@ -1044,18 +1055,21 @@ async function handleImport() {
       }
     }
     
-    // Prepare data for import
-    const fieldMap = new Map<string, string>()
+    // Rebuild field map after creating new fields (case-insensitive)
+    fieldMap.clear()
     fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
-    //currentFieldNames = fields.value.map(f => f.name)
+    const currentFieldNames = fields.value.map(f => f.name)
     
+    // Prepare data for import with case-insensitive field matching
     const itemsToAdd = parsedData.map(row => {
       const itemData: any = {}
       
+      // Initialize all fields with empty values
       for (const fieldName of currentFieldNames) {
         itemData[fieldName] = ''
       }
       
+      // Map CSV headers to actual field names (case-insensitive)
       for (const csvHeader of fileFields) {
         const val = row[csvHeader]
         const targetFieldName = fieldMap.get(csvHeader.toLowerCase())
@@ -1070,15 +1084,6 @@ async function handleImport() {
         data: itemData
       }
     })
-    
-    // Handle replace mode
-    if (importMode.value === 'replace') {
-      // Delete all existing items
-      const idsToDelete = items.value.map(item => item.id)
-      for (const id of idsToDelete) {
-        await store.deleteItem(id)
-      }
-    }
     
     // Add all items
     for (const item of itemsToAdd) {
