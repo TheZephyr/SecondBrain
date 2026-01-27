@@ -636,7 +636,18 @@ const accordionSections = ref({
 })
 
 function toggleAccordion(section: 'general' | 'export' | 'import' | 'danger') {
-  accordionSections.value[section] = !accordionSections.value[section]
+  const isCurrentlyOpen = accordionSections.value[section]
+  
+  // Close all sections
+  accordionSections.value = {
+    general: false,
+    export: false,
+    import: false,
+    danger: false
+  }
+  
+  // Open the clicked section (unless it was already open)
+  accordionSections.value[section] = !isCurrentlyOpen
 }
 
 // Sorting state
