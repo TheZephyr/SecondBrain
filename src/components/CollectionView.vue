@@ -306,7 +306,7 @@
       </div>
     </div>
 
-    <!-- Collection Settings Modal (Redesigned) -->
+    <!-- Collection Settings Modal -->
     <div v-if="showCollectionSettings" class="modal-overlay" @click.self="cancelSettings">
       <div class="modal-content">
         <div class="modal-header">
@@ -1592,7 +1592,7 @@ onUnmounted(() => {
 
 /* Fields Manager */
 .fields-list {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
@@ -1666,7 +1666,7 @@ onUnmounted(() => {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 16px;
+  padding: 12px 12px 4px 12px;
 }
 
 .section-title {
@@ -1727,6 +1727,12 @@ onUnmounted(() => {
   border-radius: 6px;
   font-size: 14px;
   color: var(--text-primary);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 24px 28px;
 }
 
 /* Settings Section */
