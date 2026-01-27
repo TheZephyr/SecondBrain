@@ -859,8 +859,14 @@ async function handleSelectFile() {
     
     // Read and parse file
     const content = await window.electronAPI.readFile(filePath)
-    if (!content) {
+    if (content === null) {
       console.error('Failed to read file')
+      return
+    }
+
+    if (!content.trim()) {
+      alert('The selected file is empty.') // Rewrite this with a better UI notification
+      selectedFile.value = null
       return
     }
     
@@ -904,9 +910,18 @@ async function handleSelectFile() {
     }
     
     // Generate preview
-    const currentFieldNames = fields.value.map(f => f.name)
-    const matchedFields = fileFields.filter(f => currentFieldNames.includes(f))
-    const newFields = fileFields.filter(f => !currentFieldNames.includes(f))
+    const matchedFields: string[] = []
+    const newFields: string[] = []
+    const fieldMap = new Map()
+    fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
+
+    fileFields.forEach(fileField => {
+      if (fieldMap.has(fileField.toLowerCase())) {
+        matchedFields.push(fileField) // Keep original CSV header name for display
+      } else {
+        newFields.push(fileField)
+      }
+    })
     
     importPreview.value = {
       itemCount: parsedData.length,
@@ -1029,20 +1044,24 @@ async function handleImport() {
       }
     }
     
-    // Refresh current field names after adding new fields
-    currentFieldNames = fields.value.map(f => f.name)
+    // Prepare data for import
+    const fieldMap = new Map<string, string>()
+    fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
+    //currentFieldNames = fields.value.map(f => f.name)
+    
     const itemsToAdd = parsedData.map(row => {
       const itemData: any = {}
       
-      // Initialize all fields with empty values
       for (const fieldName of currentFieldNames) {
         itemData[fieldName] = ''
       }
       
-      // Fill in matched fields
-      for (const fieldName of fileFields) {
-        if (currentFieldNames.includes(fieldName)) {
-          itemData[fieldName] = row[fieldName] || ''
+      for (const csvHeader of fileFields) {
+        const val = row[csvHeader]
+        const targetFieldName = fieldMap.get(csvHeader.toLowerCase())
+        
+        if (targetFieldName) {
+          itemData[targetFieldName] = val !== undefined && val !== null ? val : ''
         }
       }
       
@@ -1055,8 +1074,9 @@ async function handleImport() {
     // Handle replace mode
     if (importMode.value === 'replace') {
       // Delete all existing items
-      for (const item of items.value) {
-        await store.deleteItem(item.id)
+      const idsToDelete = items.value.map(item => item.id)
+      for (const id of idsToDelete) {
+        await store.deleteItem(id)
       }
     }
     
