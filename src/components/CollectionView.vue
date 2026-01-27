@@ -1014,12 +1014,13 @@ async function handleImport() {
       }
     }
     
-    // Handle replace mode - delete all existing items FIRST
+    // Handle replace mode - delete all existing items first
     if (importMode.value === 'replace') {
-      const idsToDelete = items.value.map(item => item.id)
-      for (const id of idsToDelete) {
-        await store.deleteItem(id)
+      const itemsToDelete = [...items.value]
+      for (const item of itemsToDelete) {
+        await window.electronAPI.deleteItem(item.id)
       }
+      await store.loadItems(props.collection.id)
     }
     
     // Create case-insensitive field mapping
