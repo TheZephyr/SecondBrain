@@ -105,8 +105,8 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Listbox from 'primevue/listbox'
-import Dashboard from './components/Dashboard.vue'
-import CollectionView from './components/CollectionView.vue'
+import Dashboard from './components/views/Dashboard.vue'
+import CollectionView from './components/views/CollectionView.vue'
 import { useIcons } from './composables/useIcons'
 
 const { iconOptions, getIcon } = useIcons()

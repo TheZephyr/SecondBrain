@@ -412,7 +412,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useStore } from '../store'
+import { useStore } from '../../store'
 import {
   Settings,
   Plus,
@@ -429,7 +429,7 @@ import {
   Settings2,
   Upload
 } from 'lucide-vue-next'
-import { useIcons } from '../composables/useIcons'
+import { useIcons } from '../../composables/useIcons'
 import { useConfirm } from 'primevue/useconfirm'
 import Accordion from 'primevue/accordion'
 import AccordionTab from 'primevue/accordiontab'
