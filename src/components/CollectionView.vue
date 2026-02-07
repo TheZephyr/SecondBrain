@@ -4,8 +4,7 @@
       <template #start>
         <div class="flex items-center gap-4">
           <div
-            class="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-light)] text-[var(--accent-primary)]"
-          >
+            class="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-light)] text-[var(--accent-primary)]">
             <component :is="getIcon(collection.icon)" :size="26" />
           </div>
           <div>
@@ -17,28 +16,18 @@
       </template>
       <template #end>
         <div class="flex items-center gap-2">
-          <Button
-            text
-            class="h-10 w-10 p-0"
-            title="Manage Fields"
-            @click="showFieldsManager = true"
-          >
+          <Button text class="h-10 w-10 p-0" title="Manage Fields" @click="showFieldsManager = true">
             <template #icon>
               <Settings :size="18" />
             </template>
           </Button>
-          <Button class="gap-2" @click="showAddItemForm = true">
+          <Button class="gap-2 min-w-[140px] px-4 !text-white" @click="showAddItemForm = true">
             <template #icon>
               <Plus :size="18" />
             </template>
             Add Item
           </Button>
-          <Button
-            text
-            class="h-10 w-10 p-0"
-            title="Collection Settings"
-            @click="showCollectionSettings = true"
-          >
+          <Button text class="h-10 w-10 p-0" title="Collection Settings" @click="showCollectionSettings = true">
             <template #icon>
               <MoreVertical :size="18" />
             </template>
@@ -47,16 +36,14 @@
       </template>
     </Toolbar>
 
-    <div
-      v-if="fields.length === 0"
-      class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center"
-    >
+    <div v-if="fields.length === 0"
+      class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
       <p class="mt-2 text-sm text-[var(--text-muted)]">
         Define the structure of your collection by adding fields
       </p>
-      <Button class="mt-6 gap-2" @click="showFieldsManager = true">
+      <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="showFieldsManager = true">
         <template #icon>
           <Plus :size="18" />
         </template>
@@ -67,36 +54,18 @@
     <div v-else class="space-y-4">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div class="relative flex-1">
-          <Search
-            :size="18"
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-          />
-          <InputText
-            v-model="searchQuery"
-            class="pl-10"
-            type="text"
-            placeholder="Search..."
-          />
+          <Search :size="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+          <InputText v-model="searchQuery" class="pl-10" type="text" placeholder="Search..." />
         </div>
         <p class="text-xs text-[var(--text-muted)]">
           Tip: hold Shift/Ctrl while clicking headers to add multiple sorts.
         </p>
       </div>
 
-      <DataTable
-        :value="filteredItems"
-        dataKey="id"
-        sortMode="multiple"
-        v-model:multiSortMeta="multiSortMeta"
-        :rowHover="true"
-      >
-        <Column
-          v-for="field in orderedFields"
-          :key="field.id"
-          :field="getFieldPath(field.name)"
-          :header="field.name"
-          sortable
-        >
+      <DataTable :value="filteredItems" dataKey="id" sortMode="multiple" v-model:multiSortMeta="multiSortMeta"
+        :rowHover="true">
+        <Column v-for="field in orderedFields" :key="field.id" :field="getFieldPath(field.name)" :header="field.name"
+          sortable>
           <template #body="{ data }">
             <span class="block max-w-[320px] truncate">
               {{ formatFieldValue(data.data[field.name], field.type) }}
@@ -112,12 +81,8 @@
                   <Pencil :size="16" />
                 </template>
               </Button>
-              <Button
-                text
-                class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]"
-                title="Delete"
-                @click="deleteItem(data)"
-              >
+              <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete"
+                @click="deleteItem(data)">
                 <template #icon>
                   <Trash2 :size="16" />
                 </template>
@@ -128,13 +93,10 @@
 
         <template #empty>
           <div class="flex flex-col items-center gap-3 py-10 text-[var(--text-muted)]">
-            <component
-              :is="items.length === 0 ? FileText : Search"
-              :size="40"
-              :stroke-width="1.5"
-            />
+            <component :is="items.length === 0 ? FileText : Search" :size="40" :stroke-width="1.5" />
             <p class="text-sm">
-              {{ items.length === 0 ? "No items yet. Click \"Add Item\" to get started!" : "No items match your search." }}
+              {{ items.length === 0 ? "No items yet. Click \"Add Item\" to get started!" : "No items match your search."
+              }}
             </p>
           </div>
         </template>
@@ -146,45 +108,23 @@
       <span>{{ items.length }} total - {{ filteredItems.length }} showing</span>
     </div>
 
-    <Dialog
-      v-model:visible="showAddItemForm"
-      :header="editingItem ? 'Edit Item' : 'Add New Item'"
-      modal
-      :draggable="false"
-      class="max-w-2xl"
-      @hide="cancelItemForm"
-    >
-      <form class="space-y-4" @submit.prevent="saveItem">
-        <div v-for="field in orderedFields" :key="field.id" class="space-y-2">
-          <label class="text-xs font-medium text-[var(--text-secondary)]">{{ field.name }}</label>
-          <InputText
-            v-if="field.type === 'text'"
-            v-model="formData[field.name]"
-            type="text"
-            :placeholder="'Enter ' + field.name.toLowerCase()"
-          />
-          <Textarea
-            v-else-if="field.type === 'textarea'"
-            v-model="formData[field.name]"
-            rows="4"
-            :placeholder="'Enter ' + field.name.toLowerCase()"
-          />
-          <InputNumber
-            v-else-if="field.type === 'number'"
-            v-model="formData[field.name]"
-            inputClass="w-full"
-          />
-          <InputText
-            v-else-if="field.type === 'date'"
-            v-model="formData[field.name]"
-            type="date"
-          />
-          <Dropdown
-            v-else-if="field.type === 'select'"
-            v-model="formData[field.name]"
-            :options="getSelectOptions(field)"
-            placeholder="Select..."
-          />
+    <Dialog v-model:visible="showAddItemForm" :header="editingItem ? 'Edit Item' : 'Add New Item'" modal
+      :draggable="false" class="max-w-2xl" @hide="cancelItemForm">
+      <form @submit.prevent="saveItem">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div v-for="field in orderedFields" :key="field.id" class="space-y-2"
+            :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
+            <label class="text-xs font-medium text-[var(--text-secondary)]">{{ field.name }}</label>
+            <InputText v-if="field.type === 'text'" v-model="formData[field.name]" type="text"
+              :placeholder="'Enter ' + field.name.toLowerCase()" class="w-full" />
+            <Textarea v-else-if="field.type === 'textarea'" v-model="formData[field.name]" rows="4"
+              :placeholder="'Enter ' + field.name.toLowerCase()" class="w-full" />
+            <InputNumber v-else-if="field.type === 'number'" v-model="formData[field.name]" inputClass="w-full"
+              class="w-full" />
+            <InputText v-else-if="field.type === 'date'" v-model="formData[field.name]" type="date" class="w-full" />
+            <Dropdown v-else-if="field.type === 'select'" v-model="formData[field.name]"
+              :options="getSelectOptions(field)" placeholder="Select..." class="w-full" />
+          </div>
         </div>
       </form>
       <template #footer>
@@ -193,20 +133,9 @@
       </template>
     </Dialog>
 
-    <Dialog
-      v-model:visible="showFieldsManager"
-      header="Manage Fields"
-      modal
-      :draggable="false"
-      class="max-w-4xl"
-    >
+    <Dialog v-model:visible="showFieldsManager" header="Manage Fields" modal :draggable="false" class="max-w-4xl">
       <div class="space-y-6">
-        <DataTable
-          :value="orderedFields"
-          dataKey="id"
-          reorderableRows
-          @row-reorder="onFieldsReorder"
-        >
+        <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onFieldsReorder">
           <Column rowReorder headerStyle="width: 3rem" />
           <Column field="name" header="Field" />
           <Column header="Type">
@@ -216,12 +145,8 @@
           </Column>
           <Column header="Actions" style="width: 120px">
             <template #body="{ data }">
-              <Button
-                text
-                class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]"
-                title="Delete field"
-                @click="deleteField(data)"
-              >
+              <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete field"
+                @click="deleteField(data)">
                 <template #icon>
                   <Trash2 :size="14" />
                 </template>
@@ -231,32 +156,20 @@
         </DataTable>
 
         <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-          <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          <div
+            class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
             <Plus :size="14" />
             Add New Field
           </div>
           <div class="flex flex-col gap-3 md:flex-row md:items-center">
-            <InputText
-              v-model="newField.name"
-              type="text"
-              placeholder="Field name"
-              class="flex-1"
-            />
-            <Dropdown
-              v-model="newField.type"
-              :options="fieldTypeOptions"
-              optionLabel="label"
-              optionValue="value"
-              class="w-full md:w-48"
-            />
+            <InputText v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
+            <Dropdown v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
+              class="w-full md:w-48" />
             <Button class="md:self-stretch" @click="addField">Add</Button>
           </div>
           <div v-if="newField.type === 'select'" class="mt-3">
-            <InputText
-              v-model="newField.options"
-              type="text"
-              placeholder="Options (comma-separated: Option1, Option2)"
-            />
+            <InputText v-model="newField.options" type="text"
+              placeholder="Options (comma-separated: Option1, Option2)" />
           </div>
         </div>
       </div>
@@ -265,14 +178,8 @@
       </template>
     </Dialog>
 
-    <Dialog
-      v-model:visible="showCollectionSettings"
-      header="Collection Settings"
-      modal
-      :draggable="false"
-      class="max-w-4xl"
-      @hide="cancelSettings"
-    >
+    <Dialog v-model:visible="showCollectionSettings" header="Collection Settings" modal :draggable="false"
+      class="max-w-4xl" @hide="cancelSettings">
       <Accordion :activeIndex="0">
         <AccordionTab>
           <template #header>
@@ -289,14 +196,13 @@
 
             <div class="space-y-2">
               <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
-              <Listbox
-                v-model="collectionIcon"
-                :options="iconOptions"
-                optionLabel="label"
-                optionValue="value"
-              >
+              <Listbox v-model="collectionIcon" :options="iconOptions" optionLabel="label" optionValue="value"
+                :pt="iconListboxPt">
                 <template #option="{ option }">
-                  <component :is="option.component" :size="20" />
+                  <div class="flex flex-col items-center gap-1">
+                    <component :is="option.component" :size="20" />
+                    <span class="text-[11px]">{{ option.label }}</span>
+                  </div>
                 </template>
               </Listbox>
             </div>
@@ -313,19 +219,16 @@
           <div class="space-y-4">
             <div class="space-y-2">
               <label class="text-xs font-medium text-[var(--text-secondary)]">Export Format</label>
-              <Dropdown
-                v-model="exportFormat"
-                :options="exportFormatOptions"
-                optionLabel="label"
-                optionValue="value"
-              />
+              <Dropdown v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
             </div>
-            <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
+            <div
+              class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
               <p v-if="exportFormat === 'csv'">
                 Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
               </p>
               <p v-else>
-                Export all items as a JSON file. Data will be exported as an array of objects with full type preservation.
+                Export all items as a JSON file. Data will be exported as an array of objects with full type
+                preservation.
               </p>
             </div>
             <Button class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
@@ -349,25 +252,23 @@
             <div v-if="!importPreview" class="space-y-4">
               <div class="space-y-2">
                 <label class="text-xs font-medium text-[var(--text-secondary)]">Import Format</label>
-                <Dropdown
-                  v-model="importFormat"
-                  :options="exportFormatOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                />
+                <Dropdown v-model="importFormat" :options="exportFormatOptions" optionLabel="label"
+                  optionValue="value" />
               </div>
 
               <div class="space-y-2">
                 <label class="text-xs font-medium text-[var(--text-secondary)]">Import Mode</label>
                 <div class="space-y-2">
-                  <label class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                  <label
+                    class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
                     <RadioButton v-model="importMode" value="append" />
                     <div>
                       <div class="font-medium text-[var(--text-primary)]">Append</div>
                       <div class="text-xs text-[var(--text-muted)]">Add imported items to existing data</div>
                     </div>
                   </label>
-                  <label class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                  <label
+                    class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
                     <RadioButton v-model="importMode" value="replace" />
                     <div>
                       <div class="font-medium text-[var(--text-primary)]">Replace</div>
@@ -405,14 +306,14 @@
                 </div>
                 <div class="mt-2 flex justify-between text-[var(--text-secondary)]">
                   <span>Import mode:</span>
-                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' : 'Replace' }}</span>
+                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' :
+                    'Replace'
+                  }}</span>
                 </div>
               </div>
 
-              <div
-                v-if="fields.length === 0"
-                class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]"
-              >
+              <div v-if="fields.length === 0"
+                class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]">
                 <AlertTriangle :size="16" />
                 This collection has no fields. Fields will be automatically created from the import file.
               </div>
@@ -422,11 +323,8 @@
                   Matched Fields ({{ importPreview.matchedFields.length }})
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <Tag
-                    v-for="field in importPreview.matchedFields"
-                    :key="field"
-                    class="bg-[rgba(16,185,129,0.2)] text-[var(--success)]"
-                  >
+                  <Tag v-for="field in importPreview.matchedFields" :key="field"
+                    class="bg-[rgba(16,185,129,0.2)] text-[var(--success)]">
                     {{ field }}
                   </Tag>
                 </div>
@@ -439,11 +337,8 @@
                 </div>
                 <p class="text-xs text-[var(--text-muted)]">These fields will be added to your collection:</p>
                 <div class="flex flex-wrap gap-2">
-                  <Tag
-                    v-for="field in importPreview.newFields"
-                    :key="field"
-                    class="bg-[rgba(245,158,11,0.2)] text-[var(--warning)]"
-                  >
+                  <Tag v-for="field in importPreview.newFields" :key="field"
+                    class="bg-[rgba(245,158,11,0.2)] text-[var(--warning)]">
                     {{ field }}
                   </Tag>
                 </div>
@@ -454,11 +349,8 @@
                   Sample Data (first 3 items)
                 </div>
                 <div class="space-y-2">
-                  <div
-                    v-for="(item, index) in importPreview.sample"
-                    :key="index"
-                    class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2"
-                  >
+                  <div v-for="(item, index) in importPreview.sample" :key="index"
+                    class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
                     <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       Item {{ index + 1 }}
                     </div>
@@ -497,7 +389,7 @@
             <p class="text-xs text-[var(--text-muted)]">
               Once you delete a collection, there is no going back.
             </p>
-            <Button severity="danger" class="gap-2" @click="confirmDeleteCollection">
+            <Button severity="danger" class="gap-2 min-w-[180px] !text-white" @click="confirmDeleteCollection">
               <template #icon>
                 <Trash2 :size="16" />
               </template>
@@ -612,6 +504,24 @@ const exportFormatOptions = [
   { label: 'CSV (Comma Separated Values)', value: 'csv' },
   { label: 'JSON (JavaScript Object Notation)', value: 'json' }
 ]
+
+const iconListboxPt = {
+  root: {
+    class:
+      'rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]'
+  },
+  list: {
+    class: 'grid grid-cols-3 gap-2 p-2'
+  },
+  item: ({ context }: { context: { selected: boolean } }) => ({
+    class: [
+      'flex flex-col items-center gap-1 rounded-md border p-2 text-xs transition',
+      context.selected
+        ? 'border-[var(--accent-primary)] bg-[var(--accent-light)] text-[var(--accent-primary)]'
+        : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]'
+    ].join(' ')
+  })
+}
 
 const orderedFields = computed(() => {
   return [...fields.value].sort((a, b) => a.order_index - b.order_index)

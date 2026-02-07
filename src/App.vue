@@ -1,9 +1,7 @@
 <template>
   <div class="h-screen w-full">
     <div class="flex h-full overflow-hidden">
-      <aside
-        class="flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]"
-      >
+      <aside class="flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]">
         <div class="border-b border-[var(--border-color)] p-5">
           <div class="flex items-center gap-3 text-[var(--accent-primary)]">
             <Brain :size="32" />
@@ -15,14 +13,10 @@
         </div>
 
         <nav class="flex-1 space-y-2 overflow-y-auto px-2 py-3">
-          <Button
-            text
-            class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm"
-            :class="currentView === 'dashboard'
-              ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
-            @click="showDashboard"
-          >
+          <Button text class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm" :class="currentView === 'dashboard'
+            ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+            @click="showDashboard">
             <template #icon>
               <LayoutDashboard :size="18" />
             </template>
@@ -34,27 +28,20 @@
             Collections
           </div>
 
-          <Button
-            v-for="collection in collections"
-            :key="collection.id"
-            text
-            class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm"
-            :class="currentView === 'collection-' + collection.id
+          <Button v-for="collection in collections" :key="collection.id" text
+            class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm" :class="currentView === 'collection-' + collection.id
               ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
               : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
-            @click="handleSelectCollection(collection)"
-          >
+            @click="handleSelectCollection(collection)">
             <template #icon>
               <component :is="getIcon(collection.icon)" :size="18" />
             </template>
             <span class="truncate">{{ collection.name }}</span>
           </Button>
 
-          <Button
-            outlined
+          <Button outlined
             class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-sm text-[var(--text-muted)]"
-            @click="showNewCollectionModal = true"
-          >
+            @click="showNewCollectionModal = true">
             <template #icon>
               <Plus :size="18" />
             </template>
@@ -69,49 +56,31 @@
 
       <main class="flex-1 overflow-auto bg-[var(--bg-primary)]">
         <div class="min-h-full">
-          <Dashboard
-            v-if="currentView === 'dashboard'"
-            :collections="collections"
-            @select-collection="handleSelectCollection"
-          />
-          <CollectionView
-            v-else-if="selectedCollection"
-            :collection="selectedCollection"
-            @collection-deleted="handleCollectionDeleted"
-          />
+          <Dashboard v-if="currentView === 'dashboard'" :collections="collections"
+            @select-collection="handleSelectCollection" />
+          <CollectionView v-else-if="selectedCollection" :collection="selectedCollection"
+            @collection-deleted="handleCollectionDeleted" />
         </div>
       </main>
     </div>
 
-    <Dialog
-      v-model:visible="showNewCollectionModal"
-      header="Create New Collection"
-      modal
-      :draggable="false"
-      class="max-w-xl"
-      @hide="cancelNewCollection"
-    >
+    <Dialog v-model:visible="showNewCollectionModal" header="Create New Collection" modal :draggable="false"
+      class="max-w-xl" @hide="cancelNewCollection">
       <div class="space-y-4">
         <div class="space-y-2">
           <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name *</label>
-          <InputText
-            v-model="newCollection.name"
-            type="text"
-            placeholder="My Collection"
-            autofocus
-          />
+          <InputText v-model="newCollection.name" type="text" placeholder="My Collection" autofocus />
         </div>
 
         <div class="space-y-2">
           <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
-          <Listbox
-            v-model="newCollection.icon"
-            :options="iconOptions"
-            optionLabel="label"
-            optionValue="value"
-          >
+          <Listbox v-model="newCollection.icon" :options="iconOptions" optionLabel="label" optionValue="value"
+            :pt="iconListboxPt">
             <template #option="{ option }">
-              <component :is="option.component" :size="20" />
+              <div class="flex flex-col items-center gap-1">
+                <component :is="option.component" :size="20" />
+                <span class="text-[11px]">{{ option.label }}</span>
+              </div>
             </template>
           </Listbox>
         </div>
@@ -154,6 +123,24 @@ const newCollection = ref({
   icon: 'folder'
 })
 
+const iconListboxPt = {
+  root: {
+    class:
+      'rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]'
+  },
+  list: {
+    class: 'grid grid-cols-3 gap-2 p-2'
+  },
+  item: ({ context }: { context: { selected: boolean } }) => ({
+    class: [
+      'flex flex-col items-center gap-1 rounded-md border p-2 text-xs transition',
+      context.selected
+        ? 'border-[var(--accent-primary)] bg-[var(--accent-light)] text-[var(--accent-primary)]'
+        : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]'
+    ].join(' ')
+  })
+}
+
 function handleSelectCollection(collection: any) {
   store.selectCollection(collection)
   currentView.value = `collection-${collection.id}`
@@ -166,15 +153,15 @@ function showDashboard() {
 
 async function createCollection() {
   if (!newCollection.value.name.trim()) return
-  
+
   const created = await store.addCollection({
     name: newCollection.value.name,
     icon: newCollection.value.icon
   })
-  
+
   showNewCollectionModal.value = false
   newCollection.value = { name: '', icon: 'folder' }
-  
+
   if (created) {
     handleSelectCollection(created)
   }
