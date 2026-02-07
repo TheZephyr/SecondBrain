@@ -1,61 +1,80 @@
 <template>
-  <div id="app">
-    <div class="app-container">
-      <!-- Sidebar -->
-      <aside class="sidebar">
-        <div class="sidebar-header">
-          <div class="logo">
+  <div class="h-screen w-full">
+    <div class="flex h-full overflow-hidden">
+      <aside
+        class="flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]"
+      >
+        <div class="border-b border-[var(--border-color)] p-5">
+          <div class="flex items-center gap-3 text-[var(--accent-primary)]">
             <Brain :size="32" />
             <div>
-              <h1>Second Brain</h1>
-              <p class="subtitle">Personal Organizer</p>
+              <h1 class="text-base font-semibold text-[var(--text-primary)]">Second Brain</h1>
+              <p class="text-xs text-[var(--text-muted)]">Personal Organizer</p>
             </div>
           </div>
         </div>
 
-        <nav class="nav-menu">
-          <button
-            :class="['nav-item', { active: currentView === 'dashboard' }]"
+        <nav class="flex-1 space-y-2 overflow-y-auto px-2 py-3">
+          <Button
+            text
+            class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm"
+            :class="currentView === 'dashboard'
+              ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
             @click="showDashboard"
           >
-            <LayoutDashboard :size="20" />
-            <span class="nav-label">Dashboard</span>
-          </button>
+            <template #icon>
+              <LayoutDashboard :size="18" />
+            </template>
+            <span>Dashboard</span>
+          </Button>
 
-          <div class="nav-separator"></div>
+          <div class="h-px bg-[var(--border-color)]/70"></div>
+          <div class="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+            Collections
+          </div>
 
-          <div class="nav-section-title">Collections</div>
-
-          <button
+          <Button
             v-for="collection in collections"
             :key="collection.id"
-            :class="['nav-item', { active: currentView === 'collection-' + collection.id }]"
+            text
+            class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm"
+            :class="currentView === 'collection-' + collection.id
+              ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+              : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
             @click="handleSelectCollection(collection)"
           >
-            <component :is="getIcon(collection.icon)" :size="20" />
-            <span class="nav-label">{{ collection.name }}</span>
-          </button>
+            <template #icon>
+              <component :is="getIcon(collection.icon)" :size="18" />
+            </template>
+            <span class="truncate">{{ collection.name }}</span>
+          </Button>
 
-          <button class="nav-item nav-add" @click="showNewCollectionModal = true">
-            <Plus :size="20" />
-            <span class="nav-label">New Collection</span>
-          </button>
+          <Button
+            outlined
+            class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-sm text-[var(--text-muted)]"
+            @click="showNewCollectionModal = true"
+          >
+            <template #icon>
+              <Plus :size="18" />
+            </template>
+            <span>New Collection</span>
+          </Button>
         </nav>
 
-        <div class="sidebar-footer">
-          <p>v{{ appVersion }}</p>
+        <div class="border-t border-[var(--border-color)] p-4 text-center text-[11px] text-[var(--text-muted)]">
+          v{{ appVersion }}
         </div>
       </aside>
 
-      <!-- Main Content -->
-      <main class="main-content">
-        <div class="content-wrapper">
-          <Dashboard 
-            v-if="currentView === 'dashboard'" 
+      <main class="flex-1 overflow-auto bg-[var(--bg-primary)]">
+        <div class="min-h-full">
+          <Dashboard
+            v-if="currentView === 'dashboard'"
             :collections="collections"
             @select-collection="handleSelectCollection"
           />
-          <CollectionView 
+          <CollectionView
             v-else-if="selectedCollection"
             :collection="selectedCollection"
             @collection-deleted="handleCollectionDeleted"
@@ -64,45 +83,45 @@
       </main>
     </div>
 
-    <!-- New Collection Modal -->
-    <div v-if="showNewCollectionModal" class="modal-overlay" @click.self="cancelNewCollection">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Create New Collection</h3>
-          <button @click="cancelNewCollection" class="btn-close">
-            <X :size="20" />
-          </button>
+    <Dialog
+      v-model:visible="showNewCollectionModal"
+      header="Create New Collection"
+      modal
+      :draggable="false"
+      class="max-w-xl"
+      @hide="cancelNewCollection"
+    >
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name *</label>
+          <InputText
+            v-model="newCollection.name"
+            type="text"
+            placeholder="My Collection"
+            autofocus
+          />
         </div>
-        
-        <form @submit.prevent="createCollection">
-          <div class="form-group">
-            <label>Collection Name *</label>
-            <input v-model="newCollection.name" type="text" required placeholder="My Collection" autofocus />
-          </div>
 
-          <div class="form-group">
-            <label>Icon</label>
-            <div class="icon-picker">
-              <button
-                v-for="icon in iconOptions"
-                :key="icon.value"
-                type="button"
-                :class="['icon-option', { selected: newCollection.icon === icon.value }]"
-                @click="newCollection.icon = icon.value"
-                :title="icon.label"
-              >
-                <component :is="icon.component" :size="24" />
-              </button>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" @click="cancelNewCollection" class="btn-secondary">Cancel</button>
-            <button type="submit" class="btn-primary">Create Collection</button>
-          </div>
-        </form>
+        <div class="space-y-2">
+          <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
+          <Listbox
+            v-model="newCollection.icon"
+            :options="iconOptions"
+            optionLabel="label"
+            optionValue="value"
+          >
+            <template #option="{ option }">
+              <component :is="option.component" :size="20" />
+            </template>
+          </Listbox>
+        </div>
       </div>
-    </div>
+
+      <template #footer>
+        <Button severity="secondary" text @click="cancelNewCollection">Cancel</Button>
+        <Button @click="createCollection">Create Collection</Button>
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -110,9 +129,13 @@
 import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStore } from './store'
-import { 
-  Brain, LayoutDashboard, Plus, X
+import {
+  Brain, LayoutDashboard, Plus
 } from 'lucide-vue-next'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import Listbox from 'primevue/listbox'
 import Dashboard from './components/Dashboard.vue'
 import CollectionView from './components/CollectionView.vue'
 import { useIcons } from './composables/useIcons'
@@ -170,362 +193,3 @@ onMounted(() => {
   store.loadCollections()
 })
 </script>
-
-<style>
-:root {
-  --bg-primary: #0f0f0f;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #242424;
-  --bg-hover: #2a2a2a;
-  --border-color: #333;
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --accent-primary: #8b5cf6;
-  --accent-hover: #7c3aed;
-  --accent-light: rgba(139, 92, 246, 0.1);
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  overflow: hidden;
-}
-
-#app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-container {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* Sidebar */
-.sidebar {
-  width: 260px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--accent-primary);
-}
-
-.logo h1 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 2px;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.nav-menu {
-  flex: 1;
-  padding: 12px 8px;
-  overflow-y: auto;
-}
-
-.nav-menu::-webkit-scrollbar {
-  width: 6px;
-}
-
-.nav-menu::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
-}
-
-.nav-section-title {
-  padding: 12px 12px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-}
-
-.nav-separator {
-  height: 1px;
-  background: var(--border-color);
-  margin: 8px 12px;
-}
-
-.nav-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 6px;
-  text-align: left;
-  margin-bottom: 2px;
-}
-
-.nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.nav-item.active {
-  background: var(--accent-light);
-  color: var(--accent-primary);
-}
-
-.nav-add {
-  margin-top: 8px;
-  color: var(--text-muted);
-  border: 1px dashed var(--border-color);
-}
-
-.nav-add:hover {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  background: var(--accent-light);
-}
-
-.nav-label {
-  font-size: 14px;
-  flex: 1;
-}
-
-.sidebar-footer {
-  padding: 16px;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border-color);
-}
-
-/* Main Content */
-.main-content {
-  flex: 1;
-  overflow: auto;
-  background: var(--bg-primary);
-}
-
-.main-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-.content-wrapper {
-  min-height: 100%;
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-content {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s;
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.btn-close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.modal-content form {
-  padding: 20px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.form-group input {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 14px;
-  color: var(--text-primary);
-  transition: all 0.2s;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  background: var(--bg-primary);
-}
-
-.icon-picker {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-}
-
-.icon-option {
-  padding: 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: all 0.2s;
-}
-
-.icon-option:hover {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  transform: scale(1.05);
-}
-
-.icon-option.selected {
-  border-color: var(--accent-primary);
-  background: var(--accent-light);
-  color: var(--accent-primary);
-}
-
-.form-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-}
-
-.btn-primary,
-.btn-secondary {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: var(--accent-primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--accent-hover);
-}
-
-.btn-secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-</style>

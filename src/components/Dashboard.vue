@@ -1,38 +1,51 @@
 <template>
-  <div class="dashboard">
-    <div class="dashboard-header">
-      <div>
-        <h1>Dashboard</h1>
-        <p class="subtitle">Welcome to your Second Brain</p>
-      </div>
+  <div class="mx-auto max-w-6xl px-10 py-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-semibold text-[var(--text-primary)]">Dashboard</h1>
+      <p class="mt-2 text-sm text-[var(--text-muted)]">Welcome to your Second Brain</p>
     </div>
 
-    <div v-if="collections.length === 0" class="empty-state">
-      <div class="empty-icon">
-        <FolderOpen :size="64" :stroke-width="1.5" />
-      </div>
-      <h2>No Collections Yet</h2>
-      <p>Get started by creating your first collection</p>
-      <p class="hint">Click "New Collection" in the sidebar to begin</p>
+    <div
+      v-if="collections.length === 0"
+      class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-20 text-center"
+    >
+      <FolderOpen :size="64" :stroke-width="1.5" class="mb-6 text-[var(--text-muted)]" />
+      <h2 class="text-xl font-semibold text-[var(--text-secondary)]">No Collections Yet</h2>
+      <p class="mt-2 text-sm text-[var(--text-muted)]">
+        Get started by creating your first collection
+      </p>
+      <p class="mt-1 text-xs italic text-[var(--text-muted)]">
+        Click "New Collection" in the sidebar to begin
+      </p>
     </div>
 
-    <div v-else class="collections-grid">
-      <div v-for="collection in collectionsWithStats" :key="collection.id" class="collection-card"
-        @click="$emit('select-collection', collection)">
-        <div class="card-icon">
-          <component :is="getIcon(collection.icon)" :size="32" :stroke-width="1.5" />
-        </div>
-        <div class="card-content">
-          <h3>{{ collection.name }}</h3>
-          <div class="card-stats">
-            <Database :size="14" />
-            <span>{{ collection.itemCount }} items</span>
+    <div v-else class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <Card
+        v-for="collection in collectionsWithStats"
+        :key="collection.id"
+        class="cursor-pointer border border-[var(--border-color)] bg-[var(--bg-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--accent-primary)] hover:shadow-[0_10px_24px_rgba(139,92,246,0.12)]"
+        @click="$emit('select-collection', collection)"
+      >
+        <template #content>
+          <div class="flex items-center gap-4">
+            <div
+              class="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--accent-light)] text-[var(--accent-primary)]"
+            >
+              <component :is="getIcon(collection.icon)" :size="28" :stroke-width="1.5" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <h3 class="truncate text-base font-semibold text-[var(--text-primary)]">
+                {{ collection.name }}
+              </h3>
+              <div class="mt-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                <Database :size="14" />
+                <span>{{ collection.itemCount }} items</span>
+              </div>
+            </div>
+            <ChevronRight :size="20" class="text-[var(--text-muted)]" />
           </div>
-        </div>
-        <div class="card-arrow">
-          <ChevronRight :size="20" />
-        </div>
-      </div>
+        </template>
+      </Card>
     </div>
   </div>
 </template>
@@ -44,6 +57,7 @@ import { useStore } from '../store'
 import {
   FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
+import Card from 'primevue/card'
 import { useIcons } from '../composables/useIcons'
 
 const { getIcon } = useIcons()
@@ -78,130 +92,3 @@ watch(collections, () => {
   loadStats()
 }, { immediate: true })
 </script>
-
-<style scoped>
-.dashboard {
-  padding: 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.dashboard-header {
-  margin-bottom: 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.dashboard-header h1 {
-  font-size: 32px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 100px 40px;
-  color: var(--text-muted);
-}
-
-.empty-icon {
-  color: var(--text-muted);
-  margin-bottom: 24px;
-  opacity: 0.5;
-}
-
-.empty-state h2 {
-  font-size: 24px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-  font-weight: 600;
-}
-
-.empty-state p {
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-}
-
-.hint {
-  font-size: 13px !important;
-  font-style: italic;
-}
-
-.collections-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-}
-
-.collection-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 24px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.collection-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent-primary);
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.1);
-}
-
-.card-icon {
-  width: 56px;
-  height: 56px;
-  background: var(--accent-light);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent-primary);
-  flex-shrink: 0;
-}
-
-.card-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.card-content h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.card-stats {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.card-arrow {
-  color: var(--text-muted);
-  opacity: 0;
-  transition: all 0.2s;
-}
-
-.collection-card:hover .card-arrow {
-  opacity: 1;
-  transform: translateX(4px);
-}
-</style>
