@@ -58,7 +58,7 @@
         <div class="min-h-full">
           <Dashboard v-if="currentView === 'dashboard'" :collections="collections"
             @select-collection="handleSelectCollection" />
-          <CollectionView v-else-if="selectedCollection" :collection="selectedCollection"
+          <Collection v-else-if="selectedCollection" :collection="selectedCollection"
             @collection-deleted="handleCollectionDeleted" />
         </div>
       </main>
@@ -106,7 +106,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Listbox from 'primevue/listbox'
 import Dashboard from './components/views/Dashboard.vue'
-import CollectionView from './components/views/CollectionView.vue'
+import Collection from './components/views/Collection.vue'
 import { useIcons } from './composables/useIcons'
 
 const { iconOptions, getIcon } = useIcons()

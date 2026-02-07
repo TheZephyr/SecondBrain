@@ -47,12 +47,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useStore } from '../store'
+import { useStore } from '../../store'
 import {
   FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
 import Card from 'primevue/card'
-import { useIcons } from '../composables/useIcons'
+import { useIcons } from '../../composables/useIcons'
 
 const { getIcon } = useIcons()
 const store = useStore()
