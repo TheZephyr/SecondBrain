@@ -17,12 +17,8 @@
     </div>
 
     <div v-else class="collections-grid">
-      <div
-        v-for="collection in collectionsWithStats"
-        :key="collection.id"
-        class="collection-card"
-        @click="$emit('select-collection', collection)"
-      >
+      <div v-for="collection in collectionsWithStats" :key="collection.id" class="collection-card"
+        @click="$emit('select-collection', collection)">
         <div class="card-icon">
           <component :is="getIcon(collection.icon)" :size="32" :stroke-width="1.5" />
         </div>
@@ -45,7 +41,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStore } from '../store'
-import { 
+import {
   FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
 import { useIcons } from '../composables/useIcons'
@@ -73,6 +69,10 @@ async function loadStats() {
     collectionStats.value.set(collection.id, items.length)
   }
 }
+
+onMounted(() => {
+  loadStats()
+})
 
 watch(collections, () => {
   loadStats()

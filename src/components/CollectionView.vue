@@ -38,25 +38,17 @@
     <div v-else-if="items.length > 0 || searchQuery" class="search-sort-container">
       <div class="search-bar">
         <Search :size="18" class="search-icon" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search..."
-          class="search-input"
-        />
+        <input v-model="searchQuery" type="text" placeholder="Search..." class="search-input" />
       </div>
-      
+
       <div class="sort-dropdown-container" v-if="fields.length > 0">
-        <button 
-          @click="showSortDropdown = !showSortDropdown" 
-          class="sort-button"
-          :class="{ 'active': sortCriteria.length > 0 }"
-        >
+        <button @click="showSortDropdown = !showSortDropdown" class="sort-button"
+          :class="{ 'active': sortCriteria.length > 0 }">
           <ArrowUpDown :size="16" />
           <span>Sort</span>
           <ChevronDown :size="14" class="chevron" :class="{ 'open': showSortDropdown }" />
         </button>
-        
+
         <div v-if="showSortDropdown" class="sort-dropdown" @click.stop>
           <div class="sort-dropdown-header">
             <span>Sort by</span>
@@ -64,30 +56,19 @@
               <X :size="14" />
             </button>
           </div>
-          
+
           <div class="sort-criteria-list">
-            <div 
-              v-for="(criterion, index) in sortCriteria" 
-              :key="index"
-              class="sort-criterion-item"
-            >
+            <div v-for="(criterion, index) in sortCriteria" :key="index" class="sort-criterion-item">
               <div class="criterion-info">
                 <span class="criterion-field">{{ criterion.fieldName }}</span>
                 <span class="criterion-type">{{ getFieldType(criterion.fieldName) }}</span>
               </div>
               <div class="criterion-actions">
-                <button 
-                  @click="toggleCriterionDirection(index)"
-                  class="btn-icon-small"
-                  :title="criterion.direction === 'asc' ? 'Ascending' : 'Descending'"
-                >
+                <button @click="toggleCriterionDirection(index)" class="btn-icon-small"
+                  :title="criterion.direction === 'asc' ? 'Ascending' : 'Descending'">
                   <component :is="criterion.direction === 'asc' ? ArrowUp : ArrowDown" :size="14" />
                 </button>
-                <button 
-                  @click="removeCriterion(index)"
-                  class="btn-icon-small danger"
-                  title="Remove"
-                >
+                <button @click="removeCriterion(index)" class="btn-icon-small danger" title="Remove">
                   <X :size="14" />
                 </button>
               </div>
@@ -96,19 +77,11 @@
               <p>No sort criteria. Click a column header or add one below.</p>
             </div>
           </div>
-          
+
           <div class="add-sort-section">
-            <select 
-              v-model="selectedFieldForSort" 
-              class="field-select"
-              @change="addSortCriterion"
-            >
+            <select v-model="selectedFieldForSort" class="field-select" @change="addSortCriterion">
               <option value="">Add sort field...</option>
-              <option 
-                v-for="field in availableFieldsForSort" 
-                :key="field.id" 
-                :value="field.name"
-              >
+              <option v-for="field in availableFieldsForSort" :key="field.id" :value="field.name">
                 {{ field.name }} ({{ field.type }})
               </option>
             </select>
@@ -122,20 +95,11 @@
       <table v-if="filteredItems.length > 0">
         <thead>
           <tr>
-            <th 
-              v-for="field in fields" 
-              :key="field.id"
-              class="sortable-header"
-              @click="handleHeaderClick(field.name)"
-            >
+            <th v-for="field in fields" :key="field.id" class="sortable-header" @click="handleHeaderClick(field.name)">
               <div class="header-content">
                 <span>{{ field.name }}</span>
-                <component 
-                  :is="getSortIcon(field.name)" 
-                  :size="14" 
-                  class="sort-icon"
-                  :class="{ 'sort-active': getSortDirection(field.name) !== null }"
-                />
+                <component :is="getSortIcon(field.name)" :size="14" class="sort-icon"
+                  :class="{ 'sort-active': getSortDirection(field.name) !== null }" />
               </div>
             </th>
             <th class="actions-col">Actions</th>
@@ -181,37 +145,18 @@
             <X :size="20" />
           </button>
         </div>
-        
+
         <form @submit.prevent="saveItem">
           <div v-for="field in fields" :key="field.id" class="form-group">
             <label>{{ field.name }}</label>
-            <input
-              v-if="field.type === 'text'"
-              v-model="formData[field.name]"
-              type="text"
-              :placeholder="'Enter ' + field.name.toLowerCase()"
-            />
-            <textarea
-              v-else-if="field.type === 'textarea'"
-              v-model="formData[field.name]"
-              rows="4"
-              :placeholder="'Enter ' + field.name.toLowerCase()"
-            ></textarea>
-            <input
-              v-else-if="field.type === 'number'"
-              v-model.number="formData[field.name]"
-              type="number"
-              :placeholder="'Enter ' + field.name.toLowerCase()"
-            />
-            <input
-              v-else-if="field.type === 'date'"
-              v-model="formData[field.name]"
-              type="date"
-            />
-            <select
-              v-else-if="field.type === 'select'"
-              v-model="formData[field.name]"
-            >
+            <input v-if="field.type === 'text'" v-model="formData[field.name]" type="text"
+              :placeholder="'Enter ' + field.name.toLowerCase()" />
+            <textarea v-else-if="field.type === 'textarea'" v-model="formData[field.name]" rows="4"
+              :placeholder="'Enter ' + field.name.toLowerCase()"></textarea>
+            <input v-else-if="field.type === 'number'" v-model.number="formData[field.name]" type="number"
+              :placeholder="'Enter ' + field.name.toLowerCase()" />
+            <input v-else-if="field.type === 'date'" v-model="formData[field.name]" type="date" />
+            <select v-else-if="field.type === 'select'" v-model="formData[field.name]">
               <option value="">Select...</option>
               <option v-for="option in getSelectOptions(field)" :key="option" :value="option">
                 {{ option }}
@@ -238,20 +183,12 @@
             <X :size="20" />
           </button>
         </div>
-        
+
         <div class="modal-body">
           <div class="fields-list">
-            <div 
-              v-for="(field, index) in fields" 
-              :key="field.id" 
-              class="field-item"
-              draggable="true"
-              @dragstart="handleDragStart(index)"
-              @dragover.prevent="handleDragOver(index)"
-              @drop="handleDrop(index)"
-              @dragend="handleDragEnd"
-              :class="{ 'dragging': draggedIndex === index }"
-            >
+            <div v-for="(field, index) in fields" :key="field.id" class="field-item" draggable="true"
+              @dragstart="handleDragStart(index)" @dragover.prevent="handleDragOver(index)" @drop="handleDrop(index)"
+              @dragend="handleDragEnd" :class="{ 'dragging': draggedIndex === index }">
               <GripVertical :size="16" class="field-grip" />
               <span class="field-name">{{ field.name }}</span>
               <span class="field-type-badge">{{ field.type }}</span>
@@ -271,14 +208,8 @@
               <span>Add New Field</span>
             </div>
             <div class="add-field-form">
-              <input
-                v-model="newField.name"
-                type="text"
-                placeholder="Field name"
-                class="field-name-input"
-                ref="fieldNameInput"
-                @click="($event.target as HTMLInputElement).focus()"
-              />
+              <input v-model="newField.name" type="text" placeholder="Field name" class="field-name-input"
+                ref="fieldNameInput" @click="($event.target as HTMLInputElement).focus()" />
               <select v-model="newField.type" class="field-type-select">
                 <option value="text">Text</option>
                 <option value="textarea">Text Area</option>
@@ -288,14 +219,10 @@
               </select>
               <button @click="addField" type="button" class="btn-primary">Add</button>
             </div>
-            
+
             <div v-if="newField.type === 'select'" class="select-options">
-              <input
-                v-model="newField.options"
-                type="text"
-                placeholder="Options (comma-separated: Option1, Option2, Option3)"
-                class="options-input"
-              />
+              <input v-model="newField.options" type="text"
+                placeholder="Options (comma-separated: Option1, Option2, Option3)" class="options-input" />
             </div>
           </div>
         </div>
@@ -315,22 +242,19 @@
             <X :size="20" />
           </button>
         </div>
-        
+
         <div class="modal-body">
           <!-- Collection Settings Section -->
           <div class="settings-accordion-section">
-            <button 
-              class="accordion-header"
-              :class="{ 'active': accordionSections.general }"
-              @click="toggleAccordion('general')"
-            >
+            <button class="accordion-header" :class="{ 'active': accordionSections.general }"
+              @click="toggleAccordion('general')">
               <div class="accordion-title">
                 <Settings2 :size="18" />
                 <span>Collection Settings</span>
               </div>
               <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.general }" />
             </button>
-            
+
             <div v-show="accordionSections.general" class="accordion-content">
               <div class="settings-section">
                 <label>Collection Name</label>
@@ -340,13 +264,9 @@
               <div class="settings-section">
                 <label>Icon</label>
                 <div class="icon-picker">
-                  <button
-                    v-for="icon in iconOptions"
-                    :key="icon.value"
+                  <button v-for="icon in iconOptions" :key="icon.value"
                     :class="['icon-option', { selected: collectionIcon === icon.value }]"
-                    @click="collectionIcon = icon.value"
-                    type="button"
-                  >
+                    @click="collectionIcon = icon.value" type="button">
                     <component :is="icon.component" :size="24" />
                   </button>
                 </div>
@@ -356,18 +276,15 @@
 
           <!-- Export Data Section -->
           <div class="settings-accordion-section">
-            <button 
-              class="accordion-header"
-              :class="{ 'active': accordionSections.export }"
-              @click="toggleAccordion('export')"
-            >
+            <button class="accordion-header" :class="{ 'active': accordionSections.export }"
+              @click="toggleAccordion('export')">
               <div class="accordion-title">
                 <Download :size="18" />
                 <span>Export Data</span>
               </div>
               <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.export }" />
             </button>
-            
+
             <div v-show="accordionSections.export" class="accordion-content">
               <div class="settings-section">
                 <label>Export Format</label>
@@ -382,7 +299,8 @@
                   Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
                 </p>
                 <p v-else>
-                  Export all items as a JSON file. Data will be exported as an array of objects with full type preservation.
+                  Export all items as a JSON file. Data will be exported as an array of objects with full type
+                  preservation.
                 </p>
               </div>
 
@@ -396,18 +314,15 @@
 
           <!-- Import Data Section -->
           <div class="settings-accordion-section">
-            <button 
-              class="accordion-header"
-              :class="{ 'active': accordionSections.import }"
-              @click="toggleAccordion('import')"
-            >
+            <button class="accordion-header" :class="{ 'active': accordionSections.import }"
+              @click="toggleAccordion('import')">
               <div class="accordion-title">
                 <Upload :size="18" />
                 <span>Import Data</span>
               </div>
               <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.import }" />
             </button>
-            
+
             <div v-show="accordionSections.import" class="accordion-content">
               <!-- File Selection -->
               <div v-if="!importPreview" class="import-select-section">
@@ -526,18 +441,15 @@
 
           <!-- Danger Zone Section -->
           <div class="settings-accordion-section">
-            <button 
-              class="accordion-header"
-              :class="{ 'active': accordionSections.danger }"
-              @click="toggleAccordion('danger')"
-            >
+            <button class="accordion-header" :class="{ 'active': accordionSections.danger }"
+              @click="toggleAccordion('danger')">
               <div class="accordion-title">
                 <AlertTriangle :size="18" />
                 <span>Danger Zone</span>
               </div>
               <ChevronDown :size="18" class="accordion-chevron" :class="{ 'open': accordionSections.danger }" />
             </button>
-            
+
             <div v-show="accordionSections.danger" class="accordion-content">
               <div class="danger-zone">
                 <p class="danger-text">Once you delete a collection, there is no going back.</p>
@@ -559,15 +471,9 @@
   </div>
 
   <!-- Confirmation Dialog -->
-  <ConfirmDialog
-    :is-open="confirmDialog.isOpen"
-    :title="confirmDialog.title"
-    :message="confirmDialog.message"
-    :confirm-text="confirmDialog.confirmText"
-    :variant="confirmDialog.variant"
-    @confirm="confirmDialog.onConfirm"
-    @cancel="confirmDialog.isOpen = false"
-  />
+  <ConfirmDialog :is-open="confirmDialog.isOpen" :title="confirmDialog.title" :message="confirmDialog.message"
+    :confirm-text="confirmDialog.confirmText" :variant="confirmDialog.variant" @confirm="confirmDialog.onConfirm"
+    @cancel="confirmDialog.isOpen = false" />
 
 </template>
 
@@ -637,7 +543,7 @@ const accordionSections = ref({
 
 function toggleAccordion(section: 'general' | 'export' | 'import' | 'danger') {
   const isCurrentlyOpen = accordionSections.value[section]
-  
+
   // Close all sections
   accordionSections.value = {
     general: false,
@@ -645,7 +551,7 @@ function toggleAccordion(section: 'general' | 'export' | 'import' | 'danger') {
     import: false,
     danger: false
   }
-  
+
   // Open the clicked section (unless it was already open)
   accordionSections.value[section] = !isCurrentlyOpen
 }
@@ -665,13 +571,13 @@ function compareValues(a: any, b: any, fieldType: string, direction: SortDirecti
   // Handle null/undefined/empty values - always sort to end
   const aEmpty = a === null || a === undefined || a === ''
   const bEmpty = b === null || b === undefined || b === ''
-  
+
   if (aEmpty && bEmpty) return 0
   if (aEmpty) return 1
   if (bEmpty) return -1
-  
+
   let comparison = 0
-  
+
   switch (fieldType) {
     case 'number':
       const aNum = parseFloat(String(a))
@@ -681,7 +587,7 @@ function compareValues(a: any, b: any, fieldType: string, direction: SortDirecti
       else if (isNaN(bNum)) comparison = -1
       else comparison = aNum - bNum
       break
-      
+
     case 'date':
       const aDate = new Date(a).getTime()
       const bDate = new Date(b).getTime()
@@ -690,7 +596,7 @@ function compareValues(a: any, b: any, fieldType: string, direction: SortDirecti
       else if (isNaN(bDate)) comparison = -1
       else comparison = aDate - bDate
       break
-      
+
     case 'text':
     case 'textarea':
     case 'select':
@@ -698,21 +604,21 @@ function compareValues(a: any, b: any, fieldType: string, direction: SortDirecti
       comparison = String(a).toLowerCase().localeCompare(String(b).toLowerCase())
       break
   }
-  
+
   return direction === 'asc' ? comparison : -comparison
 }
 
 function sortItems(items: any[]): any[] {
   if (sortCriteria.value.length === 0) return items
-  
+
   return [...items].sort((a, b) => {
     for (const criterion of sortCriteria.value) {
       const field = fields.value.find(f => f.name === criterion.fieldName)
       if (!field) continue
-      
+
       const aVal = a.data[criterion.fieldName]
       const bVal = b.data[criterion.fieldName]
-      
+
       const comparison = compareValues(aVal, bVal, field.type, criterion.direction)
       if (comparison !== 0) return comparison
     }
@@ -722,7 +628,7 @@ function sortItems(items: any[]): any[] {
 
 const filteredItems = computed(() => {
   let result = items.value
-  
+
   // Apply search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
@@ -732,9 +638,9 @@ const filteredItems = computed(() => {
       )
     })
   }
-  
+
   result = sortItems(result)
-  
+
   return result
 })
 
@@ -744,7 +650,7 @@ const confirmDialog = ref({
   message: '',
   confirmText: 'Confirm',
   variant: 'danger' as 'danger' | 'warning' | 'info',
-  onConfirm: () => {}
+  onConfirm: () => { }
 })
 
 // Export functions
@@ -752,7 +658,7 @@ function escapeCSVValue(value: any): string {
   if (value === null || value === undefined) {
     return '""'
   }
-  
+
   const stringValue = String(value)
   const escapedValue = stringValue.replace(/"/g, '""')
   return `"${escapedValue}"`
@@ -760,11 +666,11 @@ function escapeCSVValue(value: any): string {
 
 function generateCSV(): string {
   const orderedFields = [...fields.value].sort((a, b) => a.order_index - b.order_index)
-  
+
   // Header row
   const headers = orderedFields.map(field => escapeCSVValue(field.name))
   const csvLines = [headers.join(',')]
-  
+
   // Data rows
   for (const item of items.value) {
     const row = orderedFields.map(field => {
@@ -773,13 +679,13 @@ function generateCSV(): string {
     })
     csvLines.push(row.join(','))
   }
-  
+
   return csvLines.join('\n')
 }
 
 function generateJSON(): string {
   const orderedFields = [...fields.value].sort((a, b) => a.order_index - b.order_index)
-  
+
   const exportData = items.value.map(item => {
     const orderedData: any = {}
     for (const field of orderedFields) {
@@ -787,7 +693,7 @@ function generateJSON(): string {
     }
     return orderedData
   })
-  
+
   return JSON.stringify(exportData, null, 2)
 }
 
@@ -800,37 +706,37 @@ function getDefaultFilename(): string {
 
 async function handleExport() {
   isExporting.value = true
-  
+
   try {
     const extension = exportFormat.value
     const filters = [
-      { 
-        name: exportFormat.value === 'csv' ? 'CSV Files' : 'JSON Files', 
-        extensions: [extension] 
+      {
+        name: exportFormat.value === 'csv' ? 'CSV Files' : 'JSON Files',
+        extensions: [extension]
       },
       { name: 'All Files', extensions: ['*'] }
     ]
-    
+
     const filePath = await window.electronAPI.showSaveDialog({
       title: `Export ${props.collection.name}`,
       defaultPath: getDefaultFilename(),
       filters
     })
-    
+
     if (!filePath) {
       isExporting.value = false
       return
     }
-    
+
     let content: string
     if (exportFormat.value === 'csv') {
       content = generateCSV()
     } else {
       content = generateJSON()
     }
-    
+
     const success = await window.electronAPI.writeFile(filePath, content)
-    
+
     if (success) {
       // Could show a success message here
       console.log('Export successful!')
@@ -850,24 +756,24 @@ async function handleSelectFile() {
   try {
     const extension = importFormat.value
     const filters = [
-      { 
-        name: importFormat.value === 'csv' ? 'CSV Files' : 'JSON Files', 
-        extensions: [extension] 
+      {
+        name: importFormat.value === 'csv' ? 'CSV Files' : 'JSON Files',
+        extensions: [extension]
       },
       { name: 'All Files', extensions: ['*'] }
     ]
-    
+
     const filePath = await window.electronAPI.showOpenDialog({
       title: 'Select File to Import',
       filters
     })
-    
+
     if (!filePath) {
       return
     }
-    
+
     selectedFile.value = filePath
-    
+
     // Read and parse file
     const content = await window.electronAPI.readFile(filePath)
     if (content === null) {
@@ -880,11 +786,11 @@ async function handleSelectFile() {
       selectedFile.value = null
       return
     }
-    
+
     // Parse the file
     let parsedData: any[] = []
     let fileFields: string[] = []
-    
+
     if (importFormat.value === 'csv') {
       // Simple CSV parser
       const lines = content.trim().split('\n')
@@ -892,11 +798,11 @@ async function handleSelectFile() {
         console.error('Empty CSV file')
         return
       }
-      
+
       // Parse header
       const headerLine = lines[0]
       fileFields = parseCSVLine(headerLine)
-      
+
       // Parse data rows
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i])
@@ -913,13 +819,13 @@ async function handleSelectFile() {
         console.error('JSON must be an array')
         return
       }
-      
+
       // Extract field names from first item
       if (parsedData.length > 0) {
         fileFields = Object.keys(parsedData[0])
       }
     }
-    
+
     // Generate preview with case-insensitive matching
     const matchedFields: string[] = []
     const newFields: string[] = []
@@ -933,7 +839,7 @@ async function handleSelectFile() {
         newFields.push(fileField)
       }
     })
-    
+
     importPreview.value = {
       itemCount: parsedData.length,
       fields: fileFields,
@@ -952,11 +858,11 @@ function parseCSVLine(line: string): string[] {
   const result: string[] = []
   let current = ''
   let inQuotes = false
-  
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i]
     const nextChar = line[i + 1]
-    
+
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
         // Escaped quote
@@ -974,7 +880,7 @@ function parseCSVLine(line: string): string[] {
       current += char
     }
   }
-  
+
   result.push(current.trim())
   return result
 }
@@ -990,25 +896,25 @@ async function handleImport() {
   if (!selectedFile.value || !importPreview.value) {
     return
   }
-  
+
   isImporting.value = true
-  
+
   try {
     const content = await window.electronAPI.readFile(selectedFile.value)
     if (!content) {
       console.error('Failed to read file')
       return
     }
-    
+
     let parsedData: any[] = []
     let fileFields: string[] = []
-    
+
     // Parse file
     if (importFormat.value === 'csv') {
       const lines = content.trim().split('\n')
       const headerLine = lines[0]
       fileFields = parseCSVLine(headerLine)
-      
+
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i])
         const row: any = {}
@@ -1024,7 +930,7 @@ async function handleImport() {
         fileFields = Object.keys(parsedData[0])
       }
     }
-    
+
     // Handle replace mode - delete all existing items first
     if (importMode.value === 'replace') {
       const itemsToDelete = [...items.value]
@@ -1033,14 +939,14 @@ async function handleImport() {
       }
       await store.loadItems(props.collection.id)
     }
-    
+
     // Create case-insensitive field mapping
     const fieldMap = new Map<string, string>()
     fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
-    
+
     // Determine which fields are new (case-insensitive)
     const newFieldNames = fileFields.filter(f => !fieldMap.has(f.toLowerCase()))
-    
+
     // Create fields from import file (both for empty collections and new fields)
     if (fields.value.length === 0) {
       // Empty collection - create all fields from import file
@@ -1066,42 +972,42 @@ async function handleImport() {
         })
       }
     }
-    
+
     // Rebuild field map after creating new fields (case-insensitive)
     fieldMap.clear()
     fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
     const currentFieldNames = fields.value.map(f => f.name)
-    
+
     // Prepare data for import with case-insensitive field matching
     const itemsToAdd = parsedData.map(row => {
       const itemData: any = {}
-      
+
       // Initialize all fields with empty values
       for (const fieldName of currentFieldNames) {
         itemData[fieldName] = ''
       }
-      
+
       // Map CSV headers to actual field names (case-insensitive)
       for (const csvHeader of fileFields) {
         const val = row[csvHeader]
         const targetFieldName = fieldMap.get(csvHeader.toLowerCase())
-        
+
         if (targetFieldName) {
           itemData[targetFieldName] = val !== undefined && val !== null ? val : ''
         }
       }
-      
+
       return {
         collectionId: props.collection.id,
         data: itemData
       }
     })
-    
+
     // Add all items
     for (const item of itemsToAdd) {
       await store.addItem(item)
     }
-    
+
     // Success - reset import state
     cancelImport()
     console.log(`Successfully imported ${itemsToAdd.length} items`)
@@ -1160,7 +1066,7 @@ function cancelItemForm() {
 
 async function saveItem() {
   const plainData = JSON.parse(JSON.stringify(formData.value))
-  
+
   if (editingItem.value) {
     await store.updateItem({
       id: editingItem.value.id,
@@ -1198,11 +1104,11 @@ async function deleteItem(item: any) {
 
 function formatFieldValue(value: any, type: string) {
   if (value === null || value === undefined || value === '') return '-'
-  
+
   if (type === 'date') {
     return new Date(value).toLocaleDateString()
   }
-  
+
   return value
 }
 
@@ -1233,15 +1139,15 @@ function loadSortPreferences() {
     sortCriteria.value = []
     return
   }
-  
+
   const key = getStorageKey(props.collection.id)
   const saved = localStorage.getItem(key)
-  
+
   if (saved) {
     try {
       const parsed = JSON.parse(saved)
       // Validate that saved criteria still match existing fields
-      const validCriteria = parsed.filter((c: SortCriterion) => 
+      const validCriteria = parsed.filter((c: SortCriterion) =>
         fields.value.some(f => f.name === c.fieldName)
       )
       sortCriteria.value = validCriteria
@@ -1254,7 +1160,7 @@ function loadSortPreferences() {
 }
 
 const availableFieldsForSort = computed(() => {
-  return fields.value.filter(field => 
+  return fields.value.filter(field =>
     !sortCriteria.value.some(c => c.fieldName === field.name)
   )
 })
@@ -1266,13 +1172,13 @@ function getFieldType(fieldName: string): string {
 
 function addSortCriterion() {
   if (!selectedFieldForSort.value) return
-  
+
   const fieldName = selectedFieldForSort.value
   if (!sortCriteria.value.some(c => c.fieldName === fieldName)) {
     sortCriteria.value.push({ fieldName, direction: 'asc' })
     saveSortPreferences()
   }
-  
+
   selectedFieldForSort.value = ''
 }
 
@@ -1289,7 +1195,7 @@ function removeCriterion(index: number) {
 
 function handleHeaderClick(fieldName: string) {
   const existingIndex = sortCriteria.value.findIndex(c => c.fieldName === fieldName)
-  
+
   if (existingIndex === -1) {
     // Field not in sort criteria - add it with 'asc'
     sortCriteria.value.push({ fieldName, direction: 'asc' })
@@ -1303,7 +1209,7 @@ function handleHeaderClick(fieldName: string) {
       sortCriteria.value.splice(existingIndex, 1)
     }
   }
-  
+
   saveSortPreferences()
 }
 
@@ -1319,7 +1225,7 @@ async function saveSettings() {
     name: collectionName.value,
     icon: collectionIcon.value
   })
-  
+
   showCollectionSettings.value = false
 }
 
@@ -1429,7 +1335,7 @@ onMounted(() => {
     collectionName.value = props.collection.name
     collectionIcon.value = props.collection.icon
   }
-  
+
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -1831,6 +1737,7 @@ onUnmounted(() => {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

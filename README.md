@@ -30,23 +30,27 @@ A personal desktop database manager for organizing your data collections.
 ## 🛠️ Installation
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/YOUR-USERNAME/second-brain.git
 cd second-brain
 ```
 
 ### 2. Install dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Rebuild native modules for Electron
+
 ```bash
 npm install --save-dev electron-rebuild
 npx electron-rebuild
 ```
 
 ### 4. Build and run
+
 ```bash
 node build-electron.js
 npm run dev
@@ -65,6 +69,7 @@ The installer will be created in the `release/` folder.
 ## 🗄️ Data Storage
 
 Your database is stored at:
+
 ```
 %APPDATA%/Roaming/second-brain/secondbrain.db
 ```

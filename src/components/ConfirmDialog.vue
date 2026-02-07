@@ -16,13 +16,9 @@
           <button @click="handleCancel" class="btn-cancel">
             {{ cancelText }}
           </button>
-          <button 
-            @click="handleConfirm" 
-            class="btn-confirm"
-            :style="{ background: btnBg }"
+          <button @click="handleConfirm" class="btn-confirm" :style="{ background: btnBg }"
             @mouseenter="(e) => (e.currentTarget as HTMLElement).style.background = btnHover"
-            @mouseleave="(e) => (e.currentTarget as HTMLElement).style.background = btnBg"
-          >
+            @mouseleave="(e) => (e.currentTarget as HTMLElement).style.background = btnBg">
             {{ confirmText }}
           </button>
         </div>
@@ -189,16 +185,22 @@ function handleCancel() {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(20px);
   }
-  to { 
+
+  to {
     opacity: 1;
     transform: translateY(0);
   }
