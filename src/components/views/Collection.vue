@@ -418,6 +418,7 @@ import {
   Upload
 } from 'lucide-vue-next'
 import { useIcons } from '../../composables/useIcons'
+import { handleIpc } from '../../utils/ipc'
 import { useConfirm } from 'primevue/useconfirm'
 import Accordion from 'primevue/accordion'
 import AccordionContent from 'primevue/accordioncontent'
@@ -657,12 +658,19 @@ async function handleExport() {
       { name: 'All Files', extensions: ['*'] }
     ]
 
-    const filePath = await window.electronAPI.showSaveDialog({
+    const filePathResult = await window.electronAPI.showSaveDialog({
       title: `Export ${props.collection.name}`,
       defaultPath: getDefaultFilename(),
       filters
     })
 
+    if (!filePathResult.ok) {
+      handleIpc(filePathResult, 'export:showSaveDialog', null)
+      isExporting.value = false
+      return
+    }
+
+    const filePath = filePathResult.data
     if (!filePath) {
       isExporting.value = false
       return
@@ -675,7 +683,8 @@ async function handleExport() {
       content = generateJSON()
     }
 
-    const success = await window.electronAPI.writeFile(filePath, content)
+    const writeResult = await window.electronAPI.writeFile(filePath, content)
+    const success = handleIpc(writeResult, 'export:writeFile', false)
 
     if (success) {
       console.log('Export successful!')
@@ -702,18 +711,30 @@ async function handleSelectFile() {
       { name: 'All Files', extensions: ['*'] }
     ]
 
-    const filePath = await window.electronAPI.showOpenDialog({
+    const filePathResult = await window.electronAPI.showOpenDialog({
       title: 'Select File to Import',
       filters
     })
 
+    if (!filePathResult.ok) {
+      handleIpc(filePathResult, 'import:showOpenDialog', null)
+      return
+    }
+
+    const filePath = filePathResult.data
     if (!filePath) {
       return
     }
 
     selectedFile.value = filePath
 
-    const content = await window.electronAPI.readFile(filePath)
+    const contentResult = await window.electronAPI.readFile(filePath)
+    if (!contentResult.ok) {
+      handleIpc(contentResult, 'import:readFile', null)
+      return
+    }
+
+    const content = contentResult.data
     if (content === null) {
       console.error('Failed to read file')
       return
@@ -828,7 +849,13 @@ async function handleImport() {
   isImporting.value = true
 
   try {
-    const content = await window.electronAPI.readFile(selectedFile.value)
+    const contentResult = await window.electronAPI.readFile(selectedFile.value)
+    if (!contentResult.ok) {
+      handleIpc(contentResult, 'import:readFile', null)
+      return
+    }
+
+    const content = contentResult.data
     if (!content) {
       console.error('Failed to read file')
       return
@@ -860,7 +887,11 @@ async function handleImport() {
     if (importMode.value === 'replace') {
       const itemsToDelete = [...items.value]
       for (const item of itemsToDelete) {
-        await window.electronAPI.deleteItem(item.id)
+        const deleteResult = await window.electronAPI.deleteItem(item.id)
+        if (!deleteResult.ok) {
+          handleIpc(deleteResult, 'db:deleteItem', false)
+          return
+        }
       }
       await store.loadItems(props.collection.id)
     }
