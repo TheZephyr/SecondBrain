@@ -211,8 +211,7 @@
             <div class="space-y-4">
               <div class="space-y-2">
                 <label class="text-xs font-medium text-[var(--text-secondary)]">Export Format</label>
-                <Select v-model="exportFormat" :options="exportFormatOptions" optionLabel="label"
-                  optionValue="value" />
+                <Select v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
               </div>
               <div
                 class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
@@ -251,9 +250,9 @@
 
                 <div class="space-y-2">
                   <label class="text-xs font-medium text-[var(--text-secondary)]">Import Mode</label>
-                  <div class="space-y-2">
+                  <div class="flex gap-2">
                     <label
-                      class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                      class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
                       <RadioButton v-model="importMode" value="append" />
                       <div>
                         <div class="font-medium text-[var(--text-primary)]">Append</div>
@@ -261,7 +260,7 @@
                       </div>
                     </label>
                     <label
-                      class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                      class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
                       <RadioButton v-model="importMode" value="replace" />
                       <div>
                         <div class="font-medium text-[var(--text-primary)]">Replace</div>
@@ -338,9 +337,9 @@
                   <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                     Sample Data (first 3 items)
                   </div>
-                  <div class="space-y-2">
+                  <div class="flex gap-2">
                     <div v-for="(item, index) in importPreview.sample" :key="index"
-                      class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
+                      class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
                       <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                         Item {{ index + 1 }}
                       </div>
@@ -494,8 +493,8 @@ const fieldTypeOptions = [
 ]
 
 const exportFormatOptions = [
-  { label: 'CSV (Comma Separated Values)', value: 'csv' },
-  { label: 'JSON (JavaScript Object Notation)', value: 'json' }
+  { label: 'CSV', value: 'csv' },
+  { label: 'JSON', value: 'json' }
 ]
 
 const iconListboxPt = {
