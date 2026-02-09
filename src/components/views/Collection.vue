@@ -112,7 +112,7 @@
                 v-model="formData[field.name]" inputClass="w-full" class="w-full" />
               <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
                 v-model="formData[field.name]" dateFormat="yy-mm-dd" inputClass="w-full" class="w-full" />
-              <Dropdown v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
+              <Select v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
                 v-model="formData[field.name]" :options="getSelectOptions(field)" class="w-full" />
               <label :for="getFieldInputId(field)">{{ field.name }}</label>
             </FloatLabel>
@@ -153,7 +153,7 @@
           </div>
           <div class="flex flex-col gap-3 md:flex-row md:items-center">
             <InputText v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
-            <Dropdown v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
+            <Select v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
               class="w-full md:w-48" />
             <Button class="md:self-stretch" @click="addField">Add</Button>
           </div>
@@ -211,7 +211,7 @@
             <div class="space-y-4">
               <div class="space-y-2">
                 <label class="text-xs font-medium text-[var(--text-secondary)]">Export Format</label>
-                <Dropdown v-model="exportFormat" :options="exportFormatOptions" optionLabel="label"
+                <Select v-model="exportFormat" :options="exportFormatOptions" optionLabel="label"
                   optionValue="value" />
               </div>
               <div
@@ -245,7 +245,7 @@
               <div v-if="!importPreview" class="space-y-4">
                 <div class="space-y-2">
                   <label class="text-xs font-medium text-[var(--text-secondary)]">Import Format</label>
-                  <Dropdown v-model="importFormat" :options="exportFormatOptions" optionLabel="label"
+                  <Select v-model="importFormat" :options="exportFormatOptions" optionLabel="label"
                     optionValue="value" />
                 </div>
 
@@ -428,7 +428,7 @@ import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import InputNumber from 'primevue/inputnumber'
