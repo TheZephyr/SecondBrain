@@ -11,14 +11,10 @@
     </div>
 
     <nav class="flex-1 space-y-2 overflow-y-auto px-2 py-3">
-      <Button
-        text
-        class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm"
-        :class="currentView === 'dashboard'
-          ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
-        @click="showDashboard"
-      >
+      <Button text class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm" :class="currentView === 'dashboard'
+        ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+        @click="showDashboard">
         <template #icon>
           <LayoutDashboard :size="18" />
         </template>
@@ -30,27 +26,20 @@
         Collections
       </div>
 
-      <Button
-        v-for="collection in collections"
-        :key="collection.id"
-        text
-        class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm"
-        :class="selectedCollection?.id === collection.id
+      <Button v-for="collection in collections" :key="collection.id" text
+        class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm" :class="selectedCollection?.id === collection.id
           ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
-        @click="handleSelectCollection(collection)"
-      >
+        @click="handleSelectCollection(collection)">
         <template #icon>
           <component :is="getIcon(collection.icon)" :size="18" />
         </template>
         <span class="truncate">{{ collection.name }}</span>
       </Button>
 
-      <Button
-        outlined
+      <Button outlined
         class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-sm text-[var(--text-muted)]"
-        @click="showNewCollectionModal = true"
-      >
+        @click="showNewCollectionModal = true">
         <template #icon>
           <Plus :size="18" />
         </template>
@@ -63,33 +52,21 @@
     </div>
   </aside>
 
-  <Dialog
-    v-model:visible="showNewCollectionModal"
-    header="Create New Collection"
-    modal
-    :draggable="false"
-    class="max-w-xl"
-    @hide="cancelNewCollection"
-  >
+  <Dialog v-model:visible="showNewCollectionModal" header="Create New Collection" modal :draggable="false"
+    class="max-w-xl" @hide="cancelNewCollection">
     <div class="space-y-4">
       <div class="space-y-2">
-        <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name *</label>
-        <InputText v-model="newCollection.name" type="text" placeholder="My Collection" autofocus />
+        <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name </label>
+        <InputText v-model="newCollection.name" type="text" autofocus />
       </div>
 
       <div class="space-y-2">
         <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
-        <Listbox
-          v-model="newCollection.icon"
-          :options="iconOptions"
-          optionLabel="label"
-          optionValue="value"
-          :pt="iconListboxPt"
-        >
+        <Listbox v-model="newCollection.icon" :options="iconOptions" optionLabel="label" optionValue="value"
+          :pt="iconListboxPt">
           <template #option="{ option }">
             <div class="flex flex-col items-center gap-1">
               <component :is="option.component" :size="20" />
-              <span class="text-[11px]">{{ option.label }}</span>
             </div>
           </template>
         </Listbox>
@@ -132,7 +109,7 @@ const iconListboxPt = {
       "rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]",
   },
   list: {
-    class: "grid grid-cols-3 gap-2 p-2",
+    class: "grid grid-cols-[repeat(auto-fit,minmax(60px,1fr))] justify-items-center gap-1 p-2",
   },
   item: ({ context }: { context: { selected: boolean } }) => ({
     class: [

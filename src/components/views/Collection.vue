@@ -16,21 +16,17 @@
       </template>
       <template #end>
         <div class="flex items-center gap-2">
-          <Button text class="h-10 w-10 p-0" title="Manage Fields" @click="showFieldsManager = true">
-            <template #icon>
-              <Settings :size="18" />
-            </template>
+          <Button text title="Manage Fields" @click="showFieldsManager = true">
+            <Settings />
+            Manage fields
           </Button>
-          <Button class="gap-2 min-w-[140px] px-4 !text-white" @click="showAddItemForm = true">
-            <template #icon>
-              <Plus :size="18" />
-            </template>
+          <Button @click="showAddItemForm = true">
+            <Plus />
             Add Item
           </Button>
-          <Button text class="h-10 w-10 p-0" title="Collection Settings" @click="showCollectionSettings = true">
-            <template #icon>
-              <MoreVertical :size="18" />
-            </template>
+          <Button text title="Collection Settings" @click="showCollectionSettings = true">
+            <MoreVertical />
+            More
           </Button>
         </div>
       </template>
@@ -44,9 +40,7 @@
         Define the structure of your collection by adding fields
       </p>
       <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="showFieldsManager = true">
-        <template #icon>
-          <Plus :size="18" />
-        </template>
+          <Plus />
         Add Fields
       </Button>
     </div>
@@ -77,15 +71,11 @@
           <template #body="{ data }">
             <div class="flex items-center justify-end gap-2">
               <Button text class="h-8 w-8 p-0" title="Edit" @click="editItem(data)">
-                <template #icon>
-                  <Pencil :size="16" />
-                </template>
+                  <Pencil />
               </Button>
               <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete"
                 @click="deleteItem(data)">
-                <template #icon>
-                  <Trash2 :size="16" />
-                </template>
+                  <Trash2 />
               </Button>
             </div>
           </template>
@@ -113,11 +103,11 @@
       <form @submit.prevent="saveItem">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
-            <FloatLabel class="w-full" variant="on">
+            <FloatLabel class="w-full" variant="in">
               <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)" v-model="formData[field.name]"
                 type="text" class="w-full" />
               <Textarea v-else-if="field.type === 'textarea'" :id="getFieldInputId(field)"
-                v-model="formData[field.name]" rows="4" class="w-full" />
+                v-model="formData[field.name]" rows="3" class="w-full" />
               <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
                 v-model="formData[field.name]" inputClass="w-full" class="w-full" />
               <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
@@ -135,7 +125,8 @@
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="showFieldsManager" header="Manage Fields" modal :draggable="false" class="max-w-4xl">
+    <Dialog v-model:visible="showFieldsManager" header="Manage Fields" modal :draggable="false"
+      class="max-w-4xl">
       <div class="space-y-6">
         <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onFieldsReorder">
           <Column rowReorder headerStyle="width: 3rem" />
@@ -149,9 +140,7 @@
             <template #body="{ data }">
               <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete field"
                 @click="deleteField(data)">
-                <template #icon>
-                  <Trash2 :size="14" />
-                </template>
+                  <Trash2 />
               </Button>
             </template>
           </Column>
@@ -181,224 +170,222 @@
     </Dialog>
 
     <Dialog v-model:visible="showCollectionSettings" header="Collection Settings" modal :draggable="false"
-      class="max-w-4xl" @hide="cancelSettings">
-      <Accordion :activeIndex="0">
-        <AccordionTab>
-          <template #header>
+      class="w-full max-w-4xl" @hide="cancelSettings">
+      <Accordion value="0">
+        <AccordionPanel value="0">
+          <AccordionHeader>
             <div class="flex items-center gap-2">
               <Settings2 :size="16" />
               <span>Collection Settings</span>
             </div>
-          </template>
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name</label>
-              <InputText v-model="collectionName" type="text" placeholder="Collection name" />
-            </div>
+          </AccordionHeader>
+          <AccordionContent>
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name </label>
+                <InputText v-model="collectionName" type="text" placeholder="Collection name" />
+              </div>
 
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
-              <Listbox v-model="collectionIcon" :options="iconOptions" optionLabel="label" optionValue="value"
-                :pt="iconListboxPt">
-                <template #option="{ option }">
-                  <div class="flex flex-col items-center gap-1">
-                    <component :is="option.component" :size="20" />
-                    <span class="text-[11px]">{{ option.label }}</span>
-                  </div>
-                </template>
-              </Listbox>
+              <div class="space-y-2">
+                <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
+                <Listbox v-model="collectionIcon" :options="iconOptions" optionLabel="label" optionValue="value"
+                  :pt="iconListboxPt" class="w-full">
+                  <template #option="{ option }">
+                    <div class="flex flex-col items-center gap-1">
+                      <component :is="option.component" :size="20" />
+                    </div>
+                  </template>
+                </Listbox>
+              </div>
             </div>
-          </div>
-        </AccordionTab>
+          </AccordionContent>
+        </AccordionPanel>
 
-        <AccordionTab>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <Download :size="16" />
-              <span>Export Data</span>
-            </div>
-          </template>
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Export Format</label>
-              <Dropdown v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
-            </div>
-            <div
-              class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
-              <p v-if="exportFormat === 'csv'">
-                Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
-              </p>
-              <p v-else>
-                Export all items as a JSON file. Data will be exported as an array of objects with full type
-                preservation.
-              </p>
-            </div>
-            <Button class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
-              <template #icon>
-                <Download v-if="!isExporting" :size="16" />
-              </template>
-              <span v-if="isExporting">Exporting...</span>
-              <span v-else>Export {{ items.length }} {{ items.length === 1 ? 'item' : 'items' }}</span>
-            </Button>
-          </div>
-        </AccordionTab>
-
-        <AccordionTab>
-          <template #header>
+        <AccordionPanel value="1">
+          <AccordionHeader>
             <div class="flex items-center gap-2">
               <Upload :size="16" />
-              <span>Import Data</span>
+              <span>Export Data</span>
             </div>
-          </template>
-          <div class="space-y-4">
-            <div v-if="!importPreview" class="space-y-4">
+          </AccordionHeader>
+          <AccordionContent>
+            <div class="space-y-4">
               <div class="space-y-2">
-                <label class="text-xs font-medium text-[var(--text-secondary)]">Import Format</label>
-                <Dropdown v-model="importFormat" :options="exportFormatOptions" optionLabel="label"
+                <label class="text-xs font-medium text-[var(--text-secondary)]">Export Format</label>
+                <Dropdown v-model="exportFormat" :options="exportFormatOptions" optionLabel="label"
                   optionValue="value" />
               </div>
-
-              <div class="space-y-2">
-                <label class="text-xs font-medium text-[var(--text-secondary)]">Import Mode</label>
-                <div class="space-y-2">
-                  <label
-                    class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
-                    <RadioButton v-model="importMode" value="append" />
-                    <div>
-                      <div class="font-medium text-[var(--text-primary)]">Append</div>
-                      <div class="text-xs text-[var(--text-muted)]">Add imported items to existing data</div>
-                    </div>
-                  </label>
-                  <label
-                    class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
-                    <RadioButton v-model="importMode" value="replace" />
-                    <div>
-                      <div class="font-medium text-[var(--text-primary)]">Replace</div>
-                      <div class="text-xs text-[var(--text-muted)]">Delete all existing items and import new data</div>
-                    </div>
-                  </label>
-                </div>
+              <div
+                class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
+                <p v-if="exportFormat === 'csv'">
+                  Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
+                </p>
+                <p v-else>
+                  Export all items as a JSON file. Data will be exported as an array of objects with full type
+                  preservation.
+                </p>
               </div>
-
-              <Button class="w-full justify-center gap-2" @click="handleSelectFile">
-                <template #icon>
-                  <Upload :size="16" />
-                </template>
-                Select File to Import
+              <Button class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
+                <Download v-if="!isExporting" />
+                <span v-if="isExporting">Exporting...</span>
+                <span v-else>Export {{ items.length }} {{ items.length === 1 ? 'item' : 'items' }}</span>
               </Button>
             </div>
+          </AccordionContent>
+        </AccordionPanel>
 
-            <div v-else class="space-y-4">
-              <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-                <div class="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
-                  <FileText :size="18" />
-                  Import Preview
+        <AccordionPanel value="2">
+          <AccordionHeader>
+            <div class="flex items-center gap-2">
+              <Download :size="16" />
+              <span>Import Data</span>
+            </div>
+          </AccordionHeader>
+          <AccordionContent>
+            <div class="space-y-4">
+              <div v-if="!importPreview" class="space-y-4">
+                <div class="space-y-2">
+                  <label class="text-xs font-medium text-[var(--text-secondary)]">Import Format</label>
+                  <Dropdown v-model="importFormat" :options="exportFormatOptions" optionLabel="label"
+                    optionValue="value" />
                 </div>
-                <Button text class="h-8 w-8 p-0" title="Cancel" @click="cancelImport">
-                  <template #icon>
-                    <X :size="16" />
-                  </template>
+
+                <div class="space-y-2">
+                  <label class="text-xs font-medium text-[var(--text-secondary)]">Import Mode</label>
+                  <div class="space-y-2">
+                    <label
+                      class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                      <RadioButton v-model="importMode" value="append" />
+                      <div>
+                        <div class="font-medium text-[var(--text-primary)]">Append</div>
+                        <div class="text-xs text-[var(--text-muted)]">Add imported items to existing data</div>
+                      </div>
+                    </label>
+                    <label
+                      class="flex items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                      <RadioButton v-model="importMode" value="replace" />
+                      <div>
+                        <div class="font-medium text-[var(--text-primary)]">Replace</div>
+                        <div class="text-xs text-[var(--text-muted)]">Delete all existing items and import new data</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <Button class="w-full justify-center gap-2" @click="handleSelectFile">
+                  <Download />
+                  Select File to Import
                 </Button>
               </div>
 
-              <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
-                <div class="flex justify-between text-[var(--text-secondary)]">
-                  <span>Items to import:</span>
-                  <span class="font-semibold text-[var(--text-primary)]">{{ importPreview.itemCount }}</span>
+              <div v-else class="space-y-4">
+                <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+                  <div class="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
+                    <FileText :size="18" />
+                    Import Preview
+                  </div>
+                  <Button text class="h-8 w-8 p-0" title="Cancel" @click="cancelImport">
+                    <X />
+                  </Button>
                 </div>
-                <div class="mt-2 flex justify-between text-[var(--text-secondary)]">
-                  <span>Import mode:</span>
-                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' :
-                    'Replace'
-                  }}</span>
-                </div>
-              </div>
 
-              <div v-if="fields.length === 0"
-                class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]">
-                <AlertTriangle :size="16" />
-                This collection has no fields. Fields will be automatically created from the import file.
-              </div>
+                <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
+                  <div class="flex justify-between text-[var(--text-secondary)]">
+                    <span>Items to import:</span>
+                    <span class="font-semibold text-[var(--text-primary)]">{{ importPreview.itemCount }}</span>
+                  </div>
+                  <div class="mt-2 flex justify-between text-[var(--text-secondary)]">
+                    <span>Import mode:</span>
+                    <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' :
+                      'Replace'
+                    }}</span>
+                  </div>
+                </div>
 
-              <div v-if="importPreview.matchedFields.length > 0" class="space-y-2">
-                <div class="text-xs font-semibold text-[var(--text-primary)]">
-                  Matched Fields ({{ importPreview.matchedFields.length }})
+                <div v-if="fields.length === 0"
+                  class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]">
+                  <AlertTriangle :size="16" />
+                  This collection has no fields. Fields will be automatically created from the import file.
                 </div>
-                <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.matchedFields" :key="field"
-                    class="bg-[rgba(16,185,129,0.2)] text-[var(--success)]">
-                    {{ field }}
-                  </Tag>
-                </div>
-              </div>
 
-              <div v-if="importPreview.newFields.length > 0" class="space-y-2">
-                <div class="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
-                  <AlertTriangle :size="14" />
-                  New Fields ({{ importPreview.newFields.length }})
+                <div v-if="importPreview.matchedFields.length > 0" class="space-y-2">
+                  <div class="text-xs font-semibold text-[var(--text-primary)]">
+                    Matched Fields ({{ importPreview.matchedFields.length }})
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <Tag v-for="field in importPreview.matchedFields" :key="field"
+                      class="bg-[rgba(16,185,129,0.2)] text-[var(--success)]">
+                      {{ field }}
+                    </Tag>
+                  </div>
                 </div>
-                <p class="text-xs text-[var(--text-muted)]">These fields will be added to your collection:</p>
-                <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.newFields" :key="field"
-                    class="bg-[rgba(245,158,11,0.2)] text-[var(--warning)]">
-                    {{ field }}
-                  </Tag>
-                </div>
-              </div>
 
-              <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
-                <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                  Sample Data (first 3 items)
+                <div v-if="importPreview.newFields.length > 0" class="space-y-2">
+                  <div class="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                    <AlertTriangle :size="14" />
+                    New Fields ({{ importPreview.newFields.length }})
+                  </div>
+                  <p class="text-xs text-[var(--text-muted)]">These fields will be added to your collection:</p>
+                  <div class="flex flex-wrap gap-2">
+                    <Tag v-for="field in importPreview.newFields" :key="field"
+                      class="bg-[rgba(245,158,11,0.2)] text-[var(--warning)]">
+                      {{ field }}
+                    </Tag>
+                  </div>
                 </div>
-                <div class="space-y-2">
-                  <div v-for="(item, index) in importPreview.sample" :key="index"
-                    class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
-                    <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                      Item {{ index + 1 }}
-                    </div>
-                    <div class="space-y-1">
-                      <div v-for="(value, key) in item" :key="key" class="flex gap-2">
-                        <span class="min-w-[80px] text-[var(--text-muted)]">{{ key }}:</span>
-                        <span class="text-[var(--text-primary)]">{{ value || '(empty)' }}</span>
+
+                <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
+                  <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Sample Data (first 3 items)
+                  </div>
+                  <div class="space-y-2">
+                    <div v-for="(item, index) in importPreview.sample" :key="index"
+                      class="rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
+                      <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                        Item {{ index + 1 }}
+                      </div>
+                      <div class="space-y-1">
+                        <div v-for="(value, key) in item" :key="key" class="flex gap-2">
+                          <span class="min-w-[80px] text-[var(--text-muted)]">{{ key }}:</span>
+                          <span class="text-[var(--text-primary)]">{{ value || '(empty)' }}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="flex items-center justify-end gap-2 border-t border-[var(--border-color)] pt-4">
-                <Button severity="secondary" text @click="cancelImport">Cancel</Button>
-                <Button class="gap-2" :disabled="isImporting" @click="handleImport">
-                  <template #icon>
+                <div class="flex items-center justify-end gap-2 border-t border-[var(--border-color)] pt-4">
+                  <Button severity="secondary" text @click="cancelImport">Cancel</Button>
+                  <Button class="gap-2" :disabled="isImporting" @click="handleImport">
                     <Upload v-if="!isImporting" :size="16" />
-                  </template>
-                  <span v-if="isImporting">Importing...</span>
-                  <span v-else>Import {{ importPreview.itemCount }} items</span>
-                </Button>
+                    <span v-if="isImporting">Importing...</span>
+                    <span v-else>Import {{ importPreview.itemCount }} items</span>
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </AccordionTab>
+          </AccordionContent>
+        </AccordionPanel>
 
-        <AccordionTab>
-          <template #header>
+        <AccordionPanel value="3">
+          <AccordionHeader>
             <div class="flex items-center gap-2">
               <AlertTriangle :size="16" />
               <span>Danger Zone</span>
             </div>
-          </template>
-          <div class="space-y-3">
-            <p class="text-xs text-[var(--text-muted)]">
-              Once you delete a collection, there is no going back.
-            </p>
-            <Button severity="danger" class="gap-2 min-w-[180px] !text-white" @click="confirmDeleteCollection">
-              <template #icon>
-                <Trash2 :size="16" />
-              </template>
-              Delete Collection
-            </Button>
-          </div>
-        </AccordionTab>
+          </AccordionHeader>
+          <AccordionContent>
+            <div class="space-y-3">
+              <p class="text-xs text-[var(--text-muted)]">
+                Once you delete a collection, there is no going back.
+              </p>
+              <Button severity="danger" class="gap-2 min-w-[180px] !text-white" @click="confirmDeleteCollection">
+                <Trash2 />
+                Delete Collection
+              </Button>
+            </div>
+          </AccordionContent>
+        </AccordionPanel>
       </Accordion>
 
       <template #footer>
@@ -434,7 +421,9 @@ import {
 import { useIcons } from '../../composables/useIcons'
 import { useConfirm } from 'primevue/useconfirm'
 import Accordion from 'primevue/accordion'
-import AccordionTab from 'primevue/accordiontab'
+import AccordionContent from 'primevue/accordioncontent'
+import AccordionHeader from 'primevue/accordionheader'
+import AccordionPanel from 'primevue/accordionpanel'
 import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
 import DataTable from 'primevue/datatable'
@@ -512,14 +501,14 @@ const exportFormatOptions = [
 const iconListboxPt = {
   root: {
     class:
-      'rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]'
+      'w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]'
   },
   list: {
-    class: 'grid grid-cols-3 gap-2 p-2'
+    class: 'grid grid-cols-[repeat(auto-fit,minmax(60px,1fr))] justify-items-center gap-1 p-2'
   },
   item: ({ context }: { context: { selected: boolean } }) => ({
     class: [
-      'flex flex-col items-center gap-1 rounded-md border p-2 text-xs transition',
+      'flex w-full flex-col items-center justify-center gap-1 rounded-md border p-1.5 text-[11px] transition',
       context.selected
         ? 'border-[var(--accent-primary)] bg-[var(--accent-light)] text-[var(--accent-primary)]'
         : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]'
