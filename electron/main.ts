@@ -55,7 +55,9 @@ function toIpcError(error: unknown, context?: string): IpcError {
 
   const message = error instanceof Error ? error.message : "Unknown error.";
   const details =
-    error instanceof Error ? serializeDetails(error.stack) : serializeDetails(error);
+    error instanceof Error
+      ? serializeDetails(error.stack)
+      : serializeDetails(error);
   const code: IpcErrorCode = context?.startsWith("db:")
     ? "DB_QUERY_FAILED"
     : "UNKNOWN";
@@ -98,9 +100,6 @@ function createWindow() {
     height: 900,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      enableRemoteModule: false,
     },
   });
 
