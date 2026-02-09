@@ -13,9 +13,9 @@ describe("validation schemas", () => {
   });
 
   it("rejects unsafe keys in item data", () => {
-    const result = itemDataSchema.safeParse({
-      __proto__: "bad",
-    });
+    const data = Object.create(null) as Record<string, unknown>;
+    data["__proto__"] = "bad";
+    const result = itemDataSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
 

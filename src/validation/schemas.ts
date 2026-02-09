@@ -31,19 +31,36 @@ export const itemDataValueSchema = z.union([
   z.null(),
 ]);
 
-export const itemDataSchema = z
-  .record(itemDataValueSchema)
-  .superRefine((value, ctx) => {
-    for (const key of Object.keys(value)) {
-      if (!isSafeFieldName(key)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Unsafe field name: ${key}`,
-          path: [key],
-        });
-      }
+export const itemDataSchema = z.preprocess((value, ctx) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Item data must be a plain object.",
+    });
+    return value;
+  }
+
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Item data must not use a custom prototype.",
+    });
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    if (!isSafeFieldName(key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Unsafe field name: ${key}`,
+        path: [key],
+      });
     }
-  });
+  }
+
+  return value;
+}, z.record(z.string(), itemDataValueSchema));
 
 export const NewCollectionInputSchema = z.object({
   name: collectionNameSchema,
