@@ -56,10 +56,10 @@
         </p>
       </div>
 
-      <DataTable :value="filteredItems" dataKey="id" sortMode="multiple" v-model:multiSortMeta="multiSortMeta"
-        :rowHover="true">
+      <DataTable :value="filteredItems" dataKey="id" stripedRows sortMode="multiple" removableSort
+        v-model:multiSortMeta="multiSortMeta" :rowHover="true" tableStyle="table-layout: fixed; width: 100%">
         <Column v-for="field in orderedFields" :key="field.id" :field="getFieldPath(field.name)" :header="field.name"
-          sortable>
+          sortable :style="{ width: `${100 / (orderedFields.length + 1)}%` }">
           <template #body="{ data }">
             <span class="block max-w-[320px] truncate">
               {{ formatFieldValue(data.data[field.name], field.type) }}
@@ -67,7 +67,7 @@
           </template>
         </Column>
 
-        <Column header="Actions" style="width: 120px">
+        <Column header=" " style="width: 60px; text-align: right">
           <template #body="{ data }">
             <div class="flex items-center justify-end gap-2">
               <Button text class="h-8 w-8 p-0" title="Edit" @click="editItem(data)">

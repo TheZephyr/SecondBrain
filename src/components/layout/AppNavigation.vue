@@ -38,7 +38,7 @@
       </Button>
 
       <Button outlined
-        class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-sm text-[var(--text-muted)]"
+        class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-sm text-[var(--text-muted)] border-[var(--border-color)]"
         @click="showNewCollectionModal = true">
         <template #icon>
           <Plus :size="18" />
