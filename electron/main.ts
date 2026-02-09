@@ -2,6 +2,15 @@ import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
+import type {
+  ItemData,
+  NewCollectionInput,
+  UpdateCollectionInput,
+  NewFieldInput,
+  UpdateFieldInput,
+  NewItemInput,
+  UpdateItemInput,
+} from "../src/types/models";
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -85,7 +94,7 @@ ipcMain.handle("db:getCollections", () => {
   return stmt.all();
 });
 
-ipcMain.handle("db:addCollection", (_, collection) => {
+ipcMain.handle("db:addCollection", (_, collection: NewCollectionInput) => {
   if (!db) return null;
 
   const stmt = db.prepare("INSERT INTO collections (name, icon) VALUES (?, ?)");
@@ -98,7 +107,7 @@ ipcMain.handle("db:addCollection", (_, collection) => {
   };
 });
 
-ipcMain.handle("db:updateCollection", (_, collection) => {
+ipcMain.handle("db:updateCollection", (_, collection: UpdateCollectionInput) => {
   if (!db) return false;
 
   const stmt = db.prepare(
@@ -120,7 +129,7 @@ ipcMain.handle("db:deleteCollection", (_, id) => {
 });
 
 // ==================== FIELDS ====================
-ipcMain.handle("db:getFields", (_, collectionId) => {
+ipcMain.handle("db:getFields", (_, collectionId: number) => {
   if (!db) return [];
 
   const stmt = db.prepare(
@@ -129,7 +138,7 @@ ipcMain.handle("db:getFields", (_, collectionId) => {
   return stmt.all(collectionId);
 });
 
-ipcMain.handle("db:addField", (_, field) => {
+ipcMain.handle("db:addField", (_, field: NewFieldInput) => {
   if (!db) return null;
 
   const stmt = db.prepare(
@@ -146,7 +155,7 @@ ipcMain.handle("db:addField", (_, field) => {
   return { id: info.lastInsertRowid, ...field };
 });
 
-ipcMain.handle("db:updateField", (_, field) => {
+ipcMain.handle("db:updateField", (_, field: UpdateFieldInput) => {
   if (!db) return false;
 
   const stmt = db.prepare(
@@ -172,21 +181,29 @@ ipcMain.handle("db:deleteField", (_, id) => {
 });
 
 // ==================== ITEMS ====================
-ipcMain.handle("db:getItems", (_, collectionId) => {
+type ItemRow = {
+  id: number;
+  collection_id: number;
+  data: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+ipcMain.handle("db:getItems", (_, collectionId: number) => {
   if (!db) return [];
 
   const stmt = db.prepare(
     "SELECT * FROM items WHERE collection_id = ? ORDER BY created_at DESC",
   );
-  const items = stmt.all(collectionId);
+  const items = stmt.all(collectionId) as ItemRow[];
 
-  return items.map((item: any) => ({
+  return items.map((item) => ({
     ...item,
-    data: JSON.parse(item.data),
+    data: JSON.parse(item.data) as ItemData,
   }));
 });
 
-ipcMain.handle("db:addItem", (_, item) => {
+ipcMain.handle("db:addItem", (_, item: NewItemInput) => {
   if (!db) return null;
 
   const dataJson = JSON.stringify(item.data);
@@ -202,7 +219,7 @@ ipcMain.handle("db:addItem", (_, item) => {
   };
 });
 
-ipcMain.handle("db:updateItem", (_, item) => {
+ipcMain.handle("db:updateItem", (_, item: UpdateItemInput) => {
   if (!db) return false;
 
   const dataJson = JSON.stringify(item.data);

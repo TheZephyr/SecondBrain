@@ -13,11 +13,12 @@ import { storeToRefs } from "pinia";
 import { useStore } from "../../store";
 import Dashboard from "../views/Dashboard.vue";
 import Collection from "../views/Collection.vue";
+import type { Collection as CollectionType } from "../../types/models";
 
 const store = useStore();
 const { collections, selectedCollection, currentView } = storeToRefs(store);
 
-function handleSelectCollection(collection: any) {
+function handleSelectCollection(collection: CollectionType) {
   store.selectCollection(collection);
 }
 
