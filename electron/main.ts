@@ -101,7 +101,6 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       enableRemoteModule: false,
-      sandbox: false,
     },
   });
 
