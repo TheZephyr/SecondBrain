@@ -1,5 +1,6 @@
 import { ref, type Ref } from "vue";
 import { useStore } from "../store";
+import { useNotificationsStore } from "../stores/notifications";
 import { handleIpc } from "../utils/ipc";
 import type {
   Collection,
@@ -17,6 +18,8 @@ import {
   type ImportPreview,
   type ParsedImportData,
 } from "../utils/collectionImportExport";
+import { isSafeFieldName } from "../validation/fieldNames";
+import { fieldNameSchema } from "../validation/schemas";
 
 type UseCollectionImportExportParams = {
   collection: Ref<Collection>;
@@ -30,6 +33,7 @@ export function useCollectionImportExport({
   items,
 }: UseCollectionImportExportParams) {
   const store = useStore();
+  const notifications = useNotificationsStore();
 
   const exportFormat = ref<ExportFormat>("csv");
   const isExporting = ref(false);
@@ -223,6 +227,23 @@ export function useCollectionImportExport({
       }
 
       const { rows: parsedData, fields: fileFields } = parsed;
+      const invalidFields = fileFields.filter(
+        (field) => !fieldNameSchema.safeParse(field).success,
+      );
+
+      if (invalidFields.length > 0) {
+        notifications.push({
+          severity: "warn",
+          summary: "Invalid field names",
+          detail: `Import blocked. Invalid fields: ${invalidFields.join(", ")}`,
+          life: 7000,
+        });
+        return;
+      }
+
+      const normalizedFileFields = fileFields.map((field) =>
+        fieldNameSchema.parse(field),
+      );
 
       if (importMode.value === "replace") {
         const itemsToDelete = [...items.value];
@@ -236,20 +257,23 @@ export function useCollectionImportExport({
         await store.loadItems(collection.value.id);
       }
 
+      const safeExistingFields = fields.value.filter((field) =>
+        isSafeFieldName(field.name),
+      );
       const fieldMap = new Map<string, string>();
-      fields.value.forEach((field) =>
+      safeExistingFields.forEach((field) =>
         fieldMap.set(field.name.toLowerCase(), field.name),
       );
 
-      const newFieldNames = fileFields.filter(
+      const newFieldNames = normalizedFileFields.filter(
         (field) => !fieldMap.has(field.toLowerCase()),
       );
 
-      if (fields.value.length === 0) {
-        for (let i = 0; i < fileFields.length; i++) {
+      if (safeExistingFields.length === 0) {
+        for (let i = 0; i < normalizedFileFields.length; i++) {
           await store.addField({
             collectionId: collection.value.id,
-            name: fileFields[i],
+            name: normalizedFileFields[i],
             type: "text",
             options: null,
             orderIndex: i,
@@ -270,10 +294,13 @@ export function useCollectionImportExport({
       }
 
       fieldMap.clear();
-      fields.value.forEach((field) =>
+      const safeFieldsAfterImport = fields.value.filter((field) =>
+        isSafeFieldName(field.name),
+      );
+      safeFieldsAfterImport.forEach((field) =>
         fieldMap.set(field.name.toLowerCase(), field.name),
       );
-      const currentFieldNames = fields.value.map((field) => field.name);
+      const currentFieldNames = safeFieldsAfterImport.map((field) => field.name);
 
       const itemsToAdd = parsedData.map((row) => {
         const itemData: ItemData = {};
@@ -281,7 +308,7 @@ export function useCollectionImportExport({
           itemData[fieldName] = "";
         }
 
-        for (const csvHeader of fileFields) {
+        for (const csvHeader of normalizedFileFields) {
           const val = row[csvHeader];
           const targetFieldName = fieldMap.get(csvHeader.toLowerCase());
 

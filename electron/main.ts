@@ -3,6 +3,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
+import type { ZodType } from "zod";
 import type {
   ItemData,
   NewCollectionInput,
@@ -13,6 +14,16 @@ import type {
   UpdateItemInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
+import {
+  NewCollectionInputSchema,
+  UpdateCollectionInputSchema,
+  NewFieldInputSchema,
+  UpdateFieldInputSchema,
+  NewItemInputSchema,
+  UpdateItemInputSchema,
+  itemDataSchema,
+  positiveIntSchema,
+} from "../src/validation/schemas";
 
 let mainWindow: BrowserWindow | null = null;
 let db: Database.Database | null = null;
@@ -68,6 +79,27 @@ function toIpcError(error: unknown, context?: string): IpcError {
     details,
     context,
   };
+}
+
+function parseOrThrow<T>(
+  schema: ZodType<T>,
+  data: unknown,
+  context: string,
+): T {
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) {
+    throw new AppError(
+      "VALIDATION_FAILED",
+      "Invalid input.",
+      serializeDetails({ context, issues: parsed.error.issues }),
+    );
+  }
+
+  return parsed.data;
+}
+
+function parsePositiveInt(data: unknown, context: string): number {
+  return parseOrThrow(positiveIntSchema, data, context);
 }
 
 function handleIpc<T, A extends unknown[]>(
@@ -182,32 +214,43 @@ handleIpc("db:getCollections", () => {
 
 handleIpc("db:addCollection", (_, collection: NewCollectionInput) => {
   const database = requireDb();
+  const input = parseOrThrow(
+    NewCollectionInputSchema,
+    collection,
+    "db:addCollection",
+  );
 
   const stmt = database.prepare(
     "INSERT INTO collections (name, icon) VALUES (?, ?)",
   );
-  const info = stmt.run(collection.name, collection.icon || "📁");
+  const info = stmt.run(input.name, input.icon || "📁");
 
   return {
     id: Number(info.lastInsertRowid),
-    name: collection.name,
-    icon: collection.icon,
+    name: input.name,
+    icon: input.icon,
   };
 });
 
 handleIpc("db:updateCollection", (_, collection: UpdateCollectionInput) => {
   const database = requireDb();
+  const input = parseOrThrow(
+    UpdateCollectionInputSchema,
+    collection,
+    "db:updateCollection",
+  );
 
   const stmt = database.prepare(
     "UPDATE collections SET name = ?, icon = ? WHERE id = ?",
   );
-  stmt.run(collection.name, collection.icon, collection.id);
+  stmt.run(input.name, input.icon, input.id);
 
   return true;
 });
 
 handleIpc("db:deleteCollection", (_, id) => {
   const database = requireDb();
+  const collectionId = parsePositiveInt(id, "db:deleteCollection");
   const deleteCollection = database.transaction((collectionId: number) => {
     database.prepare("DELETE FROM collections WHERE id = ?").run(collectionId);
     database
@@ -218,46 +261,49 @@ handleIpc("db:deleteCollection", (_, id) => {
       .run(collectionId);
   });
 
-  deleteCollection(id);
+  deleteCollection(collectionId);
   return true;
 });
 
 // ==================== FIELDS ====================
 handleIpc("db:getFields", (_, collectionId: number) => {
   const database = requireDb();
+  const parsedCollectionId = parsePositiveInt(collectionId, "db:getFields");
   const stmt = database.prepare(
     "SELECT * FROM fields WHERE collection_id = ? ORDER BY order_index ASC",
   );
-  return stmt.all(collectionId);
+  return stmt.all(parsedCollectionId);
 });
 
 handleIpc("db:addField", (_, field: NewFieldInput) => {
   const database = requireDb();
+  const input = parseOrThrow(NewFieldInputSchema, field, "db:addField");
   const stmt = database.prepare(
     "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
   );
   const info = stmt.run(
-    field.collectionId,
-    field.name,
-    field.type,
-    field.options || null,
-    field.orderIndex || 0,
+    input.collectionId,
+    input.name,
+    input.type,
+    input.options || null,
+    input.orderIndex || 0,
   );
 
-  return { id: Number(info.lastInsertRowid), ...field };
+  return { id: Number(info.lastInsertRowid), ...input };
 });
 
 handleIpc("db:updateField", (_, field: UpdateFieldInput) => {
   const database = requireDb();
+  const input = parseOrThrow(UpdateFieldInputSchema, field, "db:updateField");
   const stmt = database.prepare(
     "UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?",
   );
   stmt.run(
-    field.name,
-    field.type,
-    field.options || null,
-    field.orderIndex || 0,
-    field.id,
+    input.name,
+    input.type,
+    input.options || null,
+    input.orderIndex || 0,
+    input.id,
   );
 
   return true;
@@ -265,7 +311,8 @@ handleIpc("db:updateField", (_, field: UpdateFieldInput) => {
 
 handleIpc("db:deleteField", (_, id) => {
   const database = requireDb();
-  database.prepare("DELETE FROM fields WHERE id = ?").run(id);
+  const fieldId = parsePositiveInt(id, "db:deleteField");
+  database.prepare("DELETE FROM fields WHERE id = ?").run(fieldId);
 
   return true;
 });
@@ -281,17 +328,16 @@ type ItemRow = {
 
 handleIpc("db:getItems", (_, collectionId: number) => {
   const database = requireDb();
+  const parsedCollectionId = parsePositiveInt(collectionId, "db:getItems");
   const stmt = database.prepare(
     "SELECT * FROM items WHERE collection_id = ? ORDER BY created_at DESC",
   );
-  const items = stmt.all(collectionId) as ItemRow[];
+  const items = stmt.all(parsedCollectionId) as ItemRow[];
 
   return items.map((item) => {
+    let rawData: unknown;
     try {
-      return {
-        ...item,
-        data: JSON.parse(item.data) as ItemData,
-      };
+      rawData = JSON.parse(item.data);
     } catch (error) {
       throw new AppError(
         "DATA_CORRUPT",
@@ -302,38 +348,58 @@ handleIpc("db:getItems", (_, collectionId: number) => {
         }),
       );
     }
+
+    const parsedData = itemDataSchema.safeParse(rawData);
+    if (!parsedData.success) {
+      throw new AppError(
+        "DATA_CORRUPT",
+        "Failed to parse item data.",
+        serializeDetails({
+          itemId: item.id,
+          issues: parsedData.error.issues,
+        }),
+      );
+    }
+
+    return {
+      ...item,
+      data: parsedData.data as ItemData,
+    };
   });
 });
 
 handleIpc("db:addItem", (_, item: NewItemInput) => {
   const database = requireDb();
-  const dataJson = JSON.stringify(item.data);
+  const input = parseOrThrow(NewItemInputSchema, item, "db:addItem");
+  const dataJson = JSON.stringify(input.data);
   const stmt = database.prepare(
     "INSERT INTO items (collection_id, data) VALUES (?, ?)",
   );
-  const info = stmt.run(item.collectionId, dataJson);
+  const info = stmt.run(input.collectionId, dataJson);
 
   return {
     id: Number(info.lastInsertRowid),
-    collection_id: item.collectionId,
-    data: item.data,
+    collection_id: input.collectionId,
+    data: input.data,
   };
 });
 
 handleIpc("db:updateItem", (_, item: UpdateItemInput) => {
   const database = requireDb();
-  const dataJson = JSON.stringify(item.data);
+  const input = parseOrThrow(UpdateItemInputSchema, item, "db:updateItem");
+  const dataJson = JSON.stringify(input.data);
   const stmt = database.prepare(
     "UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
   );
-  stmt.run(dataJson, item.id);
+  stmt.run(dataJson, input.id);
 
   return true;
 });
 
 handleIpc("db:deleteItem", (_, id) => {
   const database = requireDb();
-  database.prepare("DELETE FROM items WHERE id = ?").run(id);
+  const itemId = parsePositiveInt(id, "db:deleteItem");
+  database.prepare("DELETE FROM items WHERE id = ?").run(itemId);
 
   return true;
 });

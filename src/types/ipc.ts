@@ -1,6 +1,7 @@
 export type IpcErrorCode =
   | "DB_NOT_READY"
   | "DB_QUERY_FAILED"
+  | "VALIDATION_FAILED"
   | "FS_READ_FAILED"
   | "FS_WRITE_FAILED"
   | "DATA_CORRUPT"

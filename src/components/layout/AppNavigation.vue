@@ -84,17 +84,20 @@
 import { ref, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useStore } from "../../store";
+import { useNotificationsStore } from "../../stores/notifications";
 import { Brain, LayoutDashboard, Plus } from "lucide-vue-next";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Listbox from "primevue/listbox";
 import { useIcons } from "../../composables/useIcons";
+import { collectionNameSchema, iconSchema } from "../../validation/schemas";
 import type { Collection } from "../../types/models";
 
 const { iconOptions, getIcon } = useIcons();
 const store = useStore();
 const { collections, selectedCollection, currentView } = storeToRefs(store);
+const notifications = useNotificationsStore();
 
 const appVersion = __APP_VERSION__;
 
@@ -131,11 +134,24 @@ function showDashboard() {
 }
 
 async function createCollection() {
-  if (!newCollection.value.name.trim()) return;
+  const nameResult = collectionNameSchema.safeParse(newCollection.value.name);
+  const iconResult = iconSchema.safeParse(newCollection.value.icon);
+
+  if (!nameResult.success || !iconResult.success) {
+    notifications.push({
+      severity: "warn",
+      summary: "Invalid collection",
+      detail: !nameResult.success
+        ? nameResult.error.issues[0]?.message
+        : iconResult.error.issues[0]?.message,
+      life: 5000,
+    });
+    return;
+  }
 
   const created = await store.addCollection({
-    name: newCollection.value.name,
-    icon: newCollection.value.icon,
+    name: nameResult.data,
+    icon: iconResult.data,
   });
 
   showNewCollectionModal.value = false;
