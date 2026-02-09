@@ -378,7 +378,7 @@
               <p class="text-xs text-[var(--text-muted)]">
                 Once you delete a collection, there is no going back.
               </p>
-              <Button severity="danger" class="gap-2 min-w-[180px] !text-white" @click="confirmDeleteCollection">
+              <Button severity="danger" class="gap-2 min-w-[180px]" @click="confirmDeleteCollection">
                 <Trash2 />
                 Delete Collection
               </Button>
