@@ -1,86 +1,72 @@
 # Second Brain
 
-A personal desktop database manager for organizing your data collections.
+A desktop application for organizing personal data collections with a flexible, database-driven approach.
 
-## ✨ Features
+## Features
 
-- 🗂️ **Flexible Collections** - Create unlimited custom collections (Games, Books, Movies, Recipes, etc.)
-- 🎨 **Custom Fields** - Define your own columns with different field types
-- 🔍 **Search & Filter** - Find your data quickly
-- 📊 **Dashboard** - Overview of all your collections
-- 🌙 **Dark Mode** - Beautiful, professional dark theme
-- 💾 **Offline First** - All data stored locally in SQLite
-- 🎯 **Drag & Drop** - Reorder fields easily
-- 🎭 **Lucide Icons** - Sleek, modern iconography
+- **Custom Collections** - Create unlimited collections for any data type
+- **Flexible Schema** - Define custom fields with support for text, numbers, dates, dropdowns, and text areas
+- **Data Management** - Import and export data in CSV or JSON formats with preview and merge options
 
-## 🚀 Tech Stack
+## Tech Stack
 
+- **Electron** - Cross-platform desktop framework
+- **Vue 3** - Reactive UI framework with Composition API
 - **TypeScript** - Type-safe development
-- **Electron** - Cross-platform desktop app framework
-- **Vue 3** - Modern reactive UI framework
-- **Vite** - Fast build tool
-- **SQLite** - Reliable local database (via better-sqlite3)
+- **SQLite** - Local database via better-sqlite3
+- **Vite** - Fast build tooling
+- **PrimeVue** - UI component library
+- **Tailwind CSS** - Utility-first styling
+- **Pinia** - State management
 
-## 📋 Prerequisites
+## Installation
 
-- **Node.js** v18 or newer ([Download](https://nodejs.org/))
-- **Git** ([Download](https://git-scm.com/))
-- **Windows** (currently tested on Windows)
+### Prerequisites
 
-## 🛠️ Installation
+- Node.js 18 or higher
+- Git
 
-### 1. Clone the repository
+### Setup
 
+1. Clone the repository:
 ```bash
 git clone https://github.com/YOUR-USERNAME/second-brain.git
 cd second-brain
 ```
 
-### 2. Install dependencies
-
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-### 3. Rebuild native modules for Electron
-
+3. Rebuild native modules for Electron:
 ```bash
-npm install --save-dev electron-rebuild
 npx electron-rebuild
 ```
 
-### 4. Build and run
-
+4. Build Electron main process:
 ```bash
 node build-electron.js
+```
+
+5. Start the development server:
+```bash
 npm run dev
 ```
 
-## 📦 Building for Production
+## Build for Production
 
-Build a distributable Windows executable:
-
+Create a Windows installer:
 ```bash
 npm run build:win
 ```
 
-The installer will be created in the `release/` folder.
+The installer will be generated in the `release/` directory.
 
-## 🗄️ Data Storage
+## Data Storage
 
-Your database is stored at:
+Application data is stored locally in an SQLite database:
 
-```
-%APPDATA%/Roaming/second-brain/secondbrain.db
-```
+**Windows:** `%APPDATA%/second-brain/secondbrain.db`
 
-All data is stored locally and never leaves your computer.
-
-## 🙏 Acknowledgments
-
-- Built with [Electron](https://www.electronjs.org/)
-- UI powered by [Vue 3](https://vuejs.org/)
-- Database by [SQLite](https://www.sqlite.org/)
-- Icons by [Lucide](https://lucide.dev/)
-
-**Made with ❤️ for personal productivity**
+All data remains on your machine and is never transmitted externally.
