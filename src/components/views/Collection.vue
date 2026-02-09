@@ -40,7 +40,7 @@
         Define the structure of your collection by adding fields
       </p>
       <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="showFieldsManager = true">
-          <Plus />
+        <Plus />
         Add Fields
       </Button>
     </div>
@@ -71,11 +71,11 @@
           <template #body="{ data }">
             <div class="flex items-center justify-end gap-2">
               <Button text class="h-8 w-8 p-0" title="Edit" @click="editItem(data)">
-                  <Pencil />
+                <Pencil />
               </Button>
               <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete"
                 @click="deleteItem(data)">
-                  <Trash2 />
+                <Trash2 />
               </Button>
             </div>
           </template>
@@ -125,8 +125,7 @@
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="showFieldsManager" header="Manage Fields" modal :draggable="false"
-      class="max-w-4xl">
+    <Dialog v-model:visible="showFieldsManager" header="Manage Fields" modal :draggable="false" class="max-w-4xl">
       <div class="space-y-6">
         <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onFieldsReorder">
           <Column rowReorder headerStyle="width: 3rem" />
@@ -140,7 +139,7 @@
             <template #body="{ data }">
               <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete field"
                 @click="deleteField(data)">
-                  <Trash2 />
+                <Trash2 />
               </Button>
             </template>
           </Column>
@@ -266,7 +265,8 @@
                       <RadioButton v-model="importMode" value="replace" />
                       <div>
                         <div class="font-medium text-[var(--text-primary)]">Replace</div>
-                        <div class="text-xs text-[var(--text-muted)]">Delete all existing items and import new data</div>
+                        <div class="text-xs text-[var(--text-muted)]">Delete all existing items and import new data
+                        </div>
                       </div>
                     </label>
                   </div>
