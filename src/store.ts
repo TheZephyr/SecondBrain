@@ -7,6 +7,7 @@ export const useStore = defineStore("main", () => {
   const fields = ref<any[]>([]);
   const items = ref<any[]>([]);
   const selectedCollection = ref<any>(null);
+  const currentView = ref<"dashboard" | "collection">("dashboard");
 
   // Actions
   async function loadCollections() {
@@ -77,12 +78,18 @@ export const useStore = defineStore("main", () => {
   function selectCollection(collection: any) {
     selectedCollection.value = collection;
     if (collection) {
+      currentView.value = "collection";
       loadFields(collection.id);
       loadItems(collection.id);
     } else {
+      currentView.value = "dashboard";
       fields.value = [];
       items.value = [];
     }
+  }
+
+  function showDashboard() {
+    selectCollection(null);
   }
 
   return {
@@ -90,6 +97,7 @@ export const useStore = defineStore("main", () => {
     fields,
     items,
     selectedCollection,
+    currentView,
     loadCollections,
     addCollection,
     updateCollection,
@@ -103,5 +111,6 @@ export const useStore = defineStore("main", () => {
     updateItem,
     deleteItem,
     selectCollection,
+    showDashboard,
   };
 });
