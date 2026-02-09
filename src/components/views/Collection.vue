@@ -104,16 +104,23 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
             <FloatLabel class="w-full" variant="in">
-              <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)" v-model="formData[field.name]"
-                type="text" class="w-full" />
+              <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)"
+                :modelValue="getTextValue(field.name)"
+                @update:modelValue="value => setTextValue(field.name, value)" type="text" class="w-full" />
               <Textarea v-else-if="field.type === 'textarea'" :id="getFieldInputId(field)"
-                v-model="formData[field.name]" rows="3" class="w-full" />
+                :modelValue="getTextValue(field.name)"
+                @update:modelValue="value => setTextValue(field.name, value)" rows="3" class="w-full" />
               <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
-                v-model="formData[field.name]" inputClass="w-full" class="w-full" />
+                :modelValue="getNumberValue(field.name)"
+                @update:modelValue="value => setNumberValue(field.name, value)" inputClass="w-full" class="w-full" />
               <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
-                v-model="formData[field.name]" dateFormat="yy-mm-dd" inputClass="w-full" class="w-full" />
+                :modelValue="getDateValue(field.name)"
+                @update:modelValue="value => setDateValue(field.name, value)" dateFormat="yy-mm-dd"
+                inputClass="w-full" class="w-full" />
               <Select v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
-                v-model="formData[field.name]" :options="getSelectOptions(field)" class="w-full" />
+                :modelValue="getSelectValue(field.name)"
+                @update:modelValue="value => setSelectValue(field.name, value)" :options="getSelectOptions(field)"
+                class="w-full" />
               <label :for="getFieldInputId(field)">{{ field.name }}</label>
             </FloatLabel>
           </div>
@@ -418,6 +425,7 @@ import {
   Upload
 } from 'lucide-vue-next'
 import { useIcons } from '../../composables/useIcons'
+import { handleIpc } from '../../utils/ipc'
 import { useConfirm } from 'primevue/useconfirm'
 import Accordion from 'primevue/accordion'
 import AccordionContent from 'primevue/accordioncontent'
@@ -657,12 +665,19 @@ async function handleExport() {
       { name: 'All Files', extensions: ['*'] }
     ]
 
-    const filePath = await window.electronAPI.showSaveDialog({
+    const filePathResult = await window.electronAPI.showSaveDialog({
       title: `Export ${props.collection.name}`,
       defaultPath: getDefaultFilename(),
       filters
     })
 
+    if (!filePathResult.ok) {
+      handleIpc(filePathResult, 'export:showSaveDialog', null)
+      isExporting.value = false
+      return
+    }
+
+    const filePath = filePathResult.data
     if (!filePath) {
       isExporting.value = false
       return
@@ -675,7 +690,8 @@ async function handleExport() {
       content = generateJSON()
     }
 
-    const success = await window.electronAPI.writeFile(filePath, content)
+    const writeResult = await window.electronAPI.writeFile(filePath, content)
+    const success = handleIpc(writeResult, 'export:writeFile', false)
 
     if (success) {
       console.log('Export successful!')
@@ -702,18 +718,30 @@ async function handleSelectFile() {
       { name: 'All Files', extensions: ['*'] }
     ]
 
-    const filePath = await window.electronAPI.showOpenDialog({
+    const filePathResult = await window.electronAPI.showOpenDialog({
       title: 'Select File to Import',
       filters
     })
 
+    if (!filePathResult.ok) {
+      handleIpc(filePathResult, 'import:showOpenDialog', null)
+      return
+    }
+
+    const filePath = filePathResult.data
     if (!filePath) {
       return
     }
 
     selectedFile.value = filePath
 
-    const content = await window.electronAPI.readFile(filePath)
+    const contentResult = await window.electronAPI.readFile(filePath)
+    if (!contentResult.ok) {
+      handleIpc(contentResult, 'import:readFile', null)
+      return
+    }
+
+    const content = contentResult.data
     if (content === null) {
       console.error('Failed to read file')
       return
@@ -828,7 +856,13 @@ async function handleImport() {
   isImporting.value = true
 
   try {
-    const content = await window.electronAPI.readFile(selectedFile.value)
+    const contentResult = await window.electronAPI.readFile(selectedFile.value)
+    if (!contentResult.ok) {
+      handleIpc(contentResult, 'import:readFile', null)
+      return
+    }
+
+    const content = contentResult.data
     if (!content) {
       console.error('Failed to read file')
       return
@@ -860,7 +894,11 @@ async function handleImport() {
     if (importMode.value === 'replace') {
       const itemsToDelete = [...items.value]
       for (const item of itemsToDelete) {
-        await window.electronAPI.deleteItem(item.id)
+        const deleteResult = await window.electronAPI.deleteItem(item.id)
+        if (!deleteResult.ok) {
+          handleIpc(deleteResult, 'db:deleteItem', false)
+          return
+        }
       }
       await store.loadItems(props.collection.id)
     }
@@ -961,6 +999,63 @@ async function deleteField(field: Field) {
 function getSelectOptions(field: Field) {
   if (!field.options) return []
   return field.options.split(',').map((opt: string) => opt.trim())
+}
+
+function getTextValue(fieldName: string): string | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return String(value)
+}
+
+function setTextValue(fieldName: string, value: string | null | undefined) {
+  formData.value[fieldName] = value ?? ''
+}
+
+function getSelectValue(fieldName: string): string | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  return String(value)
+}
+
+function setSelectValue(fieldName: string, value: string | null | undefined) {
+  formData.value[fieldName] = value ?? ''
+}
+
+function getNumberValue(fieldName: string): number | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function setNumberValue(fieldName: string, value: number | null | undefined) {
+  formData.value[fieldName] = value ?? ''
+}
+
+type DateModelValue = Date | Array<Date> | Array<Date | null> | null | undefined
+
+function getDateValue(fieldName: string): Date | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined || value === '') return null
+  if (value instanceof Date) return value
+  return parseDateValue(value)
+}
+
+function setDateValue(fieldName: string, value: DateModelValue) {
+  if (value instanceof Date) {
+    formData.value[fieldName] = value
+    return
+  }
+  formData.value[fieldName] = null
 }
 
 function resetFormData() {

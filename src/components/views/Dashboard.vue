@@ -53,6 +53,7 @@ import {
 } from 'lucide-vue-next'
 import Card from 'primevue/card'
 import { useIcons } from '../../composables/useIcons'
+import { handleIpc } from '../../utils/ipc'
 
 const { getIcon } = useIcons()
 const store = useStore()
@@ -73,7 +74,8 @@ async function loadStats() {
   for (const collection of collections.value) {
     // This is a temporary solution to get the item count.
     // A better approach would be to have a dedicated API endpoint for this.
-    const items = await window.electronAPI.getItems(collection.id)
+    const result = await window.electronAPI.getItems(collection.id)
+    const items = handleIpc(result, `db:getItems:${collection.id}`, [])
     collectionStats.value.set(collection.id, items.length)
   }
 }

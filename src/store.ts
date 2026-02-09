@@ -11,6 +11,7 @@ import type {
   NewItemInput,
   UpdateItemInput,
 } from "./types/models";
+import { handleIpc } from "./utils/ipc";
 
 export const useStore = defineStore("main", () => {
   // State
@@ -22,70 +23,101 @@ export const useStore = defineStore("main", () => {
 
   // Actions
   async function loadCollections() {
-    collections.value = await window.electronAPI.getCollections();
+    const result = await window.electronAPI.getCollections();
+    collections.value = handleIpc(result, "db:getCollections", []);
   }
 
   async function addCollection(collection: NewCollectionInput) {
-    const newCollection = await window.electronAPI.addCollection(collection);
-    await loadCollections();
+    const result = await window.electronAPI.addCollection(collection);
+    const newCollection = handleIpc(result, "db:addCollection", null);
+    if (newCollection) {
+      await loadCollections();
+    }
     return newCollection;
   }
 
   async function updateCollection(collection: UpdateCollectionInput) {
-    await window.electronAPI.updateCollection(collection);
-    await loadCollections();
+    const result = await window.electronAPI.updateCollection(collection);
+    const success = handleIpc(result, "db:updateCollection", false);
+    if (success) {
+      await loadCollections();
+    }
   }
 
   async function deleteCollection(id: number) {
-    await window.electronAPI.deleteCollection(id);
-    await loadCollections();
-    if (selectedCollection.value?.id === id) {
-      selectedCollection.value = null;
+    const result = await window.electronAPI.deleteCollection(id);
+    const success = handleIpc(result, "db:deleteCollection", false);
+    if (success) {
+      await loadCollections();
+      if (selectedCollection.value?.id === id) {
+        selectedCollection.value = null;
+      }
     }
   }
 
   async function loadFields(collectionId: number) {
-    fields.value = await window.electronAPI.getFields(collectionId);
+    const result = await window.electronAPI.getFields(collectionId);
+    fields.value = handleIpc(result, "db:getFields", []);
   }
 
   async function addField(field: NewFieldInput) {
-    await window.electronAPI.addField(field);
-    await loadFields(field.collectionId);
+    const result = await window.electronAPI.addField(field);
+    const created = handleIpc(result, "db:addField", null);
+    if (created) {
+      await loadFields(field.collectionId);
+    }
   }
 
   async function updateField(field: UpdateFieldInput) {
     if (!selectedCollection.value) return;
 
-    await window.electronAPI.updateField(field);
-    await loadFields(selectedCollection.value.id);
+    const result = await window.electronAPI.updateField(field);
+    const success = handleIpc(result, "db:updateField", false);
+    if (success) {
+      await loadFields(selectedCollection.value.id);
+    }
   }
 
   async function deleteField(fieldId: number) {
     if (!selectedCollection.value) return;
 
-    await window.electronAPI.deleteField(fieldId);
-    await loadFields(selectedCollection.value.id);
+    const result = await window.electronAPI.deleteField(fieldId);
+    const success = handleIpc(result, "db:deleteField", false);
+    if (success) {
+      await loadFields(selectedCollection.value.id);
+    }
   }
 
   async function loadItems(collectionId: number) {
-    items.value = await window.electronAPI.getItems(collectionId);
+    const result = await window.electronAPI.getItems(collectionId);
+    items.value = handleIpc(result, "db:getItems", []);
   }
 
   async function addItem(item: NewItemInput) {
-    await window.electronAPI.addItem(item);
-    await loadItems(item.collectionId);
+    const result = await window.electronAPI.addItem(item);
+    const created = handleIpc(result, "db:addItem", null);
+    if (created) {
+      await loadItems(item.collectionId);
+    }
+    return created;
   }
 
   async function updateItem(item: UpdateItemInput) {
     if (!selectedCollection.value) return;
-    await window.electronAPI.updateItem(item);
-    await loadItems(selectedCollection.value.id);
+    const result = await window.electronAPI.updateItem(item);
+    const success = handleIpc(result, "db:updateItem", false);
+    if (success) {
+      await loadItems(selectedCollection.value.id);
+    }
   }
 
   async function deleteItem(item: Item) {
     if (!selectedCollection.value) return;
-    await window.electronAPI.deleteItem(item.id);
-    await loadItems(selectedCollection.value.id);
+    const result = await window.electronAPI.deleteItem(item.id);
+    const success = handleIpc(result, "db:deleteItem", false);
+    if (success) {
+      await loadItems(selectedCollection.value.id);
+    }
   }
 
   function selectCollection(collection: Collection | null) {
