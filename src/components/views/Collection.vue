@@ -104,16 +104,23 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
             <FloatLabel class="w-full" variant="in">
-              <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)" v-model="formData[field.name]"
-                type="text" class="w-full" />
+              <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)"
+                :modelValue="getTextValue(field.name)"
+                @update:modelValue="value => setTextValue(field.name, value)" type="text" class="w-full" />
               <Textarea v-else-if="field.type === 'textarea'" :id="getFieldInputId(field)"
-                v-model="formData[field.name]" rows="3" class="w-full" />
+                :modelValue="getTextValue(field.name)"
+                @update:modelValue="value => setTextValue(field.name, value)" rows="3" class="w-full" />
               <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
-                v-model="formData[field.name]" inputClass="w-full" class="w-full" />
+                :modelValue="getNumberValue(field.name)"
+                @update:modelValue="value => setNumberValue(field.name, value)" inputClass="w-full" class="w-full" />
               <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
-                v-model="formData[field.name]" dateFormat="yy-mm-dd" inputClass="w-full" class="w-full" />
+                :modelValue="getDateValue(field.name)"
+                @update:modelValue="value => setDateValue(field.name, value)" dateFormat="yy-mm-dd"
+                inputClass="w-full" class="w-full" />
               <Select v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
-                v-model="formData[field.name]" :options="getSelectOptions(field)" class="w-full" />
+                :modelValue="getSelectValue(field.name)"
+                @update:modelValue="value => setSelectValue(field.name, value)" :options="getSelectOptions(field)"
+                class="w-full" />
               <label :for="getFieldInputId(field)">{{ field.name }}</label>
             </FloatLabel>
           </div>
@@ -992,6 +999,63 @@ async function deleteField(field: Field) {
 function getSelectOptions(field: Field) {
   if (!field.options) return []
   return field.options.split(',').map((opt: string) => opt.trim())
+}
+
+function getTextValue(fieldName: string): string | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return String(value)
+}
+
+function setTextValue(fieldName: string, value: string | null | undefined) {
+  formData.value[fieldName] = value ?? ''
+}
+
+function getSelectValue(fieldName: string): string | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  return String(value)
+}
+
+function setSelectValue(fieldName: string, value: string | null | undefined) {
+  formData.value[fieldName] = value ?? ''
+}
+
+function getNumberValue(fieldName: string): number | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function setNumberValue(fieldName: string, value: number | null | undefined) {
+  formData.value[fieldName] = value ?? ''
+}
+
+type DateModelValue = Date | Array<Date> | Array<Date | null> | null | undefined
+
+function getDateValue(fieldName: string): Date | null {
+  const value = formData.value[fieldName]
+  if (value === null || value === undefined || value === '') return null
+  if (value instanceof Date) return value
+  return parseDateValue(value)
+}
+
+function setDateValue(fieldName: string, value: DateModelValue) {
+  if (value instanceof Date) {
+    formData.value[fieldName] = value
+    return
+  }
+  formData.value[fieldName] = null
 }
 
 function resetFormData() {
