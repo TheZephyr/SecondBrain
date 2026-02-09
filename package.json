@@ -15,11 +15,12 @@
   },
   "dependencies": {
     "@primeuix/themes": "^1.2.3",
+    "@vueuse/core": "^14.2.0",
     "better-sqlite3": "^12.6.2",
     "lucide-vue-next": "^0.563.0",
+    "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.0",
-    "pinia": "^3.0.4",
     "vue": "^3.5.13"
   },
   "devDependencies": {
@@ -37,8 +38,8 @@
     "tailwindcss-primeui": "^0.6.1",
     "typescript": "~5.6.2",
     "vite": "^6.0.5",
-    "vue-tsc": "^2.1.10",
     "vitest": "^2.1.0",
+    "vue-tsc": "^2.1.10",
     "wait-on": "^8.0.1"
   },
   "build": {
@@ -57,5 +58,3 @@
     }
   }
 }
-
-
