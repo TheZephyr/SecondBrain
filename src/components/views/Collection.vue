@@ -406,6 +406,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, toRef } from 'vue'
+import { refDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { useStore } from '../../store'
 import {
@@ -472,6 +473,7 @@ const props = defineProps<{
 const emit = defineEmits(['collection-deleted'])
 
 const searchQuery = ref('')
+const debouncedSearchQuery = refDebounced(searchQuery, 200)
 const showAddItemForm = ref(false)
 const showFieldsManager = ref(false)
 const showCollectionSettings = ref(false)
@@ -545,8 +547,8 @@ const orderedFields = computed(() => {
 const filteredItems = computed(() => {
   let result = items.value
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
+  if (debouncedSearchQuery.value) {
+    const query = debouncedSearchQuery.value.toLowerCase()
     result = result.filter(item => {
       return Object.values(item.data).some(value =>
         String(value).toLowerCase().includes(query)
