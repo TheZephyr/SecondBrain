@@ -112,18 +112,20 @@
       :draggable="false" class="max-w-2xl" @hide="cancelItemForm">
       <form @submit.prevent="saveItem">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div v-for="field in orderedFields" :key="field.id" class="space-y-2"
-            :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
-            <label class="text-xs font-medium text-[var(--text-secondary)]">{{ field.name }}</label>
-            <InputText v-if="field.type === 'text'" v-model="formData[field.name]" type="text"
-              :placeholder="'Enter ' + field.name.toLowerCase()" class="w-full" />
-            <Textarea v-else-if="field.type === 'textarea'" v-model="formData[field.name]" rows="4"
-              :placeholder="'Enter ' + field.name.toLowerCase()" class="w-full" />
-            <InputNumber v-else-if="field.type === 'number'" v-model="formData[field.name]" inputClass="w-full"
-              class="w-full" />
-            <InputText v-else-if="field.type === 'date'" v-model="formData[field.name]" type="date" class="w-full" />
-            <Dropdown v-else-if="field.type === 'select'" v-model="formData[field.name]"
-              :options="getSelectOptions(field)" placeholder="Select..." class="w-full" />
+          <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
+            <FloatLabel class="w-full" variant="on">
+              <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)" v-model="formData[field.name]"
+                type="text" class="w-full" />
+              <Textarea v-else-if="field.type === 'textarea'" :id="getFieldInputId(field)"
+                v-model="formData[field.name]" rows="4" class="w-full" />
+              <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
+                v-model="formData[field.name]" inputClass="w-full" class="w-full" />
+              <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
+                v-model="formData[field.name]" dateFormat="yy-mm-dd" inputClass="w-full" class="w-full" />
+              <Dropdown v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
+                v-model="formData[field.name]" :options="getSelectOptions(field)" class="w-full" />
+              <label :for="getFieldInputId(field)">{{ field.name }}</label>
+            </FloatLabel>
           </div>
         </div>
       </form>
@@ -438,6 +440,8 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
+import DatePicker from 'primevue/datepicker'
+import FloatLabel from 'primevue/floatlabel'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Listbox from 'primevue/listbox'
@@ -544,6 +548,10 @@ const filteredItems = computed(() => {
 
 function getFieldPath(fieldName: string) {
   return `data.${fieldName}`
+}
+
+function getFieldInputId(field: any) {
+  return `field-input-${field.id}`
 }
 
 function normalizeSortMeta(meta: MultiSortMeta[]): MultiSortMeta[] {
@@ -954,7 +962,7 @@ function getSelectOptions(field: any) {
 function resetFormData() {
   formData.value = {}
   fields.value.forEach(field => {
-    formData.value[field.name] = ''
+    formData.value[field.name] = field.type === 'date' ? null : ''
   })
 }
 
@@ -966,6 +974,11 @@ function cancelItemForm() {
 
 async function saveItem() {
   const plainData = JSON.parse(JSON.stringify(formData.value))
+  fields.value.forEach(field => {
+    if (field.type === 'date') {
+      plainData[field.name] = formatDateForStorage(formData.value[field.name])
+    }
+  })
 
   if (editingItem.value) {
     await store.updateItem({
@@ -987,7 +1000,9 @@ function editItem(item: any) {
   const data: any = {}
   fields.value.forEach(field => {
     const currentValue = item.data[field.name]
-    if (field.type === 'number' && currentValue !== '' && currentValue !== null && currentValue !== undefined) {
+    if (field.type === 'date') {
+      data[field.name] = parseDateValue(currentValue)
+    } else if (field.type === 'number' && currentValue !== '' && currentValue !== null && currentValue !== undefined) {
       data[field.name] = Number(currentValue)
     } else {
       data[field.name] = currentValue ?? ''
@@ -1013,9 +1028,47 @@ async function deleteItem(item: any) {
 function formatFieldValue(value: any, type: string) {
   if (value === null || value === undefined || value === '') return '-'
   if (type === 'date') {
-    return new Date(value).toLocaleDateString()
+    return formatDateForDisplay(value)
   }
   return value
+}
+
+function parseDateValue(value: any): Date | null {
+  if (value === null || value === undefined || value === '') return null
+  if (value instanceof Date) return value
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (match) {
+      const year = Number(match[1])
+      const month = Number(match[2]) - 1
+      const day = Number(match[3])
+      const date = new Date(year, month, day)
+      return Number.isNaN(date.getTime()) ? null : date
+    }
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatDateForStorage(value: any): string {
+  if (value === null || value === undefined || value === '') return ''
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value
+  }
+
+  const date = value instanceof Date ? value : parseDateValue(value)
+  if (!date) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatDateForDisplay(value: any): string {
+  const date = parseDateValue(value)
+  if (!date) return '-'
+  return date.toLocaleDateString()
 }
 
 function cancelSettings() {
