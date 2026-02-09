@@ -16,9 +16,14 @@ import {
   BarChart3,
   Target,
 } from "lucide-vue-next";
+import type { Component } from "vue";
 
 export function useIcons() {
-  const iconOptions = [
+  const iconOptions: Array<{
+    value: string;
+    label: string;
+    component: Component;
+  }> = [
     { value: "folder", label: "Folder", component: Folder },
     { value: "gamepad2", label: "Games", component: Gamepad2 },
     { value: "book", label: "Books", component: Book },
@@ -37,7 +42,7 @@ export function useIcons() {
     { value: "target", label: "Goals", component: Target },
   ];
 
-  const iconMap: any = {
+  const iconMap: Record<string, Component> = {
     folder: Folder,
     gamepad2: Gamepad2,
     book: Book,

@@ -1,3 +1,15 @@
+import type {
+  Collection,
+  Field,
+  Item,
+  NewCollectionInput,
+  UpdateCollectionInput,
+  NewFieldInput,
+  UpdateFieldInput,
+  NewItemInput,
+  UpdateItemInput,
+} from "./models";
+
 export interface SaveDialogOptions {
   title?: string;
   defaultPath?: string;
@@ -12,21 +24,21 @@ export interface OpenDialogOptions {
 
 export interface IElectronAPI {
   // Collections
-  getCollections: () => Promise<any[]>;
-  addCollection: (collection: any) => Promise<any>;
-  updateCollection: (collection: any) => Promise<boolean>;
+  getCollections: () => Promise<Collection[]>;
+  addCollection: (collection: NewCollectionInput) => Promise<Collection | null>;
+  updateCollection: (collection: UpdateCollectionInput) => Promise<boolean>;
   deleteCollection: (id: number) => Promise<boolean>;
 
   // Fields
-  getFields: (collectionId: number) => Promise<any[]>;
-  addField: (field: any) => Promise<any>;
-  updateField: (field: any) => Promise<boolean>;
+  getFields: (collectionId: number) => Promise<Field[]>;
+  addField: (field: NewFieldInput) => Promise<(NewFieldInput & { id: number }) | null>;
+  updateField: (field: UpdateFieldInput) => Promise<boolean>;
   deleteField: (id: number) => Promise<boolean>;
 
   // Items
-  getItems: (collectionId: number) => Promise<any[]>;
-  addItem: (item: any) => Promise<any>;
-  updateItem: (item: any) => Promise<boolean>;
+  getItems: (collectionId: number) => Promise<Item[]>;
+  addItem: (item: NewItemInput) => Promise<Item | null>;
+  updateItem: (item: UpdateItemInput) => Promise<boolean>;
   deleteItem: (id: number) => Promise<boolean>;
 
   // Export

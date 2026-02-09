@@ -90,6 +90,7 @@ import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Listbox from "primevue/listbox";
 import { useIcons } from "../../composables/useIcons";
+import type { Collection } from "../../types/models";
 
 const { iconOptions, getIcon } = useIcons();
 const store = useStore();
@@ -121,7 +122,7 @@ const iconListboxPt = {
   }),
 };
 
-function handleSelectCollection(collection: any) {
+function handleSelectCollection(collection: Collection) {
   store.selectCollection(collection);
 }
 

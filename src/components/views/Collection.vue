@@ -438,6 +438,16 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Toolbar from 'primevue/toolbar'
 import Column from 'primevue/column'
+import type {
+  Collection,
+  Field,
+  Item,
+  FieldType,
+  ItemData,
+  ItemDataValue,
+  ExportFormat,
+  ImportMode
+} from '../../types/models'
 
 const { getIcon, iconOptions } = useIcons()
 const store = useStore()
@@ -445,7 +455,7 @@ const { fields, items } = storeToRefs(store)
 const confirm = useConfirm()
 
 const props = defineProps<{
-  collection: any
+  collection: Collection
 }>()
 
 const emit = defineEmits(['collection-deleted'])
@@ -454,9 +464,9 @@ const searchQuery = ref('')
 const showAddItemForm = ref(false)
 const showFieldsManager = ref(false)
 const showCollectionSettings = ref(false)
-const editingItem = ref<any>(null)
-const formData = ref<any>({})
-const newField = ref({
+const editingItem = ref<Item | null>(null)
+const formData = ref<FormData>({})
+const newField = ref<{ name: string; type: FieldType; options: string }>({
   name: '',
   type: 'text',
   options: ''
@@ -464,27 +474,33 @@ const newField = ref({
 const collectionName = ref('')
 const collectionIcon = ref('')
 
-type MultiSortMeta = { field: string; order: 1 | -1 }
-const multiSortMeta = ref<MultiSortMeta[]>([])
-
-// Export state
-const exportFormat = ref<'csv' | 'json'>('csv')
-const isExporting = ref(false)
-
-// Import state
-const importFormat = ref<'csv' | 'json'>('csv')
-const importMode = ref<'append' | 'replace'>('append')
-const isImporting = ref(false)
-const selectedFile = ref<string | null>(null)
-const importPreview = ref<{
+type FormValue = ItemDataValue | Date
+type FormData = Record<string, FormValue>
+type ImportRow = Record<string, ItemDataValue | undefined>
+type ImportPreview = {
   itemCount: number
   fields: string[]
   newFields: string[]
   matchedFields: string[]
-  sample: any[]
-} | null>(null)
+  sample: ImportRow[]
+}
+type RowReorderEvent = { value: Field[] }
 
-const fieldTypeOptions = [
+type MultiSortMeta = { field: string; order: 1 | -1 }
+const multiSortMeta = ref<MultiSortMeta[]>([])
+
+// Export state
+const exportFormat = ref<ExportFormat>('csv')
+const isExporting = ref(false)
+
+// Import state
+const importFormat = ref<ExportFormat>('csv')
+const importMode = ref<ImportMode>('append')
+const isImporting = ref(false)
+const selectedFile = ref<string | null>(null)
+const importPreview = ref<ImportPreview | null>(null)
+
+const fieldTypeOptions: Array<{ label: string; value: FieldType }> = [
   { label: 'Text', value: 'text' },
   { label: 'Text Area', value: 'textarea' },
   { label: 'Number', value: 'number' },
@@ -538,7 +554,7 @@ function getFieldPath(fieldName: string) {
   return `data.${fieldName}`
 }
 
-function getFieldInputId(field: any) {
+function getFieldInputId(field: Field) {
   return `field-input-${field.id}`
 }
 
@@ -582,7 +598,7 @@ function loadSortPreferences() {
 watch(multiSortMeta, () => saveSortPreferences(), { deep: true })
 
 // Export functions
-function escapeCSVValue(value: any): string {
+function escapeCSVValue(value: ItemDataValue | undefined): string {
   if (value === null || value === undefined) {
     return '""'
   }
@@ -611,7 +627,7 @@ function generateCSV(): string {
 function generateJSON(): string {
   const ordered = [...fields.value].sort((a, b) => a.order_index - b.order_index)
   const exportData = items.value.map(item => {
-    const orderedData: any = {}
+    const orderedData: ItemData = {}
     for (const field of ordered) {
       orderedData[field.name] = item.data[field.name] ?? ''
     }
@@ -709,7 +725,7 @@ async function handleSelectFile() {
       return
     }
 
-    let parsedData: any[] = []
+    let parsedData: ImportRow[] = []
     let fileFields: string[] = []
 
     if (importFormat.value === 'csv') {
@@ -724,14 +740,14 @@ async function handleSelectFile() {
 
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i])
-        const row: any = {}
+        const row: ImportRow = {}
         for (let j = 0; j < fileFields.length; j++) {
           row[fileFields[j]] = values[j] || ''
         }
         parsedData.push(row)
       }
     } else {
-      parsedData = JSON.parse(content)
+      parsedData = JSON.parse(content) as ImportRow[]
       if (!Array.isArray(parsedData)) {
         console.error('JSON must be an array')
         return
@@ -818,7 +834,7 @@ async function handleImport() {
       return
     }
 
-    let parsedData: any[] = []
+    let parsedData: ImportRow[] = []
     let fileFields: string[] = []
 
     if (importFormat.value === 'csv') {
@@ -828,14 +844,14 @@ async function handleImport() {
 
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i])
-        const row: any = {}
+        const row: ImportRow = {}
         for (let j = 0; j < fileFields.length; j++) {
           row[fileFields[j]] = values[j] || ''
         }
         parsedData.push(row)
       }
     } else {
-      parsedData = JSON.parse(content)
+      parsedData = JSON.parse(content) as ImportRow[]
       if (parsedData.length > 0) {
         fileFields = Object.keys(parsedData[0])
       }
@@ -882,7 +898,7 @@ async function handleImport() {
     const currentFieldNames = fields.value.map(f => f.name)
 
     const itemsToAdd = parsedData.map(row => {
-      const itemData: any = {}
+      const itemData: ItemData = {}
       for (const fieldName of currentFieldNames) {
         itemData[fieldName] = ''
       }
@@ -929,7 +945,7 @@ async function addField() {
   newField.value = { name: '', type: 'text', options: '' }
 }
 
-async function deleteField(field: any) {
+async function deleteField(field: Field) {
   confirm.require({
     header: 'Delete Field',
     message: `Delete "${field.name}" field? All data in this field will be lost.`,
@@ -942,7 +958,7 @@ async function deleteField(field: any) {
   })
 }
 
-function getSelectOptions(field: any) {
+function getSelectOptions(field: Field) {
   if (!field.options) return []
   return field.options.split(',').map((opt: string) => opt.trim())
 }
@@ -961,7 +977,7 @@ function cancelItemForm() {
 }
 
 async function saveItem() {
-  const plainData = JSON.parse(JSON.stringify(formData.value))
+  const plainData = JSON.parse(JSON.stringify(formData.value)) as Record<string, unknown>
   fields.value.forEach(field => {
     if (field.type === 'date') {
       plainData[field.name] = formatDateForStorage(formData.value[field.name])
@@ -971,21 +987,21 @@ async function saveItem() {
   if (editingItem.value) {
     await store.updateItem({
       id: editingItem.value.id,
-      data: plainData
+      data: plainData as ItemData
     })
   } else {
     await store.addItem({
       collectionId: props.collection.id,
-      data: plainData
+      data: plainData as ItemData
     })
   }
 
   cancelItemForm()
 }
 
-function editItem(item: any) {
+function editItem(item: Item) {
   editingItem.value = item
-  const data: any = {}
+  const data: FormData = {}
   fields.value.forEach(field => {
     const currentValue = item.data[field.name]
     if (field.type === 'date') {
@@ -1000,7 +1016,7 @@ function editItem(item: any) {
   showAddItemForm.value = true
 }
 
-async function deleteItem(item: any) {
+async function deleteItem(item: Item) {
   confirm.require({
     header: 'Delete Item',
     message: 'Are you sure you want to delete this item? This action cannot be undone.',
@@ -1013,7 +1029,7 @@ async function deleteItem(item: any) {
   })
 }
 
-function formatFieldValue(value: any, type: string) {
+function formatFieldValue(value: ItemDataValue | undefined, type: FieldType) {
   if (value === null || value === undefined || value === '') return '-'
   if (type === 'date') {
     return formatDateForDisplay(value)
@@ -1021,7 +1037,7 @@ function formatFieldValue(value: any, type: string) {
   return value
 }
 
-function parseDateValue(value: any): Date | null {
+function parseDateValue(value: ItemDataValue | Date | undefined): Date | null {
   if (value === null || value === undefined || value === '') return null
   if (value instanceof Date) return value
   if (typeof value === 'string') {
@@ -1039,7 +1055,7 @@ function parseDateValue(value: any): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-function formatDateForStorage(value: any): string {
+function formatDateForStorage(value: FormValue | undefined): string {
   if (value === null || value === undefined || value === '') return ''
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value
@@ -1053,7 +1069,7 @@ function formatDateForStorage(value: any): string {
   return `${year}-${month}-${day}`
 }
 
-function formatDateForDisplay(value: any): string {
+function formatDateForDisplay(value: ItemDataValue | Date | undefined): string {
   const date = parseDateValue(value)
   if (!date) return '-'
   return date.toLocaleDateString()
@@ -1089,8 +1105,8 @@ async function confirmDeleteCollection() {
   })
 }
 
-async function onFieldsReorder(event: any) {
-  const reorderedFields = event.value as any[]
+async function onFieldsReorder(event: RowReorderEvent) {
+  const reorderedFields = event.value
   if (!reorderedFields) return
 
   for (let i = 0; i < reorderedFields.length; i++) {

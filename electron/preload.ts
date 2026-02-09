@@ -1,11 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { IElectronAPI } from "../src/types/electron";
 
-contextBridge.exposeInMainWorld("electronAPI", {
+const electronAPI: IElectronAPI = {
   // Collections
   getCollections: () => ipcRenderer.invoke("db:getCollections"),
-  addCollection: (collection: any) =>
+  addCollection: (collection) =>
     ipcRenderer.invoke("db:addCollection", collection),
-  updateCollection: (collection: any) =>
+  updateCollection: (collection) =>
     ipcRenderer.invoke("db:updateCollection", collection),
   deleteCollection: (id: number) =>
     ipcRenderer.invoke("db:deleteCollection", id),
@@ -13,26 +14,28 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Fields
   getFields: (collectionId: number) =>
     ipcRenderer.invoke("db:getFields", collectionId),
-  addField: (field: any) => ipcRenderer.invoke("db:addField", field),
-  updateField: (field: any) => ipcRenderer.invoke("db:updateField", field),
+  addField: (field) => ipcRenderer.invoke("db:addField", field),
+  updateField: (field) => ipcRenderer.invoke("db:updateField", field),
   deleteField: (id: number) => ipcRenderer.invoke("db:deleteField", id),
 
   // Items
   getItems: (collectionId: number) =>
     ipcRenderer.invoke("db:getItems", collectionId),
-  addItem: (item: any) => ipcRenderer.invoke("db:addItem", item),
-  updateItem: (item: any) => ipcRenderer.invoke("db:updateItem", item),
+  addItem: (item) => ipcRenderer.invoke("db:addItem", item),
+  updateItem: (item) => ipcRenderer.invoke("db:updateItem", item),
   deleteItem: (id: number) => ipcRenderer.invoke("db:deleteItem", id),
 
   // Export
-  showSaveDialog: (options: any) =>
+  showSaveDialog: (options) =>
     ipcRenderer.invoke("export:showSaveDialog", options),
   writeFile: (filePath: string, content: string) =>
     ipcRenderer.invoke("export:writeFile", filePath, content),
 
   // Import
-  showOpenDialog: (options: any) =>
+  showOpenDialog: (options) =>
     ipcRenderer.invoke("import:showOpenDialog", options),
   readFile: (filePath: string) =>
     ipcRenderer.invoke("import:readFile", filePath),
-});
+};
+
+contextBridge.exposeInMainWorld("electronAPI", electronAPI);
