@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="mx-auto max-w-6xl px-10 py-8">
     <Toolbar class="mb-6">
       <template #start>
@@ -405,7 +405,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, toRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStore } from '../../store'
 import {
@@ -425,7 +425,7 @@ import {
   Upload
 } from 'lucide-vue-next'
 import { useIcons } from '../../composables/useIcons'
-import { handleIpc } from '../../utils/ipc'
+import { useCollectionImportExport } from '../../composables/useCollectionImportExport'
 import { useConfirm } from 'primevue/useconfirm'
 import Accordion from 'primevue/accordion'
 import AccordionContent from 'primevue/accordioncontent'
@@ -453,8 +453,6 @@ import type {
   FieldType,
   ItemData,
   ItemDataValue,
-  ExportFormat,
-  ImportMode
 } from '../../types/models'
 
 const { getIcon, iconOptions } = useIcons()
@@ -484,29 +482,11 @@ const collectionIcon = ref('')
 
 type FormValue = ItemDataValue | Date
 type FormData = Record<string, FormValue>
-type ImportRow = Record<string, ItemDataValue | undefined>
-type ImportPreview = {
-  itemCount: number
-  fields: string[]
-  newFields: string[]
-  matchedFields: string[]
-  sample: ImportRow[]
-}
 type RowReorderEvent = { value: Field[] }
 
 type MultiSortMeta = { field: string; order: 1 | -1 }
 const multiSortMeta = ref<MultiSortMeta[]>([])
 
-// Export state
-const exportFormat = ref<ExportFormat>('csv')
-const isExporting = ref(false)
-
-// Import state
-const importFormat = ref<ExportFormat>('csv')
-const importMode = ref<ImportMode>('append')
-const isImporting = ref(false)
-const selectedFile = ref<string | null>(null)
-const importPreview = ref<ImportPreview | null>(null)
 
 const fieldTypeOptions: Array<{ label: string; value: FieldType }> = [
   { label: 'Text', value: 'text' },
@@ -516,10 +496,24 @@ const fieldTypeOptions: Array<{ label: string; value: FieldType }> = [
   { label: 'Select', value: 'select' }
 ]
 
-const exportFormatOptions = [
-  { label: 'CSV', value: 'csv' },
-  { label: 'JSON', value: 'json' }
-]
+const {
+  exportFormat,
+  exportFormatOptions,
+  isExporting,
+  handleExport,
+  importFormat,
+  importMode,
+  isImporting,
+  importPreview,
+  handleSelectFile,
+  handleImport,
+  cancelImport
+} = useCollectionImportExport({
+  collection: toRef(props, 'collection'),
+  fields,
+  items
+})
+
 
 const iconListboxPt = {
   root: {
@@ -604,370 +598,6 @@ function loadSortPreferences() {
 }
 
 watch(multiSortMeta, () => saveSortPreferences(), { deep: true })
-
-// Export functions
-function escapeCSVValue(value: ItemDataValue | undefined): string {
-  if (value === null || value === undefined) {
-    return '""'
-  }
-
-  const stringValue = String(value)
-  const escapedValue = stringValue.replace(/"/g, '""')
-  return `"${escapedValue}"`
-}
-
-function generateCSV(): string {
-  const ordered = [...fields.value].sort((a, b) => a.order_index - b.order_index)
-  const headers = ordered.map(field => escapeCSVValue(field.name))
-  const csvLines = [headers.join(',')]
-
-  for (const item of items.value) {
-    const row = ordered.map(field => {
-      const value = item.data[field.name]
-      return escapeCSVValue(value)
-    })
-    csvLines.push(row.join(','))
-  }
-
-  return csvLines.join('\n')
-}
-
-function generateJSON(): string {
-  const ordered = [...fields.value].sort((a, b) => a.order_index - b.order_index)
-  const exportData = items.value.map(item => {
-    const orderedData: ItemData = {}
-    for (const field of ordered) {
-      orderedData[field.name] = item.data[field.name] ?? ''
-    }
-    return orderedData
-  })
-
-  return JSON.stringify(exportData, null, 2)
-}
-
-function getDefaultFilename(): string {
-  const date = new Date().toISOString().split('T')[0]
-  const safeName = props.collection.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()
-  const extension = exportFormat.value
-  return `${safeName}-${date}.${extension}`
-}
-
-async function handleExport() {
-  isExporting.value = true
-
-  try {
-    const extension = exportFormat.value
-    const filters = [
-      {
-        name: exportFormat.value === 'csv' ? 'CSV Files' : 'JSON Files',
-        extensions: [extension]
-      },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-
-    const filePathResult = await window.electronAPI.showSaveDialog({
-      title: `Export ${props.collection.name}`,
-      defaultPath: getDefaultFilename(),
-      filters
-    })
-
-    if (!filePathResult.ok) {
-      handleIpc(filePathResult, 'export:showSaveDialog', null)
-      isExporting.value = false
-      return
-    }
-
-    const filePath = filePathResult.data
-    if (!filePath) {
-      isExporting.value = false
-      return
-    }
-
-    let content: string
-    if (exportFormat.value === 'csv') {
-      content = generateCSV()
-    } else {
-      content = generateJSON()
-    }
-
-    const writeResult = await window.electronAPI.writeFile(filePath, content)
-    const success = handleIpc(writeResult, 'export:writeFile', false)
-
-    if (success) {
-      console.log('Export successful!')
-    } else {
-      console.error('Export failed')
-    }
-  } catch (error) {
-    console.error('Export error:', error)
-  } finally {
-    isExporting.value = false
-  }
-}
-
-// ==================== IMPORT FUNCTIONS ====================
-
-async function handleSelectFile() {
-  try {
-    const extension = importFormat.value
-    const filters = [
-      {
-        name: importFormat.value === 'csv' ? 'CSV Files' : 'JSON Files',
-        extensions: [extension]
-      },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-
-    const filePathResult = await window.electronAPI.showOpenDialog({
-      title: 'Select File to Import',
-      filters
-    })
-
-    if (!filePathResult.ok) {
-      handleIpc(filePathResult, 'import:showOpenDialog', null)
-      return
-    }
-
-    const filePath = filePathResult.data
-    if (!filePath) {
-      return
-    }
-
-    selectedFile.value = filePath
-
-    const contentResult = await window.electronAPI.readFile(filePath)
-    if (!contentResult.ok) {
-      handleIpc(contentResult, 'import:readFile', null)
-      return
-    }
-
-    const content = contentResult.data
-    if (content === null) {
-      console.error('Failed to read file')
-      return
-    }
-
-    if (!content.trim()) {
-      alert('The selected file is empty.')
-      selectedFile.value = null
-      return
-    }
-
-    let parsedData: ImportRow[] = []
-    let fileFields: string[] = []
-
-    if (importFormat.value === 'csv') {
-      const lines = content.trim().split('\n')
-      if (lines.length === 0) {
-        console.error('Empty CSV file')
-        return
-      }
-
-      const headerLine = lines[0]
-      fileFields = parseCSVLine(headerLine)
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i])
-        const row: ImportRow = {}
-        for (let j = 0; j < fileFields.length; j++) {
-          row[fileFields[j]] = values[j] || ''
-        }
-        parsedData.push(row)
-      }
-    } else {
-      parsedData = JSON.parse(content) as ImportRow[]
-      if (!Array.isArray(parsedData)) {
-        console.error('JSON must be an array')
-        return
-      }
-
-      if (parsedData.length > 0) {
-        fileFields = Object.keys(parsedData[0])
-      }
-    }
-
-    const matchedFields: string[] = []
-    const newFields: string[] = []
-    const fieldMap = new Map()
-    fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
-
-    fileFields.forEach(fileField => {
-      if (fieldMap.has(fileField.toLowerCase())) {
-        matchedFields.push(fileField)
-      } else {
-        newFields.push(fileField)
-      }
-    })
-
-    importPreview.value = {
-      itemCount: parsedData.length,
-      fields: fileFields,
-      newFields,
-      matchedFields,
-      sample: parsedData.slice(0, 3)
-    }
-  } catch (error) {
-    console.error('Error selecting file:', error)
-    selectedFile.value = null
-    importPreview.value = null
-  }
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = []
-  let current = ''
-  let inQuotes = false
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
-    const nextChar = line[i + 1]
-
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        current += '"'
-        i++
-      } else {
-        inQuotes = !inQuotes
-      }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim())
-      current = ''
-    } else {
-      current += char
-    }
-  }
-
-  result.push(current.trim())
-  return result
-}
-
-function cancelImport() {
-  selectedFile.value = null
-  importPreview.value = null
-  importFormat.value = 'csv'
-  importMode.value = 'append'
-}
-
-async function handleImport() {
-  if (!selectedFile.value || !importPreview.value) {
-    return
-  }
-
-  isImporting.value = true
-
-  try {
-    const contentResult = await window.electronAPI.readFile(selectedFile.value)
-    if (!contentResult.ok) {
-      handleIpc(contentResult, 'import:readFile', null)
-      return
-    }
-
-    const content = contentResult.data
-    if (!content) {
-      console.error('Failed to read file')
-      return
-    }
-
-    let parsedData: ImportRow[] = []
-    let fileFields: string[] = []
-
-    if (importFormat.value === 'csv') {
-      const lines = content.trim().split('\n')
-      const headerLine = lines[0]
-      fileFields = parseCSVLine(headerLine)
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i])
-        const row: ImportRow = {}
-        for (let j = 0; j < fileFields.length; j++) {
-          row[fileFields[j]] = values[j] || ''
-        }
-        parsedData.push(row)
-      }
-    } else {
-      parsedData = JSON.parse(content) as ImportRow[]
-      if (parsedData.length > 0) {
-        fileFields = Object.keys(parsedData[0])
-      }
-    }
-
-    if (importMode.value === 'replace') {
-      const itemsToDelete = [...items.value]
-      for (const item of itemsToDelete) {
-        const deleteResult = await window.electronAPI.deleteItem(item.id)
-        if (!deleteResult.ok) {
-          handleIpc(deleteResult, 'db:deleteItem', false)
-          return
-        }
-      }
-      await store.loadItems(props.collection.id)
-    }
-
-    const fieldMap = new Map<string, string>()
-    fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
-
-    const newFieldNames = fileFields.filter(f => !fieldMap.has(f.toLowerCase()))
-
-    if (fields.value.length === 0) {
-      for (let i = 0; i < fileFields.length; i++) {
-        await store.addField({
-          collectionId: props.collection.id,
-          name: fileFields[i],
-          type: 'text',
-          options: null,
-          orderIndex: i
-        })
-      }
-    } else if (newFieldNames.length > 0) {
-      const nextOrderIndex = Math.max(...fields.value.map(f => f.order_index), -1) + 1
-      for (let i = 0; i < newFieldNames.length; i++) {
-        await store.addField({
-          collectionId: props.collection.id,
-          name: newFieldNames[i],
-          type: 'text',
-          options: null,
-          orderIndex: nextOrderIndex + i
-        })
-      }
-    }
-
-    fieldMap.clear()
-    fields.value.forEach(f => fieldMap.set(f.name.toLowerCase(), f.name))
-    const currentFieldNames = fields.value.map(f => f.name)
-
-    const itemsToAdd = parsedData.map(row => {
-      const itemData: ItemData = {}
-      for (const fieldName of currentFieldNames) {
-        itemData[fieldName] = ''
-      }
-
-      for (const csvHeader of fileFields) {
-        const val = row[csvHeader]
-        const targetFieldName = fieldMap.get(csvHeader.toLowerCase())
-
-        if (targetFieldName) {
-          itemData[targetFieldName] = val !== undefined && val !== null ? val : ''
-        }
-      }
-
-      return {
-        collectionId: props.collection.id,
-        data: itemData
-      }
-    })
-
-    for (const item of itemsToAdd) {
-      await store.addItem(item)
-    }
-
-    cancelImport()
-    console.log(`Successfully imported ${itemsToAdd.length} items`)
-  } catch (error) {
-    console.error('Import error:', error)
-  } finally {
-    isImporting.value = false
-  }
-}
 
 async function addField() {
   if (!newField.value.name.trim()) return
@@ -1245,3 +875,4 @@ onMounted(() => {
   }
 })
 </script>
+
