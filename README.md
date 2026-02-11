@@ -10,14 +10,11 @@ A desktop application for organizing personal data collections with a flexible, 
 
 ## Tech Stack
 
-- **Electron** - Cross-platform desktop framework
-- **Vue 3** - Reactive UI framework with Composition API
-- **TypeScript** - Type-safe development
-- **SQLite** - Local database via better-sqlite3
-- **Vite** - Fast build tooling
-- **PrimeVue** - UI component library
-- **Tailwind CSS** - Utility-first styling
-- **Pinia** - State management
+- Runtime: Electron
+- Language: TypeScript
+- Database: SQLite
+- Frontend: Vue 3, Vite, PrimeVue, Tailwind CSS
+- State: Pinia
 
 ## Installation
 
