@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 
 async function buildElectron() {
-  console.log("🔨 Building Electron files...");
+  console.log("Building Electron files...");
 
   // Create dist-electron directory
   const distElectronPath = path.join(__dirname, "dist-electron");
@@ -22,6 +22,17 @@ async function buildElectron() {
     format: "cjs",
   });
 
+  // Build db-worker.ts
+  await esbuild.build({
+    entryPoints: ["electron/db-worker.ts"],
+    bundle: true,
+    platform: "node",
+    target: "node18",
+    outfile: "dist-electron/db-worker.js",
+    external: ["better-sqlite3"],
+    format: "cjs",
+  });
+
   // Build preload.ts
   await esbuild.build({
     entryPoints: ["electron/preload.ts"],
@@ -33,7 +44,7 @@ async function buildElectron() {
     format: "cjs",
   });
 
-  console.log("✅ Electron build complete!");
+  console.log("Electron build complete!");
 }
 
 buildElectron().catch(console.error);
