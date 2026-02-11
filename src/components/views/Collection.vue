@@ -32,7 +32,7 @@
       </template>
     </Toolbar>
 
-    <div v-if="fields.length === 0"
+    <div v-if="safeFields.length === 0"
       class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
@@ -105,22 +105,20 @@
           <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
             <FloatLabel class="w-full" variant="in">
               <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)"
-                :modelValue="getTextValue(field.name)"
-                @update:modelValue="value => setTextValue(field.name, value)" type="text" class="w-full" />
+                :modelValue="getTextValue(field.name)" @update:modelValue="value => setTextValue(field.name, value)"
+                type="text" class="w-full" />
               <Textarea v-else-if="field.type === 'textarea'" :id="getFieldInputId(field)"
-                :modelValue="getTextValue(field.name)"
-                @update:modelValue="value => setTextValue(field.name, value)" rows="3" class="w-full" />
+                :modelValue="getTextValue(field.name)" @update:modelValue="value => setTextValue(field.name, value)"
+                rows="3" class="w-full" />
               <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
-                :modelValue="getNumberValue(field.name)"
-                @update:modelValue="value => setNumberValue(field.name, value)" inputClass="w-full" class="w-full" />
-              <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
-                :modelValue="getDateValue(field.name)"
-                @update:modelValue="value => setDateValue(field.name, value)" dateFormat="yy-mm-dd"
+                :modelValue="getNumberValue(field.name)" @update:modelValue="value => setNumberValue(field.name, value)"
                 inputClass="w-full" class="w-full" />
+              <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
+                :modelValue="getDateValue(field.name)" @update:modelValue="value => setDateValue(field.name, value)"
+                dateFormat="yy-mm-dd" inputClass="w-full" class="w-full" />
               <Select v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
-                :modelValue="getSelectValue(field.name)"
-                @update:modelValue="value => setSelectValue(field.name, value)" :options="getSelectOptions(field)"
-                class="w-full" />
+                :modelValue="getSelectValue(field.name)" @update:modelValue="value => setSelectValue(field.name, value)"
+                :options="getSelectOptions(field)" class="w-full" />
               <label :for="getFieldInputId(field)">{{ field.name }}</label>
             </FloatLabel>
           </div>
@@ -308,7 +306,7 @@
                   </div>
                 </div>
 
-                <div v-if="fields.length === 0"
+                <div v-if="safeFields.length === 0"
                   class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]">
                   <AlertTriangle :size="16" />
                   This collection has no fields. Fields will be automatically created from the import file.
@@ -409,6 +407,7 @@ import { ref, computed, onMounted, watch, toRef } from 'vue'
 import { refDebounced } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { useStore } from '../../store'
+import { useNotificationsStore } from '../../stores/notifications'
 import {
   Settings,
   Plus,
@@ -447,6 +446,12 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Toolbar from 'primevue/toolbar'
 import Column from 'primevue/column'
+import { isSafeFieldName } from '../../validation/fieldNames'
+import {
+  fieldNameSchema,
+  collectionNameSchema,
+  iconSchema
+} from '../../validation/schemas'
 import {
   parseDateValue,
   formatDateForStorage,
@@ -465,6 +470,7 @@ const { getIcon, iconOptions } = useIcons()
 const store = useStore()
 const { fields, items } = storeToRefs(store)
 const confirm = useConfirm()
+const notifications = useNotificationsStore()
 
 const props = defineProps<{
   collection: Collection
@@ -478,7 +484,7 @@ const showAddItemForm = ref(false)
 const showFieldsManager = ref(false)
 const showCollectionSettings = ref(false)
 const editingItem = ref<Item | null>(null)
-const formData = ref<FormData>({})
+const formData = ref<FormData>(Object.create(null) as FormData)
 const newField = ref<{ name: string; type: FieldType; options: string }>({
   name: '',
   type: 'text',
@@ -486,10 +492,15 @@ const newField = ref<{ name: string; type: FieldType; options: string }>({
 })
 const collectionName = ref('')
 const collectionIcon = ref('')
+const warnedUnsafeFields = new Set<number>()
 
 type FormValue = ItemDataValue | Date
 type FormData = Record<string, FormValue>
 type RowReorderEvent = { value: Field[] }
+
+function createEmptyFormData(): FormData {
+  return Object.create(null) as FormData
+}
 
 type MultiSortMeta = { field: string; order: 1 | -1 }
 const multiSortMeta = ref<MultiSortMeta[]>([])
@@ -540,8 +551,16 @@ const iconListboxPt = {
   })
 }
 
+const safeFields = computed(() => {
+  return fields.value.filter(field => isSafeFieldName(field.name))
+})
+
+const safeFieldNames = computed(() => {
+  return safeFields.value.map(field => field.name)
+})
+
 const orderedFields = computed(() => {
-  return [...fields.value].sort((a, b) => a.order_index - b.order_index)
+  return [...safeFields.value].sort((a, b) => a.order_index - b.order_index)
 })
 
 const filteredItems = computed(() => {
@@ -550,8 +569,8 @@ const filteredItems = computed(() => {
   if (debouncedSearchQuery.value) {
     const query = debouncedSearchQuery.value.toLowerCase()
     result = result.filter(item => {
-      return Object.values(item.data).some(value =>
-        String(value).toLowerCase().includes(query)
+      return safeFieldNames.value.some(fieldName =>
+        String(item.data[fieldName] ?? '').toLowerCase().includes(query)
       )
     })
   }
@@ -571,7 +590,7 @@ function normalizeSortMeta(meta: MultiSortMeta[]): MultiSortMeta[] {
   return meta.filter(item => {
     if (!item.field) return false
     const fieldName = item.field.startsWith('data.') ? item.field.slice(5) : item.field
-    return fields.value.some(f => f.name === fieldName)
+    return safeFields.value.some(f => f.name === fieldName)
   })
 }
 
@@ -606,12 +625,41 @@ function loadSortPreferences() {
 
 watch(multiSortMeta, () => saveSortPreferences(), { deep: true })
 
+watch(
+  () => fields.value,
+  (nextFields) => {
+    const unsafeFields = nextFields.filter(field => !isSafeFieldName(field.name))
+    if (unsafeFields.length === 0) return
+
+    for (const field of unsafeFields) {
+      if (warnedUnsafeFields.has(field.id)) continue
+      warnedUnsafeFields.add(field.id)
+      notifications.push({
+        severity: 'warn',
+        summary: 'Unsafe field hidden',
+        detail: `Field "${field.name}" is not supported and has been hidden.`,
+        life: 7000
+      })
+    }
+  },
+  { immediate: true }
+)
+
 async function addField() {
-  if (!newField.value.name.trim()) return
+  const nameResult = fieldNameSchema.safeParse(newField.value.name)
+  if (!nameResult.success) {
+    notifications.push({
+      severity: 'warn',
+      summary: 'Invalid field name',
+      detail: nameResult.error.issues[0]?.message || 'Please enter a valid field name.',
+      life: 5000
+    })
+    return
+  }
 
   await store.addField({
     collectionId: props.collection.id,
-    name: newField.value.name,
+    name: nameResult.data,
     type: newField.value.type,
     options: newField.value.type === 'select' ? newField.value.options : null,
     orderIndex: fields.value.length
@@ -696,10 +744,11 @@ function setDateValue(fieldName: string, value: DateModelValue) {
 }
 
 function resetFormData() {
-  formData.value = {}
-  fields.value.forEach(field => {
-    formData.value[field.name] = field.type === 'date' ? null : ''
+  const data = createEmptyFormData()
+  safeFields.value.forEach(field => {
+    data[field.name] = field.type === 'date' ? null : ''
   })
+  formData.value = data
 }
 
 function cancelItemForm() {
@@ -709,11 +758,16 @@ function cancelItemForm() {
 }
 
 async function saveItem() {
-  const plainData = JSON.parse(JSON.stringify(formData.value)) as Record<string, unknown>
-  fields.value.forEach(field => {
+  const plainData = Object.create(null) as ItemData
+  safeFields.value.forEach(field => {
     if (field.type === 'date') {
       plainData[field.name] = formatDateForStorage(formData.value[field.name])
+      return
     }
+
+    const value = formData.value[field.name]
+    plainData[field.name] =
+      value === null || value === undefined ? '' : (value as ItemDataValue)
   })
 
   if (editingItem.value) {
@@ -733,8 +787,8 @@ async function saveItem() {
 
 function editItem(item: Item) {
   editingItem.value = item
-  const data: FormData = {}
-  fields.value.forEach(field => {
+  const data = createEmptyFormData()
+  safeFields.value.forEach(field => {
     const currentValue = item.data[field.name]
     if (field.type === 'date') {
       data[field.name] = parseDateValue(currentValue)
@@ -776,10 +830,30 @@ function cancelSettings() {
 }
 
 async function saveSettings() {
+  const nameResult = collectionNameSchema.safeParse(collectionName.value)
+  const iconResult = iconSchema.safeParse(collectionIcon.value)
+
+  if (!nameResult.success || !iconResult.success) {
+    let detail = 'Please check your collection settings.'
+    if (!nameResult.success) {
+      detail = nameResult.error.issues[0]?.message || detail
+    } else if (!iconResult.success) {
+      detail = iconResult.error.issues[0]?.message || detail
+    }
+
+    notifications.push({
+      severity: 'warn',
+      summary: 'Invalid collection settings',
+      detail,
+      life: 5000
+    })
+    return
+  }
+
   await store.updateCollection({
     id: props.collection.id,
-    name: collectionName.value,
-    icon: collectionIcon.value
+    name: nameResult.data,
+    icon: iconResult.data
   })
 
   showCollectionSettings.value = false
@@ -844,4 +918,3 @@ onMounted(() => {
   }
 })
 </script>
-

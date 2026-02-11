@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import type { Field, Item } from "../../types/models";
 import {
   escapeCsvValue,
-  parseCsvLine,
   serializeItemsToCsv,
   serializeItemsToJson,
   parseImportContent,
@@ -53,11 +52,6 @@ describe("collectionImportExport utils", () => {
     expect(escapeCsvValue("He said \"hi\"")).toBe('"He said ""hi"""');
   });
 
-  it("parses CSV lines with quoted commas and quotes", () => {
-    const line = '"a","b,b","c""d"';
-    expect(parseCsvLine(line)).toEqual(["a", "b,b", 'c"d']);
-  });
-
   it("serializes items to CSV with ordered fields", () => {
     const csv = serializeItemsToCsv(items, fields);
     const lines = csv.split("\n");
@@ -78,12 +72,14 @@ describe("collectionImportExport utils", () => {
   });
 
   it("parses CSV import content", () => {
-    const content = '"Name","Age"\n"Alice","30"\n"Bob",""';
+    const content =
+      '" Name ","Age","Quote"\n" Alice ","30","He said ""hi, there"""\n\n"Bob","","  spaced  "';
     const parsed = parseImportContent("csv", content);
-    expect(parsed.fields).toEqual(["Name", "Age"]);
+    expect(parsed.fields).toEqual(["Name", "Age", "Quote"]);
     expect(parsed.rows).toEqual([
-      { Name: "Alice", Age: "30" },
-      { Name: "Bob", Age: "" },
+      { Name: "Alice", Age: "30", Quote: 'He said "hi, there"' },
+      { Name: "", Age: "", Quote: "" },
+      { Name: "Bob", Age: "", Quote: "spaced" },
     ]);
   });
 

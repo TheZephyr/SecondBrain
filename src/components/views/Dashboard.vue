@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useStore } from '../../store'
 import {
@@ -71,18 +71,21 @@ const collectionsWithStats = computed(() => {
 })
 
 async function loadStats() {
-  for (const collection of collections.value) {
-    // This is a temporary solution to get the item count.
-    // A better approach would be to have a dedicated API endpoint for this.
-    const result = await window.electronAPI.getItems(collection.id)
-    const items = handleIpc(result, `db:getItems:${collection.id}`, [])
-    collectionStats.value.set(collection.id, items.length)
+  if (collections.value.length === 0) {
+    collectionStats.value = new Map()
+    return
   }
-}
 
-onMounted(() => {
-  loadStats()
-})
+  const result = await window.electronAPI.getCollectionItemCounts()
+  const counts = handleIpc(result, 'db:getCollectionItemCounts', [])
+  const nextStats = new Map<number, number>()
+
+  for (const entry of counts) {
+    nextStats.set(entry.collectionId, entry.itemCount)
+  }
+
+  collectionStats.value = nextStats
+}
 
 watch(collections, () => {
   loadStats()

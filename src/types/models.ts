@@ -27,6 +27,11 @@ export type Item = {
   updated_at?: string;
 };
 
+export type CollectionItemCount = {
+  collectionId: number;
+  itemCount: number;
+};
+
 export type NewCollectionInput = {
   name: string;
   icon: string;
@@ -66,3 +71,10 @@ export type UpdateItemInput = {
 
 export type ExportFormat = "csv" | "json";
 export type ImportMode = "append" | "replace";
+
+export type ImportCollectionInput = {
+  collectionId: number;
+  mode: ImportMode;
+  newFields: NewFieldInput[];
+  items: NewItemInput[];
+};

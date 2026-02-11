@@ -8,6 +8,8 @@ import type {
   UpdateFieldInput,
   NewItemInput,
   UpdateItemInput,
+  ImportCollectionInput,
+  CollectionItemCount,
 } from "./models";
 import type { IpcResult } from "./ipc";
 
@@ -26,6 +28,7 @@ export interface OpenDialogOptions {
 export interface IElectronAPI {
   // Collections
   getCollections: () => Promise<IpcResult<Collection[]>>;
+  getCollectionItemCounts: () => Promise<IpcResult<CollectionItemCount[]>>;
   addCollection: (
     collection: NewCollectionInput,
   ) => Promise<IpcResult<Collection | null>>;
@@ -47,6 +50,9 @@ export interface IElectronAPI {
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
+  importCollection: (
+    input: ImportCollectionInput,
+  ) => Promise<IpcResult<boolean>>;
 
   // Export
   showSaveDialog: (

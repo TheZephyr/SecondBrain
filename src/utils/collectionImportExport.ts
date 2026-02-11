@@ -1,3 +1,4 @@
+import * as Papa from "papaparse";
 import type {
   Field,
   Item,
@@ -64,58 +65,34 @@ export function serializeItemsToJson(items: Item[], fields: Field[]): string {
   return JSON.stringify(exportData, null, 2);
 }
 
-export function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === "\"") {
-      if (inQuotes && nextChar === "\"") {
-        current += "\"";
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === "," && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-
-  result.push(current.trim());
-  return result;
-}
-
 export function parseImportContent(
   format: ExportFormat,
   content: string,
 ): ParsedImportData {
   if (format === "csv") {
-    const lines = content.trim().split("\n");
-    if (lines.length === 0) {
+    const trimmed = content.trim();
+    if (!trimmed) {
       throw new Error("EMPTY_CSV");
     }
 
-    const headerLine = lines[0];
-    const fileFields = parseCsvLine(headerLine);
-    const rows: ImportRow[] = [];
+    const result = Papa.parse<Record<string, string>>(trimmed, {
+      header: true,
+      delimiter: ",",
+      skipEmptyLines: false,
+      transformHeader: (header) => header.replace(/^\uFEFF/, "").trim(),
+      transform: (value) => value.trim(),
+    });
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCsvLine(lines[i]);
-      const row: ImportRow = {};
-      for (let j = 0; j < fileFields.length; j++) {
-        row[fileFields[j]] = values[j] || "";
+    const fields = result.meta.fields ?? [];
+    const rows: ImportRow[] = result.data.map((row) => {
+      const normalized: ImportRow = {};
+      for (const field of fields) {
+        normalized[field] = row[field] ?? "";
       }
-      rows.push(row);
-    }
+      return normalized;
+    });
 
-    return { rows, fields: fileFields };
+    return { rows, fields };
   }
 
   const parsed = JSON.parse(content) as ImportRow[];
