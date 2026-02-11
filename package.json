@@ -19,6 +19,7 @@
     "@vueuse/core": "^14.2.0",
     "better-sqlite3": "^12.6.2",
     "lucide-vue-next": "^0.563.0",
+    "papaparse": "^5.5.3",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
     "primevue": "^4.0.0",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/papaparse": "^5.5.2",
     "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-vue": "^5.2.1",
     "concurrently": "^9.1.0",
