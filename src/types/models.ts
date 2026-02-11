@@ -27,6 +27,11 @@ export type Item = {
   updated_at?: string;
 };
 
+export type CollectionItemCount = {
+  collectionId: number;
+  itemCount: number;
+};
+
 export type NewCollectionInput = {
   name: string;
   icon: string;

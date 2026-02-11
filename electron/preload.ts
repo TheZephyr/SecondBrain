@@ -32,6 +32,7 @@ async function invoke<T>(
 const electronAPI: IElectronAPI = {
   // Collections
   getCollections: () => invoke("db:getCollections"),
+  getCollectionItemCounts: () => invoke("db:getCollectionItemCounts"),
   addCollection: (collection) =>
     invoke("db:addCollection", collection),
   updateCollection: (collection) =>

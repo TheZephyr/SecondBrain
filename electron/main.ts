@@ -219,6 +219,14 @@ handleIpc("db:getCollections", () => {
   return stmt.all();
 });
 
+handleIpc("db:getCollectionItemCounts", () => {
+  const database = requireDb();
+  const stmt = database.prepare(
+    "SELECT collection_id AS collectionId, COUNT(*) AS itemCount FROM items GROUP BY collection_id",
+  );
+  return stmt.all();
+});
+
 handleIpc("db:addCollection", (_, collection: NewCollectionInput) => {
   const database = requireDb();
   const input = parseOrThrow(
