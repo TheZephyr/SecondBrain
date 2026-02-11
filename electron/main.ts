@@ -1,5 +1,9 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
-import type { IpcMainInvokeEvent } from "electron";
+import type {
+  IpcMainInvokeEvent,
+  SaveDialogOptions,
+  OpenDialogOptions,
+} from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
@@ -106,7 +110,7 @@ function handleIpc<T, A extends unknown[]>(
   channel: string,
   handler: (event: IpcMainInvokeEvent, ...args: A) => T | Promise<T>,
 ) {
-  ipcMain.handle(channel, async (event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args: A) => {
     try {
       const data = await handler(event, ...args);
       return { ok: true, data } satisfies IpcResult<T>;
@@ -405,7 +409,7 @@ handleIpc("db:deleteItem", (_, id) => {
 });
 
 // ==================== EXPORT ====================
-handleIpc("export:showSaveDialog", async (_, options) => {
+handleIpc("export:showSaveDialog", async (_, options: SaveDialogOptions) => {
   if (!mainWindow) {
     throw new AppError("UNKNOWN", "Main window not available.");
   }
@@ -419,7 +423,7 @@ handleIpc("export:showSaveDialog", async (_, options) => {
   return result.filePath;
 });
 
-handleIpc("export:writeFile", async (_, filePath, content) => {
+handleIpc("export:writeFile", async (_, filePath: string, content: string) => {
   try {
     fs.writeFileSync(filePath, content, "utf-8");
     return true;
@@ -433,7 +437,7 @@ handleIpc("export:writeFile", async (_, filePath, content) => {
 });
 
 // ==================== IMPORT ====================
-handleIpc("import:showOpenDialog", async (_, options) => {
+handleIpc("import:showOpenDialog", async (_, options: OpenDialogOptions) => {
   if (!mainWindow) {
     throw new AppError("UNKNOWN", "Main window not available.");
   }
@@ -447,7 +451,7 @@ handleIpc("import:showOpenDialog", async (_, options) => {
   return result.filePaths[0];
 });
 
-handleIpc("import:readFile", async (_, filePath) => {
+handleIpc("import:readFile", async (_, filePath: string) => {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
     return content;
