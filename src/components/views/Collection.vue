@@ -105,22 +105,20 @@
           <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'textarea' ? 'md:col-span-2' : ''">
             <FloatLabel class="w-full" variant="in">
               <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)"
-                :modelValue="getTextValue(field.name)"
-                @update:modelValue="value => setTextValue(field.name, value)" type="text" class="w-full" />
+                :modelValue="getTextValue(field.name)" @update:modelValue="value => setTextValue(field.name, value)"
+                type="text" class="w-full" />
               <Textarea v-else-if="field.type === 'textarea'" :id="getFieldInputId(field)"
-                :modelValue="getTextValue(field.name)"
-                @update:modelValue="value => setTextValue(field.name, value)" rows="3" class="w-full" />
+                :modelValue="getTextValue(field.name)" @update:modelValue="value => setTextValue(field.name, value)"
+                rows="3" class="w-full" />
               <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
-                :modelValue="getNumberValue(field.name)"
-                @update:modelValue="value => setNumberValue(field.name, value)" inputClass="w-full" class="w-full" />
-              <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
-                :modelValue="getDateValue(field.name)"
-                @update:modelValue="value => setDateValue(field.name, value)" dateFormat="yy-mm-dd"
+                :modelValue="getNumberValue(field.name)" @update:modelValue="value => setNumberValue(field.name, value)"
                 inputClass="w-full" class="w-full" />
+              <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
+                :modelValue="getDateValue(field.name)" @update:modelValue="value => setDateValue(field.name, value)"
+                dateFormat="yy-mm-dd" inputClass="w-full" class="w-full" />
               <Select v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
-                :modelValue="getSelectValue(field.name)"
-                @update:modelValue="value => setSelectValue(field.name, value)" :options="getSelectOptions(field)"
-                class="w-full" />
+                :modelValue="getSelectValue(field.name)" @update:modelValue="value => setSelectValue(field.name, value)"
+                :options="getSelectOptions(field)" class="w-full" />
               <label :for="getFieldInputId(field)">{{ field.name }}</label>
             </FloatLabel>
           </div>
@@ -836,12 +834,17 @@ async function saveSettings() {
   const iconResult = iconSchema.safeParse(collectionIcon.value)
 
   if (!nameResult.success || !iconResult.success) {
+    let detail = 'Please check your collection settings.'
+    if (!nameResult.success) {
+      detail = nameResult.error.issues[0]?.message || detail
+    } else if (!iconResult.success) {
+      detail = iconResult.error.issues[0]?.message || detail
+    }
+
     notifications.push({
       severity: 'warn',
       summary: 'Invalid collection settings',
-      detail: !nameResult.success
-        ? nameResult.error.issues[0]?.message
-        : iconResult.error.issues[0]?.message,
+      detail,
       life: 5000
     })
     return
@@ -915,4 +918,3 @@ onMounted(() => {
   }
 })
 </script>
-

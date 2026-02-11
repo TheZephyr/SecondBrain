@@ -138,12 +138,17 @@ async function createCollection() {
   const iconResult = iconSchema.safeParse(newCollection.value.icon);
 
   if (!nameResult.success || !iconResult.success) {
+    let detail = "Please check your collection settings.";
+    if (!nameResult.success) {
+      detail = nameResult.error.issues[0]?.message || detail;
+    } else if (!iconResult.success) {
+      detail = iconResult.error.issues[0]?.message || detail;
+    }
+
     notifications.push({
       severity: "warn",
       summary: "Invalid collection",
-      detail: !nameResult.success
-        ? nameResult.error.issues[0]?.message
-        : iconResult.error.issues[0]?.message,
+      detail,
       life: 5000,
     });
     return;
