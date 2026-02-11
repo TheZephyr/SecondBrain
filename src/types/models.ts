@@ -66,3 +66,10 @@ export type UpdateItemInput = {
 
 export type ExportFormat = "csv" | "json";
 export type ImportMode = "append" | "replace";
+
+export type ImportCollectionInput = {
+  collectionId: number;
+  mode: ImportMode;
+  newFields: NewFieldInput[];
+  items: NewItemInput[];
+};

@@ -16,6 +16,7 @@ import type {
   UpdateFieldInput,
   NewItemInput,
   UpdateItemInput,
+  ImportCollectionInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
 import {
@@ -25,6 +26,7 @@ import {
   UpdateFieldInputSchema,
   NewItemInputSchema,
   UpdateItemInputSchema,
+  ImportCollectionInputSchema,
   itemDataSchema,
   positiveIntSchema,
 } from "../src/validation/schemas";
@@ -160,6 +162,7 @@ function initDatabase(): boolean {
   try {
     const dbPath = path.join(app.getPath("userData"), "secondbrain.db");
     db = new Database(dbPath);
+    db.pragma("foreign_keys = ON");
 
     // Create collections table
     db.exec(`
@@ -257,12 +260,6 @@ handleIpc("db:deleteCollection", (_, id) => {
   const collectionId = parsePositiveInt(id, "db:deleteCollection");
   const deleteCollection = database.transaction((collectionId: number) => {
     database.prepare("DELETE FROM collections WHERE id = ?").run(collectionId);
-    database
-      .prepare("DELETE FROM fields WHERE collection_id = ?")
-      .run(collectionId);
-    database
-      .prepare("DELETE FROM items WHERE collection_id = ?")
-      .run(collectionId);
   });
 
   deleteCollection(collectionId);
@@ -405,6 +402,51 @@ handleIpc("db:deleteItem", (_, id) => {
   const itemId = parsePositiveInt(id, "db:deleteItem");
   database.prepare("DELETE FROM items WHERE id = ?").run(itemId);
 
+  return true;
+});
+
+// ==================== IMPORT (TRANSACTIONAL) ====================
+handleIpc("db:importCollection", (_, payload: ImportCollectionInput) => {
+  const database = requireDb();
+  const input = parseOrThrow(
+    ImportCollectionInputSchema,
+    payload,
+    "db:importCollection",
+  );
+
+  const runImport = database.transaction((data: ImportCollectionInput) => {
+    if (data.mode === "replace") {
+      database
+        .prepare("DELETE FROM items WHERE collection_id = ?")
+        .run(data.collectionId);
+    }
+
+    if (data.newFields.length > 0) {
+      const insertField = database.prepare(
+        "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
+      );
+      for (const field of data.newFields) {
+        insertField.run(
+          field.collectionId,
+          field.name,
+          field.type,
+          field.options ?? null,
+          field.orderIndex ?? 0,
+        );
+      }
+    }
+
+    if (data.items.length > 0) {
+      const insertItem = database.prepare(
+        "INSERT INTO items (collection_id, data) VALUES (?, ?)",
+      );
+      for (const item of data.items) {
+        insertItem.run(item.collectionId, JSON.stringify(item.data));
+      }
+    }
+  });
+
+  runImport(input);
   return true;
 });
 

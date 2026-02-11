@@ -7,6 +7,8 @@ import type {
   Field,
   Item,
   ItemData,
+  NewFieldInput,
+  NewItemInput,
   ExportFormat,
   ImportMode,
 } from "../types/models";
@@ -245,18 +247,6 @@ export function useCollectionImportExport({
         fieldNameSchema.parse(field),
       );
 
-      if (importMode.value === "replace") {
-        const itemsToDelete = [...items.value];
-        for (const item of itemsToDelete) {
-          const deleteResult = await window.electronAPI.deleteItem(item.id);
-          if (!deleteResult.ok) {
-            handleIpc(deleteResult, "db:deleteItem", false);
-            return;
-          }
-        }
-        await store.loadItems(collection.value.id);
-      }
-
       const safeExistingFields = fields.value.filter((field) =>
         isSafeFieldName(field.name),
       );
@@ -269,9 +259,10 @@ export function useCollectionImportExport({
         (field) => !fieldMap.has(field.toLowerCase()),
       );
 
+      const newFieldsToCreate: NewFieldInput[] = [];
       if (safeExistingFields.length === 0) {
         for (let i = 0; i < normalizedFileFields.length; i++) {
-          await store.addField({
+          newFieldsToCreate.push({
             collectionId: collection.value.id,
             name: normalizedFileFields[i],
             type: "text",
@@ -283,7 +274,7 @@ export function useCollectionImportExport({
         const nextOrderIndex =
           Math.max(...fields.value.map((field) => field.order_index), -1) + 1;
         for (let i = 0; i < newFieldNames.length; i++) {
-          await store.addField({
+          newFieldsToCreate.push({
             collectionId: collection.value.id,
             name: newFieldNames[i],
             type: "text",
@@ -294,15 +285,15 @@ export function useCollectionImportExport({
       }
 
       fieldMap.clear();
-      const safeFieldsAfterImport = fields.value.filter((field) =>
-        isSafeFieldName(field.name),
+      const currentFieldNames = [
+        ...safeExistingFields.map((field) => field.name),
+        ...newFieldNames,
+      ];
+      currentFieldNames.forEach((fieldName) =>
+        fieldMap.set(fieldName.toLowerCase(), fieldName),
       );
-      safeFieldsAfterImport.forEach((field) =>
-        fieldMap.set(field.name.toLowerCase(), field.name),
-      );
-      const currentFieldNames = safeFieldsAfterImport.map((field) => field.name);
 
-      const itemsToAdd = parsedData.map((row) => {
+      const itemsToAdd: NewItemInput[] = parsedData.map((row) => {
         const itemData: ItemData = {};
         for (const fieldName of currentFieldNames) {
           itemData[fieldName] = "";
@@ -324,9 +315,19 @@ export function useCollectionImportExport({
         };
       });
 
-      for (const item of itemsToAdd) {
-        await store.addItem(item);
+      const importResult = await window.electronAPI.importCollection({
+        collectionId: collection.value.id,
+        mode: importMode.value,
+        newFields: newFieldsToCreate,
+        items: itemsToAdd,
+      });
+      const success = handleIpc(importResult, "db:importCollection", false);
+      if (!success) {
+        return;
       }
+
+      await store.loadFields(collection.value.id);
+      await store.loadItems(collection.value.id);
 
       cancelImport();
       console.log(`Successfully imported ${itemsToAdd.length} items`);

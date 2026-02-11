@@ -98,3 +98,32 @@ export const UpdateItemInputSchema = z.object({
   id: positiveIntSchema,
   data: itemDataSchema,
 });
+
+export const ImportCollectionInputSchema = z
+  .object({
+    collectionId: positiveIntSchema,
+    mode: z.enum(["append", "replace"]),
+    newFields: z.array(NewFieldInputSchema),
+    items: z.array(NewItemInputSchema),
+  })
+  .superRefine((value, ctx) => {
+    value.newFields.forEach((field, index) => {
+      if (field.collectionId !== value.collectionId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Field collectionId must match import collectionId.",
+          path: ["newFields", index, "collectionId"],
+        });
+      }
+    });
+
+    value.items.forEach((item, index) => {
+      if (item.collectionId !== value.collectionId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Item collectionId must match import collectionId.",
+          path: ["items", index, "collectionId"],
+        });
+      }
+    });
+  });

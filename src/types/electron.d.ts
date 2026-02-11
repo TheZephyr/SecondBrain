@@ -8,6 +8,7 @@ import type {
   UpdateFieldInput,
   NewItemInput,
   UpdateItemInput,
+  ImportCollectionInput,
 } from "./models";
 import type { IpcResult } from "./ipc";
 
@@ -47,6 +48,9 @@ export interface IElectronAPI {
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
+  importCollection: (
+    input: ImportCollectionInput,
+  ) => Promise<IpcResult<boolean>>;
 
   // Export
   showSaveDialog: (
