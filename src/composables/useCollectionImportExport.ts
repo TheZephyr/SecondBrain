@@ -297,28 +297,19 @@ export function useCollectionImportExport({
       );
 
       const newFieldsToCreate: NewFieldInput[] = [];
-      if (safeExistingFields.length === 0) {
-        for (let i = 0; i < normalizedFileFields.length; i++) {
-          newFieldsToCreate.push({
-            collectionId: collection.value.id,
-            name: normalizedFileFields[i],
-            type: "text",
-            options: null,
-            orderIndex: i,
-          });
-        }
-      } else if (newFieldNames.length > 0) {
-        const nextOrderIndex =
-          Math.max(...fields.value.map((field) => field.order_index), -1) + 1;
-        for (let i = 0; i < newFieldNames.length; i++) {
-          newFieldsToCreate.push({
-            collectionId: collection.value.id,
-            name: newFieldNames[i],
-            type: "text",
-            options: null,
-            orderIndex: nextOrderIndex + i,
-          });
-        }
+      const nextOrderIndex =
+        Math.max(...fields.value.map((field) => field.order_index), -1) + 1;
+      const fieldsToCreate =
+        safeExistingFields.length === 0 ? normalizedFileFields : newFieldNames;
+
+      for (let i = 0; i < fieldsToCreate.length; i++) {
+        newFieldsToCreate.push({
+          collectionId: collection.value.id,
+          name: fieldsToCreate[i],
+          type: "text",
+          options: null,
+          orderIndex: nextOrderIndex + i,
+        });
       }
 
       fieldMap.clear();

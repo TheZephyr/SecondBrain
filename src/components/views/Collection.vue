@@ -183,9 +183,56 @@ async function confirmDeleteField(field: Field) {
 async function onFieldsReorder(reorderedFields: Field[]) {
   if (!reorderedFields) return
 
+  const visibleFieldIds = orderedFields.value.map(field => field.id)
+  const visibleFieldIdSet = new Set(visibleFieldIds)
+  const reorderedFieldIds = reorderedFields.map(field => field.id)
+  const reorderedFieldIdSet = new Set(reorderedFieldIds)
+
+  if (
+    reorderedFieldIds.length !== visibleFieldIds.length ||
+    reorderedFieldIdSet.size !== reorderedFieldIds.length ||
+    reorderedFieldIds.some(id => !visibleFieldIdSet.has(id))
+  ) {
+    notifications.push({
+      severity: 'warn',
+      summary: 'Unable to reorder fields',
+      detail: 'Field list changed while reordering. Reopen Manage Fields and try again.',
+      life: 5000
+    })
+    return
+  }
+
+  const allFieldsInOrder = [...fields.value].sort((a, b) => {
+    if (a.order_index !== b.order_index) {
+      return a.order_index - b.order_index
+    }
+    return a.id - b.id
+  })
+
+  let reorderedIndex = 0
+  const completeFieldOrder = allFieldsInOrder.map(field => {
+    if (!visibleFieldIdSet.has(field.id)) {
+      return field
+    }
+
+    const nextField = reorderedFields[reorderedIndex]
+    reorderedIndex += 1
+    return nextField
+  })
+
+  if (reorderedIndex !== reorderedFields.length) {
+    notifications.push({
+      severity: 'warn',
+      summary: 'Unable to reorder fields',
+      detail: 'Field reorder payload was incomplete. Reopen Manage Fields and try again.',
+      life: 5000
+    })
+    return
+  }
+
   await store.reorderFields({
     collectionId: props.collection.id,
-    fieldOrders: reorderedFields.map((field, index) => ({
+    fieldOrders: completeFieldOrder.map((field, index) => ({
       id: field.id,
       orderIndex: index
     }))
