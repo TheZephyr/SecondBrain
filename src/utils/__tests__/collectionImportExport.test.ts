@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Field, Item } from "../../types/models";
+
 import {
   escapeCsvValue,
   serializeItemsToCsv,
@@ -115,5 +116,222 @@ describe("collectionImportExport utils", () => {
     expect(preview.matchedFields).toEqual(["name"]);
     expect(preview.newFields).toEqual(["City"]);
     expect(preview.sample).toEqual([{ name: "Alice", City: "Paris" }]);
+  });
+});
+
+describe("parseImportContent – CSV edge cases", () => {
+  it("strips UTF-8 BOM from the first header", () => {
+    const bom = "\uFEFF";
+    const content = `${bom}"Name","Age"\n"Alice","30"`;
+    const parsed = parseImportContent("csv", content);
+    expect(parsed.fields[0]).toBe("Name");
+    expect(parsed.rows[0].Name).toBe("Alice");
+  });
+
+  it("throws EMPTY_CSV for empty string", () => {
+    expect(() => parseImportContent("csv", "")).toThrow("EMPTY_CSV");
+  });
+
+  it("throws EMPTY_CSV for whitespace-only string", () => {
+    expect(() => parseImportContent("csv", "   \n\n  ")).toThrow("EMPTY_CSV");
+  });
+
+  it("handles commas inside quoted values", () => {
+    const content = '"Name","Address"\n"Alice","123 Main St, Apt 4"';
+    const parsed = parseImportContent("csv", content);
+    expect(parsed.rows[0].Address).toBe("123 Main St, Apt 4");
+  });
+
+  it("handles rows with missing columns (fills with empty string)", () => {
+    const content = '"A","B","C"\n"1","2","3"\n"only-a"';
+    const parsed = parseImportContent("csv", content);
+    expect(parsed.rows[1].A).toBe("only-a");
+    expect(parsed.rows[1].B).toBe("");
+    expect(parsed.rows[1].C).toBe("");
+  });
+
+  it("trims whitespace from header names and values", () => {
+    const content = '"  Name  "," Age "\n"  Alice  "," 30 "';
+    const parsed = parseImportContent("csv", content);
+    expect(parsed.fields).toEqual(["Name", "Age"]);
+    expect(parsed.rows[0].Name).toBe("Alice");
+    expect(parsed.rows[0].Age).toBe("30");
+  });
+
+  it("handles unicode and emoji values", () => {
+    const content = '"Name","Note"\n"Ñoño","Hello 🌍🎉"';
+    const parsed = parseImportContent("csv", content);
+    expect(parsed.rows[0].Name).toBe("Ñoño");
+    expect(parsed.rows[0].Note).toBe("Hello 🌍🎉");
+  });
+});
+
+describe("parseImportContent – JSON edge cases", () => {
+  it("handles empty JSON array", () => {
+    const parsed = parseImportContent("json", "[]");
+    expect(parsed.fields).toEqual([]);
+    expect(parsed.rows).toEqual([]);
+  });
+
+  it("rejects non-array JSON (object)", () => {
+    expect(() => parseImportContent("json", '{"a": 1}')).toThrow(
+      "JSON_NOT_ARRAY",
+    );
+  });
+
+  it("rejects non-array JSON (string)", () => {
+    expect(() => parseImportContent("json", '"hello"')).toThrow(
+      "JSON_NOT_ARRAY",
+    );
+  });
+});
+
+describe("serializeItemsToCsv – edge cases", () => {
+  it("handles items with null field values", () => {
+    const testFields: Field[] = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "A",
+        type: "text",
+        options: null,
+        order_index: 0,
+      },
+      {
+        id: 2,
+        collection_id: 1,
+        name: "B",
+        type: "text",
+        options: null,
+        order_index: 1,
+      },
+    ];
+    const testItems: Item[] = [
+      { id: 1, collection_id: 1, data: { A: "value", B: null } },
+    ];
+
+    const csv = serializeItemsToCsv(testItems, testFields);
+    const lines = csv.split("\n");
+    expect(lines[1]).toBe('"value",""');
+  });
+
+  it("handles items with undefined (missing) field values", () => {
+    const testFields: Field[] = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "A",
+        type: "text",
+        options: null,
+        order_index: 0,
+      },
+      {
+        id: 2,
+        collection_id: 1,
+        name: "B",
+        type: "text",
+        options: null,
+        order_index: 1,
+      },
+    ];
+    const testItems: Item[] = [
+      { id: 1, collection_id: 1, data: { A: "only-a" } },
+    ];
+
+    const csv = serializeItemsToCsv(testItems, testFields);
+    const lines = csv.split("\n");
+    expect(lines[1]).toBe('"only-a",""');
+  });
+
+  it("exports fields in order_index order regardless of input order", () => {
+    const testFields: Field[] = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "Z-Last",
+        type: "text",
+        options: null,
+        order_index: 2,
+      },
+      {
+        id: 2,
+        collection_id: 1,
+        name: "A-First",
+        type: "text",
+        options: null,
+        order_index: 0,
+      },
+      {
+        id: 3,
+        collection_id: 1,
+        name: "M-Middle",
+        type: "text",
+        options: null,
+        order_index: 1,
+      },
+    ];
+    const testItems: Item[] = [];
+
+    const csv = serializeItemsToCsv(testItems, testFields);
+    expect(csv).toBe('"A-First","M-Middle","Z-Last"');
+  });
+});
+
+describe("serializeItemsToJson – edge cases", () => {
+  it("replaces undefined values with empty string in JSON output", () => {
+    const testFields: Field[] = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "A",
+        type: "text",
+        options: null,
+        order_index: 0,
+      },
+      {
+        id: 2,
+        collection_id: 1,
+        name: "B",
+        type: "text",
+        options: null,
+        order_index: 1,
+      },
+    ];
+    const testItems: Item[] = [
+      { id: 1, collection_id: 1, data: { A: "value" } },
+    ];
+
+    const json = serializeItemsToJson(testItems, testFields);
+    const parsed = JSON.parse(json) as Array<Record<string, string>>;
+    expect(parsed[0].A).toBe("value");
+    expect(parsed[0].B).toBe("");
+  });
+
+  it("preserves key order matching order_index", () => {
+    const testFields: Field[] = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "Zebra",
+        type: "text",
+        options: null,
+        order_index: 1,
+      },
+      {
+        id: 2,
+        collection_id: 1,
+        name: "Alpha",
+        type: "text",
+        options: null,
+        order_index: 0,
+      },
+    ];
+    const testItems: Item[] = [
+      { id: 1, collection_id: 1, data: { Zebra: "z", Alpha: "a" } },
+    ];
+
+    const json = serializeItemsToJson(testItems, testFields);
+    const parsed = JSON.parse(json) as Array<Record<string, string>>;
+    expect(Object.keys(parsed[0])).toEqual(["Alpha", "Zebra"]);
   });
 });
