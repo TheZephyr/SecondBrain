@@ -76,8 +76,23 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 
 - Import/Export operations MUST use transactions (`db.transaction(...)`).
 - "Replace" mode imports delete existing items within the transaction.
+- Any multi-step mutation MUST execute as a single transaction in the Worker.
+- Do not implement multi-step writes from Renderer loops (multiple sequential IPC calls) when atomicity is required.
 
-### 3.3 Query Scalability Rules
+### 3.3 Field Order Integrity + Bulk Mutations
+
+- Field ordering is DB-enforced unique per collection via `idx_fields_collection_order_unique` on `(collection_id, order_index)`.
+- Worker startup normalizes existing field order (`order_index ASC, id ASC`) before creating/ensuring that index.
+- `addField` fallback order must use `MAX(order_index) + 1` (never hardcode `0` for omitted order).
+- Reordering fields uses `db:reorderFields` and is all-or-nothing:
+  - payload must contain the full field set for the collection, exactly once,
+  - `orderIndex` values must be contiguous `0..n-1`,
+  - invalid/missing IDs must fail and rollback.
+- Bulk item writes are backend-only APIs and are all-or-nothing:
+  - `db:bulkDeleteItems` and `db:bulkPatchItems`,
+  - if any target ID is invalid for the collection, the entire transaction fails and rolls back.
+
+### 3.4 Query Scalability Rules
 
 - User-facing list endpoints MUST be paginated (`limit` + `offset`) and MUST return total count metadata.
 - Do not ship unbounded list fetches (`SELECT * ...` without `LIMIT/OFFSET`) for collection items.
@@ -110,6 +125,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - **Custom Rules**:
   - Field names have strict regex/refinement checks (`isSafeFieldName`).
   - Item data must be a plain object, no custom prototypes.
+  - Bulk guards are capped (`MAX_BULK_DELETE_IDS = 1000`, `MAX_BULK_PATCH_UPDATES = 500`).
 
 ## 6. File Organization
 
@@ -138,6 +154,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
     - Add to Store (`src/store.ts`).
     - Create UI Component.
     - Add/adjust tests for schemas and data logic changes.
+    - For Worker logic changes, add/adjust tests in `electron/__tests__/`.
 
 2.  **Safety**:
     - Never introduce `remote` module or `nodeIntegration: true`.
@@ -156,3 +173,11 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - Run node/electron type-check: `cmd /c npx tsc --noEmit -p tsconfig.node.json`
 - If Electron process code changed, run build check: `cmd /c npm run build:electron`
 - Manually smoke test any changed large-list UX paths (pagination/search/sort/export) in app.
+
+## 9. Native Module ABI (Important)
+
+- `better-sqlite3` is native and can break when Node/Electron ABI versions differ (`NODE_MODULE_VERSION` errors).
+- Use the scripts in `package.json`:
+  - `cmd /c npm run rebuild:node-native` for Node-based workflows (tests/typecheck scripts that run under Node),
+  - `cmd /c npm run rebuild:electron-native` for Electron app workflows (`dev`, `build:electron`).
+- `pretest`, `predev:electron`, and `prebuild:electron` already run these rebuilds automatically, but rerun manually if ABI mismatch appears.

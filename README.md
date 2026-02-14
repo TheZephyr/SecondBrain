@@ -38,17 +38,51 @@ npm install
 
 3. Rebuild native modules for Electron:
 ```bash
-npx electron-rebuild
+npm run rebuild:electron-native
 ```
 
 4. Build Electron main process:
 ```bash
-node build-electron.js
+npm run build:electron
 ```
 
 5. Start the development server:
 ```bash
 npm run dev
+```
+
+## Testing Code Changes
+
+Run these commands after pulling code changes:
+
+1. Install/update dependencies:
+```bash
+npm install
+```
+
+2. Run unit tests (includes Node-targeted native rebuild via `pretest`):
+```bash
+npm run test
+```
+
+3. Validate Electron main/worker build (includes Electron-targeted native rebuild via `prebuild:electron`):
+```bash
+npm run build:electron
+```
+
+4. Launch app for manual smoke testing (includes Electron-targeted native rebuild via `predev:electron`):
+```bash
+npm run dev
+```
+
+Useful native rebuild scripts:
+
+- `npm run rebuild:node-native` - rebuild `better-sqlite3` for your local Node runtime.
+- `npm run rebuild:electron-native` - rebuild `better-sqlite3` for Electron runtime.
+
+If you see `NODE_MODULE_VERSION` mismatch errors, run:
+```bash
+npm run rebuild:electron-native
 ```
 
 ## Build for Production
