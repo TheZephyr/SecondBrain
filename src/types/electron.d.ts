@@ -2,14 +2,20 @@ import type {
   Collection,
   Field,
   Item,
+  GetItemsInput,
   NewCollectionInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  BulkDeleteItemsInput,
+  BulkPatchItemsInput,
+  BulkMutationResult,
   ImportCollectionInput,
   CollectionItemCount,
+  PaginatedItemsResult,
 } from "./models";
 import type { IpcResult } from "./ipc";
 
@@ -43,13 +49,20 @@ export interface IElectronAPI {
     field: NewFieldInput,
   ) => Promise<IpcResult<(NewFieldInput & { id: number }) | null>>;
   updateField: (field: UpdateFieldInput) => Promise<IpcResult<boolean>>;
+  reorderFields: (input: ReorderFieldsInput) => Promise<IpcResult<boolean>>;
   deleteField: (id: number) => Promise<IpcResult<boolean>>;
 
   // Items
-  getItems: (collectionId: number) => Promise<IpcResult<Item[]>>;
+  getItems: (input: GetItemsInput) => Promise<IpcResult<PaginatedItemsResult>>;
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
+  bulkDeleteItems: (
+    input: BulkDeleteItemsInput,
+  ) => Promise<IpcResult<BulkMutationResult>>;
+  bulkPatchItems: (
+    input: BulkPatchItemsInput,
+  ) => Promise<IpcResult<BulkMutationResult>>;
   importCollection: (
     input: ImportCollectionInput,
   ) => Promise<IpcResult<boolean>>;
@@ -58,10 +71,7 @@ export interface IElectronAPI {
   showSaveDialog: (
     options: SaveDialogOptions,
   ) => Promise<IpcResult<string | null>>;
-  writeFile: (
-    filePath: string,
-    content: string,
-  ) => Promise<IpcResult<boolean>>;
+  writeFile: (filePath: string, content: string) => Promise<IpcResult<boolean>>;
 
   // Import
   showOpenDialog: (

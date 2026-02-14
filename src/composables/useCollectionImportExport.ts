@@ -26,13 +26,11 @@ import { fieldNameSchema } from "../validation/schemas";
 type UseCollectionImportExportParams = {
   collection: Ref<Collection>;
   fields: Ref<Field[]>;
-  items: Ref<Item[]>;
 };
 
 export function useCollectionImportExport({
   collection,
   fields,
-  items,
 }: UseCollectionImportExportParams) {
   const store = useStore();
   const notifications = useNotificationsStore();
@@ -74,6 +72,41 @@ export function useCollectionImportExport({
     return false;
   }
 
+  async function fetchAllItemsForExport(collectionId: number): Promise<Item[]> {
+    // Keep this aligned with GetItemsInputSchema.limit max (currently 100).
+    const pageSize = 100;
+    let offset = 0;
+    let total = 0;
+    const allItems: Item[] = [];
+
+    do {
+      const result = await window.electronAPI.getItems({
+        collectionId,
+        limit: pageSize,
+        offset,
+        search: "",
+        sort: [],
+      });
+
+      const payload = handleIpc(result, "db:getItems", {
+        items: [] as Item[],
+        total: 0,
+        limit: pageSize,
+        offset,
+      });
+
+      allItems.push(...payload.items);
+      total = payload.total;
+      offset += payload.items.length;
+
+      if (payload.items.length === 0) {
+        break;
+      }
+    } while (offset < total);
+
+    return allItems;
+  }
+
   async function handleExport() {
     isExporting.value = true;
 
@@ -89,7 +122,10 @@ export function useCollectionImportExport({
 
       const filePathResult = await window.electronAPI.showSaveDialog({
         title: `Export ${collection.value.name}`,
-        defaultPath: getDefaultFilename(collection.value.name, exportFormat.value),
+        defaultPath: getDefaultFilename(
+          collection.value.name,
+          exportFormat.value,
+        ),
         filters,
       });
 
@@ -105,10 +141,11 @@ export function useCollectionImportExport({
         return;
       }
 
+      const exportItems = await fetchAllItemsForExport(collection.value.id);
       const content =
         exportFormat.value === "csv"
-          ? serializeItemsToCsv(items.value, fields.value)
-          : serializeItemsToJson(items.value, fields.value);
+          ? serializeItemsToCsv(exportItems, fields.value)
+          : serializeItemsToJson(exportItems, fields.value);
 
       const writeResult = await window.electronAPI.writeFile(filePath, content);
       const success = handleIpc(writeResult, "export:writeFile", false);
@@ -260,28 +297,19 @@ export function useCollectionImportExport({
       );
 
       const newFieldsToCreate: NewFieldInput[] = [];
-      if (safeExistingFields.length === 0) {
-        for (let i = 0; i < normalizedFileFields.length; i++) {
-          newFieldsToCreate.push({
-            collectionId: collection.value.id,
-            name: normalizedFileFields[i],
-            type: "text",
-            options: null,
-            orderIndex: i,
-          });
-        }
-      } else if (newFieldNames.length > 0) {
-        const nextOrderIndex =
-          Math.max(...fields.value.map((field) => field.order_index), -1) + 1;
-        for (let i = 0; i < newFieldNames.length; i++) {
-          newFieldsToCreate.push({
-            collectionId: collection.value.id,
-            name: newFieldNames[i],
-            type: "text",
-            options: null,
-            orderIndex: nextOrderIndex + i,
-          });
-        }
+      const nextOrderIndex =
+        Math.max(...fields.value.map((field) => field.order_index), -1) + 1;
+      const fieldsToCreate =
+        safeExistingFields.length === 0 ? normalizedFileFields : newFieldNames;
+
+      for (let i = 0; i < fieldsToCreate.length; i++) {
+        newFieldsToCreate.push({
+          collectionId: collection.value.id,
+          name: fieldsToCreate[i],
+          type: "text",
+          options: null,
+          orderIndex: nextOrderIndex + i,
+        });
       }
 
       fieldMap.clear();

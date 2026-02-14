@@ -2,23 +2,32 @@
   "name": "second-brain",
   "private": true,
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "main": "dist-electron/main.js",
   "scripts": {
+    "rebuild:node-native": "npm rebuild better-sqlite3",
+    "rebuild:electron-native": "electron-rebuild -f -w better-sqlite3",
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
+    "predev:electron": "npm run rebuild:electron-native",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "vue-tsc && vite build && node build-electron.js && electron-builder",
+    "prebuild:electron": "npm run rebuild:electron-native",
     "build:electron": "node build-electron.js",
     "build:win": "vue-tsc && vite build && node build-electron.js && electron-builder --win",
     "preview": "vite preview",
-    "test": "vitest run --config vitest.config.ts"
+    "pretest": "npm run rebuild:node-native",
+    "test": "vitest run --config vitest.config.ts",
+    "rebuild:sqlite": "npm run rebuild:node-native"
   },
   "dependencies": {
     "@primeuix/themes": "^1.2.3",
     "@primevue/forms": "^4.5.4",
     "@vueuse/core": "^14.2.0",
     "better-sqlite3": "^12.6.2",
-    "lucide-vue-next": "^0.563.0",
+    "lucide-vue-next": "^0.564.0",
     "papaparse": "^5.5.3",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
@@ -27,6 +36,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@tailwindcss/vite": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/papaparse": "^5.5.2",
@@ -34,15 +44,14 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
-    "electron": "^40.0.0",
+    "electron": "^40.4.1",
     "electron-builder": "^26.4.0",
-    "electron-rebuild": "^3.2.9",
     "esbuild": "^0.27.2",
     "tailwindcss": "^4.0.0",
     "tailwindcss-primeui": "^0.6.1",
     "typescript": "~5.6.2",
     "vite": "^6.0.5",
-    "vitest": "^2.1.0",
+    "vitest": "^4.0.18",
     "vue-tsc": "^2.1.10",
     "wait-on": "^8.0.1"
   },
@@ -60,5 +69,7 @@
     "win": {
       "target": "nsis"
     }
-  }
+  },
+  "author": "Zephyr",
+  "description": "Desktop app for organizing personal data."
 }

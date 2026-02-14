@@ -10,12 +10,17 @@ import { Worker } from "worker_threads";
 import type { ZodType } from "zod";
 import type {
   ItemData,
+  GetItemsInput,
   NewCollectionInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  BulkDeleteItemsInput,
+  BulkPatchItemsInput,
+  BulkMutationResult,
   ImportCollectionInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
@@ -29,9 +34,13 @@ import {
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
+  ReorderFieldsInputSchema,
   NewItemInputSchema,
   UpdateItemInputSchema,
+  BulkDeleteItemsInputSchema,
+  BulkPatchItemsInputSchema,
   ImportCollectionInputSchema,
+  GetItemsInputSchema,
   itemDataSchema,
   positiveIntSchema,
 } from "../src/validation/schemas";
@@ -56,6 +65,7 @@ const pendingDbRequests = new Map<number, PendingDbRequest>();
 const isDev = process.env.NODE_ENV === "development";
 const DB_REQUEST_TIMEOUT_MS = 10_000;
 const DB_IMPORT_TIMEOUT_MS = 120_000;
+const DB_BULK_TIMEOUT_MS = 30_000;
 
 class AppError extends Error {
   code: IpcErrorCode;
@@ -423,7 +433,10 @@ handleIpc("db:deleteCollection", async (_, id) => {
 // ==================== FIELDS ====================
 handleIpc("db:getFields", async (_, collectionId: number) => {
   const parsedCollectionId = parsePositiveInt(collectionId, "db:getFields");
-  return invokeDbWorker({ type: "getFields", collectionId: parsedCollectionId });
+  return invokeDbWorker({
+    type: "getFields",
+    collectionId: parsedCollectionId,
+  });
 });
 
 handleIpc("db:addField", async (_, field: NewFieldInput) => {
@@ -434,6 +447,15 @@ handleIpc("db:addField", async (_, field: NewFieldInput) => {
 handleIpc("db:updateField", async (_, field: UpdateFieldInput) => {
   const input = parseOrThrow(UpdateFieldInputSchema, field, "db:updateField");
   return invokeDbWorker({ type: "updateField", input });
+});
+
+handleIpc("db:reorderFields", async (_, payload: ReorderFieldsInput) => {
+  const input = parseOrThrow(
+    ReorderFieldsInputSchema,
+    payload,
+    "db:reorderFields",
+  );
+  return invokeDbWorker({ type: "reorderFields", input });
 });
 
 handleIpc("db:deleteField", async (_, id) => {
@@ -450,14 +472,19 @@ type ItemRow = {
   updated_at?: string;
 };
 
-handleIpc("db:getItems", async (_, collectionId: number) => {
-  const parsedCollectionId = parsePositiveInt(collectionId, "db:getItems");
-  const items = await invokeDbWorker<ItemRow[]>({
+handleIpc("db:getItems", async (_, input: GetItemsInput) => {
+  const parsedInput = parseOrThrow(GetItemsInputSchema, input, "db:getItems");
+  const result = await invokeDbWorker<{
+    items: ItemRow[];
+    total: number;
+    limit: number;
+    offset: number;
+  }>({
     type: "getItems",
-    collectionId: parsedCollectionId,
+    input: parsedInput,
   });
 
-  return items.map((item) => {
+  const parsedItems = result.items.map((item) => {
     let rawData: unknown;
     try {
       rawData = JSON.parse(item.data);
@@ -489,6 +516,11 @@ handleIpc("db:getItems", async (_, collectionId: number) => {
       data: parsedData.data as ItemData,
     };
   });
+
+  return {
+    ...result,
+    items: parsedItems,
+  };
 });
 
 handleIpc("db:addItem", async (_, item: NewItemInput) => {
@@ -504,6 +536,30 @@ handleIpc("db:updateItem", async (_, item: UpdateItemInput) => {
 handleIpc("db:deleteItem", async (_, id) => {
   const itemId = parsePositiveInt(id, "db:deleteItem");
   return invokeDbWorker({ type: "deleteItem", id: itemId });
+});
+
+handleIpc("db:bulkDeleteItems", async (_, payload: BulkDeleteItemsInput) => {
+  const input = parseOrThrow(
+    BulkDeleteItemsInputSchema,
+    payload,
+    "db:bulkDeleteItems",
+  );
+  return invokeDbWorker<BulkMutationResult>(
+    { type: "bulkDeleteItems", input },
+    { timeoutMs: DB_BULK_TIMEOUT_MS },
+  );
+});
+
+handleIpc("db:bulkPatchItems", async (_, payload: BulkPatchItemsInput) => {
+  const input = parseOrThrow(
+    BulkPatchItemsInputSchema,
+    payload,
+    "db:bulkPatchItems",
+  );
+  return invokeDbWorker<BulkMutationResult>(
+    { type: "bulkPatchItems", input },
+    { timeoutMs: DB_BULK_TIMEOUT_MS },
+  );
 });
 
 // ==================== IMPORT (TRANSACTIONAL) ====================

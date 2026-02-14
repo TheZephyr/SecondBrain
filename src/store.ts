@@ -4,22 +4,55 @@ import type {
   Collection,
   Field,
   Item,
+  ItemSortSpec,
   NewCollectionInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  BulkDeleteItemsInput,
+  BulkPatchItemsInput,
+  BulkMutationResult,
+  PaginatedItemsResult,
 } from "./types/models";
 import { handleIpc } from "./utils/ipc";
+
+type LoadItemsOptions = {
+  page?: number;
+  rows?: number;
+  search?: string;
+  sort?: ItemSortSpec[];
+};
+
+const DEFAULT_ITEMS_ROWS = 50;
+const MAX_ITEMS_ROWS = 100;
 
 export const useStore = defineStore("main", () => {
   // State
   const collections = ref<Collection[]>([]);
   const fields = ref<Field[]>([]);
   const items = ref<Item[]>([]);
+  const itemsTotal = ref(0);
+  const itemsLoading = ref(false);
+  const itemsPage = ref(0);
+  const itemsRows = ref(DEFAULT_ITEMS_ROWS);
+  const itemsSearch = ref("");
+  const itemsSort = ref<ItemSortSpec[]>([]);
   const selectedCollection = ref<Collection | null>(null);
   const currentView = ref<"dashboard" | "collection">("dashboard");
+  let itemsRequestToken = 0;
+
+  function clearItemsState() {
+    itemsRequestToken += 1;
+    items.value = [];
+    itemsTotal.value = 0;
+    itemsLoading.value = false;
+    itemsPage.value = 0;
+    itemsSearch.value = "";
+    itemsSort.value = [];
+  }
 
   // Actions
   async function loadCollections() {
@@ -78,6 +111,22 @@ export const useStore = defineStore("main", () => {
     }
   }
 
+  async function reorderFields(input: ReorderFieldsInput) {
+    const payload: ReorderFieldsInput = {
+      collectionId: input.collectionId,
+      fieldOrders: input.fieldOrders.map((entry) => ({
+        id: entry.id,
+        orderIndex: entry.orderIndex,
+      })),
+    };
+
+    const result = await window.electronAPI.reorderFields(payload);
+    const success = handleIpc(result, "db:reorderFields", false);
+    if (success) {
+      await loadFields(payload.collectionId);
+    }
+  }
+
   async function deleteField(fieldId: number) {
     if (!selectedCollection.value) return;
 
@@ -88,9 +137,72 @@ export const useStore = defineStore("main", () => {
     }
   }
 
-  async function loadItems(collectionId: number) {
-    const result = await window.electronAPI.getItems(collectionId);
-    items.value = handleIpc(result, "db:getItems", []);
+  async function loadItems(collectionId: number, options: LoadItemsOptions = {}) {
+    if (options.rows !== undefined) {
+      itemsRows.value = Math.min(MAX_ITEMS_ROWS, Math.max(1, options.rows));
+    }
+    if (options.page !== undefined) {
+      itemsPage.value = Math.max(0, options.page);
+    }
+    if (options.search !== undefined) {
+      itemsSearch.value = options.search;
+    }
+    if (options.sort !== undefined) {
+      itemsSort.value = options.sort;
+    }
+
+    const limit = Math.min(MAX_ITEMS_ROWS, Math.max(1, itemsRows.value));
+    const offset = itemsPage.value * limit;
+    const requestToken = ++itemsRequestToken;
+    itemsLoading.value = true;
+
+    try {
+      const requestSort: ItemSortSpec[] = itemsSort.value.map((entry) => ({
+        field: String(entry.field),
+        order: entry.order === -1 ? -1 : 1,
+      }));
+      const requestSearch = String(itemsSearch.value ?? "");
+
+      const result = await window.electronAPI.getItems({
+        collectionId,
+        limit,
+        offset,
+        search: requestSearch,
+        sort: requestSort,
+      });
+
+      const fallback: PaginatedItemsResult = {
+        items: items.value,
+        total: itemsTotal.value,
+        limit,
+        offset,
+      };
+      const payload = handleIpc(result, "db:getItems", fallback);
+
+      if (requestToken !== itemsRequestToken) {
+        return;
+      }
+
+      const resolvedPage =
+        payload.limit > 0 ? Math.floor(payload.offset / payload.limit) : 0;
+
+      items.value = payload.items;
+      itemsTotal.value = payload.total;
+      itemsRows.value = payload.limit;
+      itemsPage.value = resolvedPage;
+
+      if (
+        payload.items.length === 0 &&
+        payload.total > 0 &&
+        resolvedPage > 0
+      ) {
+        await loadItems(collectionId, { page: resolvedPage - 1 });
+      }
+    } finally {
+      if (requestToken === itemsRequestToken) {
+        itemsLoading.value = false;
+      }
+    }
   }
 
   async function addItem(item: NewItemInput) {
@@ -120,16 +232,66 @@ export const useStore = defineStore("main", () => {
     }
   }
 
+  async function bulkDeleteItems(
+    input: BulkDeleteItemsInput,
+  ): Promise<BulkMutationResult | null> {
+    const payload: BulkDeleteItemsInput = {
+      collectionId: input.collectionId,
+      itemIds: [...input.itemIds],
+    };
+
+    const result = await window.electronAPI.bulkDeleteItems(payload);
+    const mutationResult = handleIpc(
+      result,
+      "db:bulkDeleteItems",
+      { affectedCount: 0 } satisfies BulkMutationResult,
+    );
+    if (!result.ok) {
+      return null;
+    }
+    if (selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return mutationResult;
+  }
+
+  async function bulkPatchItems(
+    input: BulkPatchItemsInput,
+  ): Promise<BulkMutationResult | null> {
+    const payload: BulkPatchItemsInput = {
+      collectionId: input.collectionId,
+      updates: input.updates.map((update) => ({
+        id: update.id,
+        patch: { ...update.patch },
+      })),
+    };
+
+    const result = await window.electronAPI.bulkPatchItems(payload);
+    const mutationResult = handleIpc(
+      result,
+      "db:bulkPatchItems",
+      { affectedCount: 0 } satisfies BulkMutationResult,
+    );
+    if (!result.ok) {
+      return null;
+    }
+    if (selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return mutationResult;
+  }
+
   function selectCollection(collection: Collection | null) {
     selectedCollection.value = collection;
     if (collection) {
       currentView.value = "collection";
+      clearItemsState();
       loadFields(collection.id);
       loadItems(collection.id);
     } else {
       currentView.value = "dashboard";
       fields.value = [];
-      items.value = [];
+      clearItemsState();
     }
   }
 
@@ -141,6 +303,12 @@ export const useStore = defineStore("main", () => {
     collections,
     fields,
     items,
+    itemsTotal,
+    itemsLoading,
+    itemsPage,
+    itemsRows,
+    itemsSearch,
+    itemsSort,
     selectedCollection,
     currentView,
     loadCollections,
@@ -150,11 +318,14 @@ export const useStore = defineStore("main", () => {
     loadFields,
     addField,
     updateField,
+    reorderFields,
     deleteField,
     loadItems,
     addItem,
     updateItem,
     deleteItem,
+    bulkDeleteItems,
+    bulkPatchItems,
     selectCollection,
     showDashboard,
   };
