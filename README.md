@@ -117,6 +117,11 @@ npm run build:electron
 npm run dev
 ```
 
+7. Manual edge-case smoke checks:
+- Switch between collections with saved table sort and confirm the sort preference is preserved.
+- Reorder fields in a collection that includes legacy/hidden unsafe fields; the reorder mutation should succeed.
+- Import data into a collection that includes legacy/hidden unsafe fields and confirm no order-index conflict errors occur.
+
 Useful native rebuild scripts:
 
 - `npm run rebuild:node-native` - rebuild `better-sqlite3` for your local Node runtime.

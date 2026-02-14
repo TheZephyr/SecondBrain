@@ -88,9 +88,11 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
   - payload must contain the full field set for the collection, exactly once,
   - `orderIndex` values must be contiguous `0..n-1`,
   - invalid/missing IDs must fail and rollback.
+- Renderer reorder UIs that hide unsupported fields MUST still include those hidden field IDs in `fieldOrders` (or disable reorder) so the payload stays complete.
 - Bulk item writes are backend-only APIs and are all-or-nothing:
   - `db:bulkDeleteItems` and `db:bulkPatchItems`,
   - if any target ID is invalid for the collection, the entire transaction fails and rolls back.
+- Import-created fields must assign `orderIndex` from `MAX(order_index) + 1` across all existing collection fields (including hidden/unsafe legacy fields), never by visible/safe-field count.
 
 ### 3.4 Query Scalability Rules
 
@@ -115,6 +117,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - For async list loads, guard against stale responses (request token / sequence id pattern).
 - Collection switching must reset collection-scoped list query state (page/search/sort/loading context).
 - Collection view query orchestration lives in `src/composables/collection/useCollectionItemsQuery.ts`; avoid duplicating item-load triggers across multiple components/watchers.
+- Do not normalize/persist saved multi-sort state against an uninitialized or transiently empty `safeFields` snapshot during collection switches; this can erase valid saved sort preferences.
 
 ## 5. Validation (Zod)
 
