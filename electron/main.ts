@@ -10,6 +10,7 @@ import { Worker } from "worker_threads";
 import type { ZodType } from "zod";
 import type {
   ItemData,
+  GetItemsInput,
   NewCollectionInput,
   UpdateCollectionInput,
   NewFieldInput,
@@ -32,6 +33,7 @@ import {
   NewItemInputSchema,
   UpdateItemInputSchema,
   ImportCollectionInputSchema,
+  GetItemsInputSchema,
   itemDataSchema,
   positiveIntSchema,
 } from "../src/validation/schemas";
@@ -423,7 +425,10 @@ handleIpc("db:deleteCollection", async (_, id) => {
 // ==================== FIELDS ====================
 handleIpc("db:getFields", async (_, collectionId: number) => {
   const parsedCollectionId = parsePositiveInt(collectionId, "db:getFields");
-  return invokeDbWorker({ type: "getFields", collectionId: parsedCollectionId });
+  return invokeDbWorker({
+    type: "getFields",
+    collectionId: parsedCollectionId,
+  });
 });
 
 handleIpc("db:addField", async (_, field: NewFieldInput) => {
@@ -450,14 +455,19 @@ type ItemRow = {
   updated_at?: string;
 };
 
-handleIpc("db:getItems", async (_, collectionId: number) => {
-  const parsedCollectionId = parsePositiveInt(collectionId, "db:getItems");
-  const items = await invokeDbWorker<ItemRow[]>({
+handleIpc("db:getItems", async (_, input: GetItemsInput) => {
+  const parsedInput = parseOrThrow(GetItemsInputSchema, input, "db:getItems");
+  const result = await invokeDbWorker<{
+    items: ItemRow[];
+    total: number;
+    limit: number;
+    offset: number;
+  }>({
     type: "getItems",
-    collectionId: parsedCollectionId,
+    input: parsedInput,
   });
 
-  return items.map((item) => {
+  const parsedItems = result.items.map((item) => {
     let rawData: unknown;
     try {
       rawData = JSON.parse(item.data);
@@ -489,6 +499,11 @@ handleIpc("db:getItems", async (_, collectionId: number) => {
       data: parsedData.data as ItemData,
     };
   });
+
+  return {
+    ...result,
+    items: parsedItems,
+  };
 });
 
 handleIpc("db:addItem", async (_, item: NewItemInput) => {

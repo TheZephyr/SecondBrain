@@ -56,8 +56,10 @@
         </p>
       </div>
 
-      <DataTable :value="filteredItems" dataKey="id" stripedRows sortMode="multiple" removableSort
-        v-model:multiSortMeta="multiSortMeta" :rowHover="true" tableStyle="table-layout: fixed; width: 100%">
+      <DataTable :value="items" dataKey="id" stripedRows sortMode="multiple" removableSort
+        v-model:multiSortMeta="multiSortMeta" :rowHover="true" lazy paginator :rows="itemsRows"
+        :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :rowsPerPageOptions="[25, 50, 100]"
+        :loading="itemsLoading" @page="onItemsPage" @sort="onItemsSort" tableStyle="table-layout: fixed; width: 100%">
         <Column v-for="field in orderedFields" :key="field.id" :field="getFieldPath(field.name)" :header="field.name"
           sortable :style="{ width: `${100 / (orderedFields.length + 1)}%` }">
           <template #body="{ data }">
@@ -83,9 +85,12 @@
 
         <template #empty>
           <div class="flex flex-col items-center gap-3 py-10 text-[var(--text-muted)]">
-            <component :is="items.length === 0 ? FileText : Search" :size="40" :stroke-width="1.5" />
+            <component :is="itemsTotal === 0 && !debouncedSearchQuery ? FileText : Search" :size="40"
+              :stroke-width="1.5" />
             <p class="text-sm">
-              {{ items.length === 0 ? "No items yet. Click \"Add Item\" to get started!" : "No items match your search."
+              {{ itemsTotal === 0 && !debouncedSearchQuery ?
+                "No items yet. Click \"Add Item\" to get started!" :
+                "No items match your search."
               }}
             </p>
           </div>
@@ -93,9 +98,9 @@
       </DataTable>
     </div>
 
-    <div v-if="items.length > 0" class="mt-4 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+    <div v-if="itemsTotal > 0" class="mt-4 flex items-center gap-2 text-xs text-[var(--text-muted)]">
       <Database :size="14" />
-      <span>{{ items.length }} total - {{ filteredItems.length }} showing</span>
+      <span>{{ itemsTotal }} total - {{ items.length }} on page</span>
     </div>
 
     <Dialog v-model:visible="showAddItemForm" :header="editingItem ? 'Edit Item' : 'Add New Item'" modal
@@ -231,7 +236,7 @@
               <Button class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
                 <Download v-if="!isExporting" />
                 <span v-if="isExporting">Exporting...</span>
-                <span v-else>Export {{ items.length }} {{ items.length === 1 ? 'item' : 'items' }}</span>
+                <span v-else>Export {{ itemsTotal }} {{ itemsTotal === 1 ? 'item' : 'items' }}</span>
               </Button>
             </div>
           </AccordionContent>
@@ -434,6 +439,7 @@ import AccordionPanel from 'primevue/accordionpanel'
 import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
 import DataTable from 'primevue/datatable'
+import type { DataTablePageEvent, DataTableSortEvent } from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
@@ -461,6 +467,7 @@ import type {
   Collection,
   Field,
   Item,
+  ItemSortSpec,
   FieldType,
   ItemData,
   ItemDataValue,
@@ -468,7 +475,7 @@ import type {
 
 const { getIcon, iconOptions } = useIcons()
 const store = useStore()
-const { fields, items } = storeToRefs(store)
+const { fields, items, itemsTotal, itemsLoading, itemsPage, itemsRows } = storeToRefs(store)
 const confirm = useConfirm()
 const notifications = useNotificationsStore()
 
@@ -497,12 +504,19 @@ const warnedUnsafeFields = new Set<number>()
 type FormValue = ItemDataValue | Date
 type FormData = Record<string, FormValue>
 type RowReorderEvent = { value: Field[] }
+type LoadItemsOptions = {
+  page?: number
+  rows?: number
+  search?: string
+  sort?: ItemSortSpec[]
+}
+type RawSortMeta = { field?: string; order?: 1 | -1 | 0 | null }
+type MultiSortMeta = { field: string; order: 1 | -1 }
 
 function createEmptyFormData(): FormData {
   return Object.create(null) as FormData
 }
 
-type MultiSortMeta = { field: string; order: 1 | -1 }
 const multiSortMeta = ref<MultiSortMeta[]>([])
 
 
@@ -528,8 +542,7 @@ const {
   cancelImport
 } = useCollectionImportExport({
   collection: toRef(props, 'collection'),
-  fields,
-  items
+  fields
 })
 
 
@@ -555,27 +568,8 @@ const safeFields = computed(() => {
   return fields.value.filter(field => isSafeFieldName(field.name))
 })
 
-const safeFieldNames = computed(() => {
-  return safeFields.value.map(field => field.name)
-})
-
 const orderedFields = computed(() => {
   return [...safeFields.value].sort((a, b) => a.order_index - b.order_index)
-})
-
-const filteredItems = computed(() => {
-  let result = items.value
-
-  if (debouncedSearchQuery.value) {
-    const query = debouncedSearchQuery.value.toLowerCase()
-    result = result.filter(item => {
-      return safeFieldNames.value.some(fieldName =>
-        String(item.data[fieldName] ?? '').toLowerCase().includes(query)
-      )
-    })
-  }
-
-  return result
 })
 
 function getFieldPath(fieldName: string) {
@@ -586,11 +580,45 @@ function getFieldInputId(field: Field) {
   return `field-input-${field.id}`
 }
 
-function normalizeSortMeta(meta: MultiSortMeta[]): MultiSortMeta[] {
-  return meta.filter(item => {
-    if (!item.field) return false
-    const fieldName = item.field.startsWith('data.') ? item.field.slice(5) : item.field
-    return safeFields.value.some(f => f.name === fieldName)
+function normalizeSortMeta(meta: RawSortMeta[]): MultiSortMeta[] {
+  return meta
+    .filter(item => {
+      if (!item.field) return false
+      if (item.order !== 1 && item.order !== -1) return false
+      const fieldName = item.field.startsWith('data.') ? item.field.slice(5) : item.field
+      return safeFields.value.some(f => f.name === fieldName)
+    })
+    .map(item => ({
+      field: item.field as string,
+      order: item.order as 1 | -1
+    }))
+}
+
+function areSortMetaEqual(a: MultiSortMeta[], b: MultiSortMeta[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((entry, index) => entry.field === b[index]?.field && entry.order === b[index]?.order)
+}
+
+function toItemSort(meta: MultiSortMeta[]): ItemSortSpec[] {
+  return meta.map(entry => ({ field: entry.field, order: entry.order }))
+}
+
+async function loadCollectionItems(options: LoadItemsOptions = {}) {
+  await store.loadItems(props.collection.id, options)
+}
+
+async function onItemsPage(event: DataTablePageEvent) {
+  const rows = event.rows || itemsRows.value
+  const page = rows > 0 ? Math.floor(event.first / rows) : 0
+  await loadCollectionItems({ page, rows })
+}
+
+async function onItemsSort(event: DataTableSortEvent) {
+  const nextMeta = normalizeSortMeta((event.multiSortMeta || []) as RawSortMeta[])
+  multiSortMeta.value = nextMeta
+  await loadCollectionItems({
+    page: 0,
+    sort: toItemSort(nextMeta)
   })
 }
 
@@ -616,14 +644,21 @@ function loadSortPreferences() {
   }
 
   try {
-    const parsed = JSON.parse(saved) as MultiSortMeta[]
+    const parsed = JSON.parse(saved) as RawSortMeta[]
     multiSortMeta.value = normalizeSortMeta(parsed)
-  } catch (e) {
+  } catch {
     multiSortMeta.value = []
   }
 }
 
 watch(multiSortMeta, () => saveSortPreferences(), { deep: true })
+
+watch(debouncedSearchQuery, async (query) => {
+  await loadCollectionItems({
+    page: 0,
+    search: query
+  })
+})
 
 watch(
   () => fields.value,
@@ -890,10 +925,16 @@ watch(
   (newCollection) => {
     if (newCollection) {
       store.selectCollection(newCollection)
+      searchQuery.value = ''
       collectionName.value = newCollection.name
       collectionIcon.value = newCollection.icon
       setTimeout(() => {
         loadSortPreferences()
+        void loadCollectionItems({
+          page: 0,
+          search: '',
+          sort: toItemSort(multiSortMeta.value)
+        })
       }, 100)
     }
   },
@@ -904,7 +945,14 @@ watch(
   () => fields.value,
   () => {
     if (props.collection) {
-      multiSortMeta.value = normalizeSortMeta(multiSortMeta.value)
+      const normalized = normalizeSortMeta(multiSortMeta.value)
+      if (!areSortMetaEqual(multiSortMeta.value, normalized)) {
+        multiSortMeta.value = normalized
+        void loadCollectionItems({
+          page: 0,
+          sort: toItemSort(normalized)
+        })
+      }
       saveSortPreferences()
     }
   }

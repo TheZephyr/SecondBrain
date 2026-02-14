@@ -1,5 +1,6 @@
 import type {
   ImportCollectionInput,
+  GetItemsInput,
   NewCollectionInput,
   NewFieldInput,
   NewItemInput,
@@ -19,7 +20,7 @@ export type DbWorkerOperation =
   | { type: "addField"; input: NewFieldInput }
   | { type: "updateField"; input: UpdateFieldInput }
   | { type: "deleteField"; id: number }
-  | { type: "getItems"; collectionId: number }
+  | { type: "getItems"; input: GetItemsInput }
   | { type: "addItem"; input: NewItemInput }
   | { type: "updateItem"; input: UpdateItemInput }
   | { type: "deleteItem"; id: number }

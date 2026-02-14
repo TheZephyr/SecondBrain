@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  GetItemsInputSchema,
   ImportCollectionInputSchema,
   NewFieldInputSchema,
   itemDataSchema,
@@ -92,5 +93,44 @@ describe("validation schemas", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("applies defaults for paginated getItems input", () => {
+    const result = GetItemsInputSchema.safeParse({
+      collectionId: 1,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.limit).toBe(50);
+      expect(result.data.offset).toBe(0);
+      expect(result.data.search).toBe("");
+      expect(result.data.sort).toEqual([]);
+    }
+  });
+
+  it("rejects invalid paginated getItems input", () => {
+    const result = GetItemsInputSchema.safeParse({
+      collectionId: 1,
+      limit: 0,
+      offset: -1,
+      sort: [{ field: "created_at", order: 2 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("trims search and accepts valid sort fields for getItems input", () => {
+    const result = GetItemsInputSchema.safeParse({
+      collectionId: 1,
+      search: "  hello world  ",
+      sort: [{ field: "data.Title", order: -1 }],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.search).toBe("hello world");
+      expect(result.data.sort).toEqual([{ field: "data.Title", order: -1 }]);
+    }
   });
 });

@@ -55,6 +55,13 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - IPC channels are strongly typed.
 - All IPC results are wrapped in `IpcResult<T>`: `{ ok: true, data: T } | { ok: false, error: IpcError }`.
 
+### 2.3 IPC Payload Safety (Structured Clone)
+
+- IPC payloads MUST be structured-clone-safe (plain objects, arrays, strings, numbers, booleans, `null`).
+- Never pass Vue reactive proxies (`ref`, `reactive`, `computed`, store proxy values) directly to `window.electronAPI`.
+- Before IPC calls from Renderer/Pinia, normalize payloads into plain values (e.g., map arrays into new plain objects).
+- If you see `An object could not be cloned`, inspect the Renderer callsite payload first.
+
 ## 3. Database Patterns
 
 ### 3.1 Schema
@@ -63,12 +70,20 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - **fields**: Metadata for columns in a collection.
 - **items**: The actual data. stored as a JSON blob in the `data` column.
 
-**Key constraint**: The `items.data` column is a JSON string. We query fields inside this JSON in the application layer, not deeply in SQL (currently).
+**Key constraint**: The `items.data` column is a JSON string. Core CRUD still treats it as a whole object, but list/search/sort performance logic may query JSON inside SQL in the Worker (e.g., `json_extract`, `json_each`, FTS index content generation). Keep this logic in the Worker, never in Renderer.
 
 ### 3.2 Transactions
 
 - Import/Export operations MUST use transactions (`db.transaction(...)`).
 - "Replace" mode imports delete existing items within the transaction.
+
+### 3.3 Query Scalability Rules
+
+- User-facing list endpoints MUST be paginated (`limit` + `offset`) and MUST return total count metadata.
+- Do not ship unbounded list fetches (`SELECT * ...` without `LIMIT/OFFSET`) for collection items.
+- Search and sort on large item sets must run in the Worker/SQL layer, not by scanning full arrays in Renderer.
+- Sort/search inputs must be validated in Main with Zod and constrained to safe, explicit fields.
+- If an optimization path (e.g., FTS) is unavailable, implement a safe fallback (e.g., `LIKE`) rather than crashing.
 
 ## 4. State Management (Pinia)
 
@@ -79,6 +94,11 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
   - Wait for successful response.
   - Then reload the relevant list (e.g., `loadCollections()`).
   - _Current Approach_: We generally re-fetch lists after mutation rather than manual optimistic updates, to ensure consistency.
+
+### 4.1 Async Concurrency Rules
+
+- For async list loads, guard against stale responses (request token / sequence id pattern).
+- Collection switching must reset collection-scoped list query state (page/search/sort/loading context).
 
 ## 5. Validation (Zod)
 
@@ -100,7 +120,8 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
   - `db-worker-protocol.ts`: Types for Worker communication.
 - `src/`: Renderer code.
   - `components/`: Vue components.
-  - `stores/`: Pinia stores.
+  - `store.ts`: Main Pinia store.
+  - `stores/`: Feature-specific stores (e.g., notifications).
   - `types/`: Shared TypeScript interfaces.
   - `utils/`: Helper functions (IPC handling, formatting).
   - `validation/`: Zod schemas.
@@ -116,6 +137,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
     - Expose in `electron/preload.ts`.
     - Add to Store (`src/store.ts`).
     - Create UI Component.
+    - Add/adjust tests for schemas and data logic changes.
 
 2.  **Safety**:
     - Never introduce `remote` module or `nodeIntegration: true`.
@@ -126,3 +148,11 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
     - Use PrimeVue components where possible for consistency.
     - Use `tailwind` classes for layout and spacing.
     - Respect the dark/light theme tokens (if present, else use standard colors).
+
+## 8. Verification Checklist (Before Finishing)
+
+- Run tests: `cmd /c npm test`
+- Run renderer type-check: `cmd /c npx vue-tsc --noEmit`
+- Run node/electron type-check: `cmd /c npx tsc --noEmit -p tsconfig.node.json`
+- If Electron process code changed, run build check: `cmd /c npm run build:electron`
+- Manually smoke test any changed large-list UX paths (pagination/search/sort/export) in app.

@@ -24,6 +24,33 @@ export const fieldNameSchema = z
 
 export const positiveIntSchema = z.number().int().positive();
 export const orderIndexSchema = z.number().int().min(0);
+export const nonNegativeIntSchema = z.number().int().min(0);
+
+export const itemSortFieldSchema = z
+  .string()
+  .trim()
+  .superRefine((value, ctx) => {
+    if (!value.startsWith("data.")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sort field must start with data.",
+      });
+      return;
+    }
+
+    const fieldName = value.slice(5);
+    if (!isSafeFieldName(fieldName)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sort field must target a safe field name.",
+      });
+    }
+  });
+
+export const ItemSortSpecSchema = z.object({
+  field: itemSortFieldSchema,
+  order: z.union([z.literal(1), z.literal(-1)]),
+});
 
 export const itemDataValueSchema = z.union([
   z.string(),
@@ -127,3 +154,11 @@ export const ImportCollectionInputSchema = z
       }
     });
   });
+
+export const GetItemsInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  limit: z.number().int().min(1).max(100).default(50),
+  offset: nonNegativeIntSchema.default(0),
+  search: z.string().trim().max(200).optional().default(""),
+  sort: z.array(ItemSortSpecSchema).max(3).optional().default([]),
+});

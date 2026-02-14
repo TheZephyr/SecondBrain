@@ -27,6 +27,26 @@ export type Item = {
   updated_at?: string;
 };
 
+export type ItemSortSpec = {
+  field: string;
+  order: 1 | -1;
+};
+
+export type GetItemsInput = {
+  collectionId: number;
+  limit: number;
+  offset: number;
+  search?: string;
+  sort?: ItemSortSpec[];
+};
+
+export type PaginatedItemsResult = {
+  items: Item[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export type CollectionItemCount = {
   collectionId: number;
   itemCount: number;

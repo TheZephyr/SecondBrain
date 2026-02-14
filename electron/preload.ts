@@ -33,23 +33,18 @@ const electronAPI: IElectronAPI = {
   // Collections
   getCollections: () => invoke("db:getCollections"),
   getCollectionItemCounts: () => invoke("db:getCollectionItemCounts"),
-  addCollection: (collection) =>
-    invoke("db:addCollection", collection),
-  updateCollection: (collection) =>
-    invoke("db:updateCollection", collection),
-  deleteCollection: (id: number) =>
-    invoke("db:deleteCollection", id),
+  addCollection: (collection) => invoke("db:addCollection", collection),
+  updateCollection: (collection) => invoke("db:updateCollection", collection),
+  deleteCollection: (id: number) => invoke("db:deleteCollection", id),
 
   // Fields
-  getFields: (collectionId: number) =>
-    invoke("db:getFields", collectionId),
+  getFields: (collectionId: number) => invoke("db:getFields", collectionId),
   addField: (field) => invoke("db:addField", field),
   updateField: (field) => invoke("db:updateField", field),
   deleteField: (id: number) => invoke("db:deleteField", id),
 
   // Items
-  getItems: (collectionId: number) =>
-    invoke("db:getItems", collectionId),
+  getItems: (input) => invoke("db:getItems", input),
   addItem: (item) => invoke("db:addItem", item),
   updateItem: (item) => invoke("db:updateItem", item),
   deleteItem: (id: number) => invoke("db:deleteItem", id),
@@ -62,8 +57,7 @@ const electronAPI: IElectronAPI = {
 
   // Import
   showOpenDialog: (options) => invoke("import:showOpenDialog", options),
-  readFile: (filePath: string) =>
-    invoke("import:readFile", filePath),
+  readFile: (filePath: string) => invoke("import:readFile", filePath),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);
