@@ -16,6 +16,36 @@ A desktop application for organizing personal data collections with a flexible, 
 - Frontend: Vue 3, Vite, PrimeVue, Tailwind CSS
 - State: Pinia
 
+## Contributor Quick Map
+
+┌─────────────────────────────────────────┐
+│  Renderer Process (Vue 3 + TypeScript)  │
+│  ┌────────────┐      ┌────────────┐     │
+│  │   Views    │ ───> │   Store    │     │
+│  │ Components │      │  (Pinia)   │     │
+│  └────────────┘      └────────────┘     │
+│         │                   │           │
+│         └───────────────────┘           │
+└──────────────────┼──────────────────────┘
+                   │
+               IPC Bridge
+                   │
+┌──────────────────┼──────────────────────┐
+│     Main Process (Electron + Node)      │
+│         ┌────────▼────────┐             │
+│         │   IPC Handlers  │             │
+│         └────────┬────────┘             │
+│                  │                      │
+│         ┌────────▼─────────┐            │
+│         │   Worker Thread  │            │
+│         │    (Database)    │            │
+│         └────────┬─────────┘            │
+│                  │                      │
+│         ┌────────▼─────────┐            │
+│         │  SQLite Database │            │
+│         └──────────────────┘            │
+└─────────────────────────────────────────┘
+
 ## Installation
 
 ### Prerequisites
@@ -65,12 +95,22 @@ npm install
 npm run test
 ```
 
-3. Validate Electron main/worker build (includes Electron-targeted native rebuild via `prebuild:electron`):
+3. Run renderer type-check:
+```bash
+npx vue-tsc --noEmit
+```
+
+4. Run node/electron type-check:
+```bash
+npx tsc --noEmit -p tsconfig.node.json
+```
+
+5. Validate Electron main/worker build (includes Electron-targeted native rebuild via `prebuild:electron`):
 ```bash
 npm run build:electron
 ```
 
-4. Launch app for manual smoke testing (includes Electron-targeted native rebuild via `predev:electron`):
+6. Launch app for manual smoke testing (includes Electron-targeted native rebuild via `predev:electron`):
 ```bash
 npm run dev
 ```

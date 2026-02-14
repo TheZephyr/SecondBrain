@@ -114,6 +114,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 
 - For async list loads, guard against stale responses (request token / sequence id pattern).
 - Collection switching must reset collection-scoped list query state (page/search/sort/loading context).
+- Collection view query orchestration lives in `src/composables/collection/useCollectionItemsQuery.ts`; avoid duplicating item-load triggers across multiple components/watchers.
 
 ## 5. Validation (Zod)
 
@@ -136,6 +137,9 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
   - `db-worker-protocol.ts`: Types for Worker communication.
 - `src/`: Renderer code.
   - `components/`: Vue components.
+    - `views/Collection.vue`: Thin orchestration view for collection screen.
+    - `views/collection/`: Collection feature components (`CollectionHeaderBar`, `CollectionItemsPanel`, `CollectionItemEditorDialog`, `CollectionFieldsDialog`, `CollectionSettingsDialog`, and local `types.ts`).
+  - `composables/collection/`: Collection-specific logic (`useSafeFields`, `useCollectionItemsQuery`, `useCollectionItemForm`) and their tests.
   - `store.ts`: Main Pinia store.
   - `stores/`: Feature-specific stores (e.g., notifications).
   - `types/`: Shared TypeScript interfaces.
@@ -165,6 +169,12 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
     - Use PrimeVue components where possible for consistency.
     - Use `tailwind` classes for layout and spacing.
     - Respect the dark/light theme tokens (if present, else use standard colors).
+
+4.  **Collection View Boundaries**:
+    - Keep `src/components/views/Collection.vue` as an orchestrator; put feature-heavy UI and logic in `src/components/views/collection/` and `src/composables/collection/`.
+    - Do not call `store.selectCollection(...)` from `Collection.vue`; selection is owned by higher-level navigation/view flow.
+    - Keep sort persistence key compatibility as `multi_sort_${collectionId}` unless a migration path is intentionally introduced.
+    - `useCollectionImportExport` should be consumed by collection settings/import-export UI (currently `CollectionSettingsDialog.vue`), not the top-level view.
 
 ## 8. Verification Checklist (Before Finishing)
 
