@@ -59,8 +59,8 @@ A desktop application for organizing personal data collections with a flexible, 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/TheZephyr/second-brain.git
-cd second-brain
+git clone https://github.com/TheZephyr/SecondBrain.git
+cd SecondBrain
 ```
 
 2. Install dependencies:
