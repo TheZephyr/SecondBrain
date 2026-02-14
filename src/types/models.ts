@@ -79,6 +79,16 @@ export type UpdateFieldInput = {
   orderIndex?: number;
 };
 
+export type FieldOrderUpdate = {
+  id: number;
+  orderIndex: number;
+};
+
+export type ReorderFieldsInput = {
+  collectionId: number;
+  fieldOrders: FieldOrderUpdate[];
+};
+
 export type NewItemInput = {
   collectionId: number;
   data: ItemData;
@@ -87,6 +97,25 @@ export type NewItemInput = {
 export type UpdateItemInput = {
   id: number;
   data: ItemData;
+};
+
+export type BulkDeleteItemsInput = {
+  collectionId: number;
+  itemIds: number[];
+};
+
+export type BulkPatchItemUpdate = {
+  id: number;
+  patch: ItemData;
+};
+
+export type BulkPatchItemsInput = {
+  collectionId: number;
+  updates: BulkPatchItemUpdate[];
+};
+
+export type BulkMutationResult = {
+  affectedCount: number;
 };
 
 export type ExportFormat = "csv" | "json";

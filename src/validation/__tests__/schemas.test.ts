@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  BulkDeleteItemsInputSchema,
+  BulkPatchItemsInputSchema,
   GetItemsInputSchema,
   ImportCollectionInputSchema,
   NewFieldInputSchema,
+  ReorderFieldsInputSchema,
   itemDataSchema,
 } from "../schemas";
 
@@ -132,5 +135,74 @@ describe("validation schemas", () => {
       expect(result.data.search).toBe("hello world");
       expect(result.data.sort).toEqual([{ field: "data.Title", order: -1 }]);
     }
+  });
+
+  it("accepts valid reorder fields payload", () => {
+    const result = ReorderFieldsInputSchema.safeParse({
+      collectionId: 1,
+      fieldOrders: [
+        { id: 10, orderIndex: 0 },
+        { id: 11, orderIndex: 1 },
+        { id: 12, orderIndex: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects reorder fields payload with duplicate field IDs", () => {
+    const result = ReorderFieldsInputSchema.safeParse({
+      collectionId: 1,
+      fieldOrders: [
+        { id: 10, orderIndex: 0 },
+        { id: 10, orderIndex: 1 },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects reorder fields payload with non-contiguous order indices", () => {
+    const result = ReorderFieldsInputSchema.safeParse({
+      collectionId: 1,
+      fieldOrders: [
+        { id: 10, orderIndex: 0 },
+        { id: 11, orderIndex: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects bulk delete payload with duplicate item IDs", () => {
+    const result = BulkDeleteItemsInputSchema.safeParse({
+      collectionId: 1,
+      itemIds: [1, 1, 2],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects bulk patch payload with duplicate item IDs", () => {
+    const result = BulkPatchItemsInputSchema.safeParse({
+      collectionId: 1,
+      updates: [
+        { id: 1, patch: { Title: "A" } },
+        { id: 1, patch: { Title: "B" } },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects bulk patch payload with empty patch object", () => {
+    const result = BulkPatchItemsInputSchema.safeParse({
+      collectionId: 1,
+      updates: [
+        { id: 1, patch: {} },
+      ],
+    });
+
+    expect(result.success).toBe(false);
   });
 });

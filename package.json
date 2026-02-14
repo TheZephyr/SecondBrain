@@ -4,14 +4,20 @@
   "version": "0.1.0",
   "main": "dist-electron/main.js",
   "scripts": {
+    "rebuild:node-native": "npm rebuild better-sqlite3",
+    "rebuild:electron-native": "electron-rebuild -f -w better-sqlite3",
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
+    "predev:electron": "npm run rebuild:electron-native",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "vue-tsc && vite build && node build-electron.js && electron-builder",
+    "prebuild:electron": "npm run rebuild:electron-native",
     "build:electron": "node build-electron.js",
     "build:win": "vue-tsc && vite build && node build-electron.js && electron-builder --win",
     "preview": "vite preview",
-    "test": "vitest run --config vitest.config.ts"
+    "pretest": "npm run rebuild:node-native",
+    "test": "vitest run --config vitest.config.ts",
+    "rebuild:sqlite": "npm run rebuild:node-native"
   },
   "dependencies": {
     "@primeuix/themes": "^1.2.3",

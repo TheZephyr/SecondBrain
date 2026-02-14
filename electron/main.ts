@@ -15,8 +15,12 @@ import type {
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  BulkDeleteItemsInput,
+  BulkPatchItemsInput,
+  BulkMutationResult,
   ImportCollectionInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
@@ -30,8 +34,11 @@ import {
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
+  ReorderFieldsInputSchema,
   NewItemInputSchema,
   UpdateItemInputSchema,
+  BulkDeleteItemsInputSchema,
+  BulkPatchItemsInputSchema,
   ImportCollectionInputSchema,
   GetItemsInputSchema,
   itemDataSchema,
@@ -58,6 +65,7 @@ const pendingDbRequests = new Map<number, PendingDbRequest>();
 const isDev = process.env.NODE_ENV === "development";
 const DB_REQUEST_TIMEOUT_MS = 10_000;
 const DB_IMPORT_TIMEOUT_MS = 120_000;
+const DB_BULK_TIMEOUT_MS = 30_000;
 
 class AppError extends Error {
   code: IpcErrorCode;
@@ -441,6 +449,15 @@ handleIpc("db:updateField", async (_, field: UpdateFieldInput) => {
   return invokeDbWorker({ type: "updateField", input });
 });
 
+handleIpc("db:reorderFields", async (_, payload: ReorderFieldsInput) => {
+  const input = parseOrThrow(
+    ReorderFieldsInputSchema,
+    payload,
+    "db:reorderFields",
+  );
+  return invokeDbWorker({ type: "reorderFields", input });
+});
+
 handleIpc("db:deleteField", async (_, id) => {
   const fieldId = parsePositiveInt(id, "db:deleteField");
   return invokeDbWorker({ type: "deleteField", id: fieldId });
@@ -519,6 +536,30 @@ handleIpc("db:updateItem", async (_, item: UpdateItemInput) => {
 handleIpc("db:deleteItem", async (_, id) => {
   const itemId = parsePositiveInt(id, "db:deleteItem");
   return invokeDbWorker({ type: "deleteItem", id: itemId });
+});
+
+handleIpc("db:bulkDeleteItems", async (_, payload: BulkDeleteItemsInput) => {
+  const input = parseOrThrow(
+    BulkDeleteItemsInputSchema,
+    payload,
+    "db:bulkDeleteItems",
+  );
+  return invokeDbWorker<BulkMutationResult>(
+    { type: "bulkDeleteItems", input },
+    { timeoutMs: DB_BULK_TIMEOUT_MS },
+  );
+});
+
+handleIpc("db:bulkPatchItems", async (_, payload: BulkPatchItemsInput) => {
+  const input = parseOrThrow(
+    BulkPatchItemsInputSchema,
+    payload,
+    "db:bulkPatchItems",
+  );
+  return invokeDbWorker<BulkMutationResult>(
+    { type: "bulkPatchItems", input },
+    { timeoutMs: DB_BULK_TIMEOUT_MS },
+  );
 });
 
 // ==================== IMPORT (TRANSACTIONAL) ====================

@@ -9,8 +9,12 @@ import type {
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  BulkDeleteItemsInput,
+  BulkPatchItemsInput,
+  BulkMutationResult,
   PaginatedItemsResult,
 } from "./types/models";
 import { handleIpc } from "./utils/ipc";
@@ -103,6 +107,22 @@ export const useStore = defineStore("main", () => {
     const success = handleIpc(result, "db:updateField", false);
     if (success) {
       await loadFields(selectedCollection.value.id);
+    }
+  }
+
+  async function reorderFields(input: ReorderFieldsInput) {
+    const payload: ReorderFieldsInput = {
+      collectionId: input.collectionId,
+      fieldOrders: input.fieldOrders.map((entry) => ({
+        id: entry.id,
+        orderIndex: entry.orderIndex,
+      })),
+    };
+
+    const result = await window.electronAPI.reorderFields(payload);
+    const success = handleIpc(result, "db:reorderFields", false);
+    if (success) {
+      await loadFields(payload.collectionId);
     }
   }
 
@@ -211,6 +231,55 @@ export const useStore = defineStore("main", () => {
     }
   }
 
+  async function bulkDeleteItems(
+    input: BulkDeleteItemsInput,
+  ): Promise<BulkMutationResult | null> {
+    const payload: BulkDeleteItemsInput = {
+      collectionId: input.collectionId,
+      itemIds: [...input.itemIds],
+    };
+
+    const result = await window.electronAPI.bulkDeleteItems(payload);
+    const mutationResult = handleIpc(
+      result,
+      "db:bulkDeleteItems",
+      { affectedCount: 0 } satisfies BulkMutationResult,
+    );
+    if (!result.ok) {
+      return null;
+    }
+    if (selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return mutationResult;
+  }
+
+  async function bulkPatchItems(
+    input: BulkPatchItemsInput,
+  ): Promise<BulkMutationResult | null> {
+    const payload: BulkPatchItemsInput = {
+      collectionId: input.collectionId,
+      updates: input.updates.map((update) => ({
+        id: update.id,
+        patch: { ...update.patch },
+      })),
+    };
+
+    const result = await window.electronAPI.bulkPatchItems(payload);
+    const mutationResult = handleIpc(
+      result,
+      "db:bulkPatchItems",
+      { affectedCount: 0 } satisfies BulkMutationResult,
+    );
+    if (!result.ok) {
+      return null;
+    }
+    if (selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return mutationResult;
+  }
+
   function selectCollection(collection: Collection | null) {
     selectedCollection.value = collection;
     if (collection) {
@@ -248,11 +317,14 @@ export const useStore = defineStore("main", () => {
     loadFields,
     addField,
     updateField,
+    reorderFields,
     deleteField,
     loadItems,
     addItem,
     updateItem,
     deleteItem,
+    bulkDeleteItems,
+    bulkPatchItems,
     selectCollection,
     showDashboard,
   };

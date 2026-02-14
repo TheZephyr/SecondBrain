@@ -41,6 +41,7 @@ const electronAPI: IElectronAPI = {
   getFields: (collectionId: number) => invoke("db:getFields", collectionId),
   addField: (field) => invoke("db:addField", field),
   updateField: (field) => invoke("db:updateField", field),
+  reorderFields: (input) => invoke("db:reorderFields", input),
   deleteField: (id: number) => invoke("db:deleteField", id),
 
   // Items
@@ -48,6 +49,8 @@ const electronAPI: IElectronAPI = {
   addItem: (item) => invoke("db:addItem", item),
   updateItem: (item) => invoke("db:updateItem", item),
   deleteItem: (id: number) => invoke("db:deleteItem", id),
+  bulkDeleteItems: (input) => invoke("db:bulkDeleteItems", input),
+  bulkPatchItems: (input) => invoke("db:bulkPatchItems", input),
   importCollection: (input) => invoke("db:importCollection", input),
 
   // Export

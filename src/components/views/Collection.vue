@@ -692,12 +692,17 @@ async function addField() {
     return
   }
 
+  const nextOrderIndex = fields.value.reduce(
+    (maxOrder, field) => Math.max(maxOrder, field.order_index),
+    -1
+  ) + 1
+
   await store.addField({
     collectionId: props.collection.id,
     name: nameResult.data,
     type: newField.value.type,
     options: newField.value.type === 'select' ? newField.value.options : null,
-    orderIndex: fields.value.length
+    orderIndex: nextOrderIndex
   })
 
   newField.value = { name: '', type: 'text', options: '' }
@@ -912,12 +917,13 @@ async function onFieldsReorder(event: RowReorderEvent) {
   const reorderedFields = event.value
   if (!reorderedFields) return
 
-  for (let i = 0; i < reorderedFields.length; i++) {
-    await store.updateField({
-      ...reorderedFields[i],
-      orderIndex: i
-    })
-  }
+  await store.reorderFields({
+    collectionId: props.collection.id,
+    fieldOrders: reorderedFields.map((field, index) => ({
+      id: field.id,
+      orderIndex: index
+    }))
+  })
 }
 
 watch(

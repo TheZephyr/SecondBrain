@@ -1,10 +1,16 @@
 import Database from "better-sqlite3";
 import { parentPort } from "worker_threads";
 import type {
+  BulkDeleteItemsInput,
+  BulkMutationResult,
+  BulkPatchItemsInput,
   GetItemsInput,
   ImportCollectionInput,
+  ItemData,
   ItemSortSpec,
+  ReorderFieldsInput,
 } from "../src/types/models";
+import { itemDataSchema } from "../src/validation/schemas";
 import type {
   DbWorkerError,
   DbWorkerOperation,
@@ -14,9 +20,14 @@ import type {
 
 let db: Database.Database | null = null;
 let ftsEnabled = false;
+const SQLITE_IN_CLAUSE_CHUNK_SIZE = 400;
+const FIELD_ORDER_UNIQUE_INDEX = "idx_fields_collection_order_unique";
 
 type CountRow = { count: number | bigint };
 type TotalRow = { total: number | bigint };
+type MaxOrderRow = { maxOrderIndex: number | bigint | null };
+type IdRow = { id: number };
+type ItemDataRow = { id: number; data: string };
 
 function serializeDetails(details: unknown): string | undefined {
   if (!details) return undefined;
@@ -53,6 +64,336 @@ function requireDb(): Database.Database {
 function toNumber(value: number | bigint | undefined): number {
   if (value === undefined) return 0;
   return typeof value === "bigint" ? Number(value) : value;
+}
+
+function chunkArray<T>(values: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < values.length; i += chunkSize) {
+    chunks.push(values.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+function buildInClausePlaceholders(length: number): string {
+  return new Array(length).fill("?").join(", ");
+}
+
+function getMissingIds(requestedIds: number[], existingIds: Set<number>): number[] {
+  return requestedIds.filter((id) => !existingIds.has(id));
+}
+
+function getNextFieldOrderIndex(
+  database: Database.Database,
+  collectionId: number,
+): number {
+  const row = database
+    .prepare(
+      "SELECT MAX(order_index) AS maxOrderIndex FROM fields WHERE collection_id = ?",
+    )
+    .get(collectionId) as MaxOrderRow | undefined;
+
+  const maxOrderIndex =
+    row?.maxOrderIndex === null || row?.maxOrderIndex === undefined
+      ? -1
+      : toNumber(row.maxOrderIndex);
+  return maxOrderIndex + 1;
+}
+
+function hasIndex(database: Database.Database, indexName: string): boolean {
+  const row = database
+    .prepare(
+      "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ? LIMIT 1",
+    )
+    .get(indexName) as { found: number } | undefined;
+
+  return Boolean(row?.found);
+}
+
+function normalizeFieldOrderIndices(database: Database.Database): void {
+  const collectionRows = database
+    .prepare(
+      "SELECT DISTINCT collection_id AS id FROM fields ORDER BY collection_id ASC",
+    )
+    .all() as IdRow[];
+  const selectFieldIds = database.prepare(
+    "SELECT id FROM fields WHERE collection_id = ? ORDER BY order_index ASC, id ASC",
+  );
+  const updateFieldOrder = database.prepare(
+    "UPDATE fields SET order_index = ? WHERE id = ?",
+  );
+
+  for (const collectionRow of collectionRows) {
+    const fieldRows = selectFieldIds.all(collectionRow.id) as IdRow[];
+    for (let index = 0; index < fieldRows.length; index++) {
+      updateFieldOrder.run(index, fieldRows[index].id);
+    }
+  }
+}
+
+function ensureFieldOrderIntegrity(database: Database.Database): void {
+  if (hasIndex(database, FIELD_ORDER_UNIQUE_INDEX)) {
+    return;
+  }
+
+  const migrateFieldOrder = database.transaction(() => {
+    normalizeFieldOrderIndices(database);
+    database.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS ${FIELD_ORDER_UNIQUE_INDEX}
+      ON fields(collection_id, order_index)
+    `);
+  });
+
+  migrateFieldOrder();
+}
+
+function ensureReorderPayloadMatchesCollection(
+  database: Database.Database,
+  input: ReorderFieldsInput,
+) {
+  const fieldRows = database
+    .prepare(
+      "SELECT id FROM fields WHERE collection_id = ? ORDER BY order_index ASC, id ASC",
+    )
+    .all(input.collectionId) as IdRow[];
+
+  if (fieldRows.length !== input.fieldOrders.length) {
+    throw new Error(
+      "Field reorder payload must include every field in the collection exactly once.",
+    );
+  }
+
+  const existingIds = new Set(fieldRows.map((row) => row.id));
+  const payloadIds = input.fieldOrders.map((entry) => entry.id);
+  const payloadUniqueIds = new Set(payloadIds);
+  if (payloadUniqueIds.size !== payloadIds.length) {
+    throw new Error("Field reorder payload contains duplicate field IDs.");
+  }
+
+  const invalidIds: number[] = [];
+  for (const payloadId of payloadUniqueIds) {
+    if (!existingIds.has(payloadId)) {
+      invalidIds.push(payloadId);
+    }
+  }
+
+  if (invalidIds.length > 0) {
+    throw new Error(
+      `Field reorder payload contains IDs outside the collection: ${invalidIds.join(", ")}`,
+    );
+  }
+
+  const missingIds: number[] = [];
+  for (const existingId of existingIds) {
+    if (!payloadUniqueIds.has(existingId)) {
+      missingIds.push(existingId);
+    }
+  }
+
+  if (missingIds.length > 0) {
+    throw new Error(
+      `Field reorder payload is missing IDs from the collection: ${missingIds.join(", ")}`,
+    );
+  }
+}
+
+function reorderFields(
+  database: Database.Database,
+  input: ReorderFieldsInput,
+): boolean {
+  const reorderFieldsTransaction = database.transaction(
+    (payload: ReorderFieldsInput) => {
+      ensureReorderPayloadMatchesCollection(database, payload);
+
+      const shiftAmount = payload.fieldOrders.length;
+      database
+        .prepare(
+          "UPDATE fields SET order_index = order_index + ? WHERE collection_id = ?",
+        )
+        .run(shiftAmount, payload.collectionId);
+
+      const updateFieldOrder = database.prepare(
+        "UPDATE fields SET order_index = ? WHERE id = ? AND collection_id = ?",
+      );
+
+      for (const entry of payload.fieldOrders) {
+        const info = updateFieldOrder.run(
+          entry.orderIndex,
+          entry.id,
+          payload.collectionId,
+        );
+        if (toNumber(info.changes) !== 1) {
+          throw new Error(
+            `Failed to reorder field ${entry.id} in collection ${payload.collectionId}.`,
+          );
+        }
+      }
+    },
+  );
+
+  reorderFieldsTransaction(input);
+  return true;
+}
+
+function getExistingItemIds(
+  database: Database.Database,
+  collectionId: number,
+  itemIds: number[],
+): Set<number> {
+  const existingIds = new Set<number>();
+  for (const chunk of chunkArray(itemIds, SQLITE_IN_CLAUSE_CHUNK_SIZE)) {
+    const placeholders = buildInClausePlaceholders(chunk.length);
+    const sql = `
+      SELECT id
+      FROM items
+      WHERE collection_id = ?
+        AND id IN (${placeholders})
+    `;
+    const rows = database.prepare(sql).all(collectionId, ...chunk) as IdRow[];
+    for (const row of rows) {
+      existingIds.add(row.id);
+    }
+  }
+  return existingIds;
+}
+
+function bulkDeleteItems(
+  database: Database.Database,
+  input: BulkDeleteItemsInput,
+): BulkMutationResult {
+  const bulkDeleteTransaction = database.transaction(
+    (payload: BulkDeleteItemsInput) => {
+      const existingIds = getExistingItemIds(
+        database,
+        payload.collectionId,
+        payload.itemIds,
+      );
+      const missingIds = getMissingIds(payload.itemIds, existingIds);
+      if (missingIds.length > 0) {
+        throw new Error(
+          `Bulk delete failed. Invalid item IDs for collection ${payload.collectionId}: ${missingIds.join(", ")}`,
+        );
+      }
+
+      let affectedCount = 0;
+      for (const chunk of chunkArray(
+        payload.itemIds,
+        SQLITE_IN_CLAUSE_CHUNK_SIZE,
+      )) {
+        const placeholders = buildInClausePlaceholders(chunk.length);
+        const sql = `
+          DELETE FROM items
+          WHERE collection_id = ?
+            AND id IN (${placeholders})
+        `;
+        const info = database.prepare(sql).run(payload.collectionId, ...chunk);
+        affectedCount += toNumber(info.changes);
+      }
+
+      return { affectedCount };
+    },
+  );
+
+  return bulkDeleteTransaction(input);
+}
+
+function getItemsDataByIds(
+  database: Database.Database,
+  collectionId: number,
+  itemIds: number[],
+): Map<number, string> {
+  const itemDataById = new Map<number, string>();
+  for (const chunk of chunkArray(itemIds, SQLITE_IN_CLAUSE_CHUNK_SIZE)) {
+    const placeholders = buildInClausePlaceholders(chunk.length);
+    const sql = `
+      SELECT id, data
+      FROM items
+      WHERE collection_id = ?
+        AND id IN (${placeholders})
+    `;
+    const rows = database
+      .prepare(sql)
+      .all(collectionId, ...chunk) as ItemDataRow[];
+    for (const row of rows) {
+      itemDataById.set(row.id, row.data);
+    }
+  }
+  return itemDataById;
+}
+
+function parseStoredItemDataOrThrow(rawData: string, itemId: number): ItemData {
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(rawData);
+  } catch (error) {
+    throw new Error(
+      `Bulk patch failed. Item ${itemId} contains invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const parsedData = itemDataSchema.safeParse(parsedJson);
+  if (!parsedData.success) {
+    throw new Error(
+      `Bulk patch failed. Item ${itemId} contains invalid data structure.`,
+    );
+  }
+
+  return parsedData.data as ItemData;
+}
+
+function bulkPatchItems(
+  database: Database.Database,
+  input: BulkPatchItemsInput,
+): BulkMutationResult {
+  const bulkPatchTransaction = database.transaction(
+    (payload: BulkPatchItemsInput) => {
+      const itemIds = payload.updates.map((entry) => entry.id);
+      const itemDataById = getItemsDataByIds(database, payload.collectionId, itemIds);
+      const missingIds = getMissingIds(itemIds, new Set(itemDataById.keys()));
+      if (missingIds.length > 0) {
+        throw new Error(
+          `Bulk patch failed. Invalid item IDs for collection ${payload.collectionId}: ${missingIds.join(", ")}`,
+        );
+      }
+
+      const updateItem = database.prepare(
+        "UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND collection_id = ?",
+      );
+
+      for (const update of payload.updates) {
+        const currentRawData = itemDataById.get(update.id);
+        if (!currentRawData) {
+          throw new Error(
+            `Bulk patch failed. Item ${update.id} is missing from collection ${payload.collectionId}.`,
+          );
+        }
+
+        const currentData = parseStoredItemDataOrThrow(currentRawData, update.id);
+        const mergedData: ItemData = {
+          ...currentData,
+          ...update.patch,
+        };
+        const mergedParse = itemDataSchema.safeParse(mergedData);
+        if (!mergedParse.success) {
+          throw new Error(`Bulk patch failed. Item ${update.id} merged data is invalid.`);
+        }
+
+        const info = updateItem.run(
+          JSON.stringify(mergedParse.data),
+          update.id,
+          payload.collectionId,
+        );
+        if (toNumber(info.changes) !== 1) {
+          throw new Error(
+            `Bulk patch failed. Unable to update item ${update.id} in collection ${payload.collectionId}.`,
+          );
+        }
+      }
+
+      return { affectedCount: payload.updates.length };
+    },
+  );
+
+  return bulkPatchTransaction(input);
 }
 
 function tokenizeSearch(search: string | undefined): string[] {
@@ -295,7 +636,7 @@ function getItems(database: Database.Database, input: GetItemsInput) {
   };
 }
 
-function initDatabase(dbPath: string): boolean {
+export function initDatabase(dbPath: string): boolean {
   if (db) {
     db.close();
   }
@@ -324,6 +665,7 @@ function initDatabase(dbPath: string): boolean {
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `);
+  ensureFieldOrderIntegrity(db);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS items (
@@ -384,7 +726,7 @@ function runImport(database: Database.Database, input: ImportCollectionInput) {
   importTransaction(input);
 }
 
-function handleOperation(operation: DbWorkerOperation): unknown {
+export function handleOperation(operation: DbWorkerOperation): unknown {
   switch (operation.type) {
     case "init": {
       return initDatabase(operation.dbPath);
@@ -448,6 +790,9 @@ function handleOperation(operation: DbWorkerOperation): unknown {
     }
     case "addField": {
       const database = requireDb();
+      const orderIndex =
+        operation.input.orderIndex ??
+        getNextFieldOrderIndex(database, operation.input.collectionId);
       const info = database
         .prepare(
           "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
@@ -457,10 +802,14 @@ function handleOperation(operation: DbWorkerOperation): unknown {
           operation.input.name,
           operation.input.type,
           operation.input.options || null,
-          operation.input.orderIndex || 0,
+          orderIndex,
         );
 
-      return { id: Number(info.lastInsertRowid), ...operation.input };
+      return {
+        id: Number(info.lastInsertRowid),
+        ...operation.input,
+        orderIndex,
+      };
     }
     case "updateField": {
       const database = requireDb();
@@ -477,6 +826,10 @@ function handleOperation(operation: DbWorkerOperation): unknown {
         );
 
       return true;
+    }
+    case "reorderFields": {
+      const database = requireDb();
+      return reorderFields(database, operation.input);
     }
     case "deleteField": {
       const database = requireDb();
@@ -516,6 +869,14 @@ function handleOperation(operation: DbWorkerOperation): unknown {
       database.prepare("DELETE FROM items WHERE id = ?").run(operation.id);
       return true;
     }
+    case "bulkDeleteItems": {
+      const database = requireDb();
+      return bulkDeleteItems(database, operation.input);
+    }
+    case "bulkPatchItems": {
+      const database = requireDb();
+      return bulkPatchItems(database, operation.input);
+    }
     case "importCollection": {
       const database = requireDb();
       runImport(database, operation.input);
@@ -528,7 +889,7 @@ function handleOperation(operation: DbWorkerOperation): unknown {
   }
 }
 
-function processRequest(request: DbWorkerRequest): DbWorkerResponse {
+export function processRequest(request: DbWorkerRequest): DbWorkerResponse {
   try {
     return {
       id: request.id,
@@ -546,17 +907,20 @@ function processRequest(request: DbWorkerRequest): DbWorkerResponse {
 
 const workerPort = parentPort;
 
-if (!workerPort) {
-  throw new Error("db-worker must run in a Worker thread.");
+if (workerPort) {
+  workerPort.on("message", (request: DbWorkerRequest) => {
+    const response = processRequest(request);
+    workerPort.postMessage(response);
+  });
 }
 
-workerPort.on("message", (request: DbWorkerRequest) => {
-  const response = processRequest(request);
-  workerPort.postMessage(response);
-});
-
-process.on("exit", () => {
+export function closeDatabase() {
   if (db) {
     db.close();
+    db = null;
   }
+}
+
+process.on("exit", () => {
+  closeDatabase();
 });

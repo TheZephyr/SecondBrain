@@ -7,8 +7,12 @@ import type {
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  BulkDeleteItemsInput,
+  BulkPatchItemsInput,
+  BulkMutationResult,
   ImportCollectionInput,
   CollectionItemCount,
   PaginatedItemsResult,
@@ -45,6 +49,7 @@ export interface IElectronAPI {
     field: NewFieldInput,
   ) => Promise<IpcResult<(NewFieldInput & { id: number }) | null>>;
   updateField: (field: UpdateFieldInput) => Promise<IpcResult<boolean>>;
+  reorderFields: (input: ReorderFieldsInput) => Promise<IpcResult<boolean>>;
   deleteField: (id: number) => Promise<IpcResult<boolean>>;
 
   // Items
@@ -52,6 +57,12 @@ export interface IElectronAPI {
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
+  bulkDeleteItems: (
+    input: BulkDeleteItemsInput,
+  ) => Promise<IpcResult<BulkMutationResult>>;
+  bulkPatchItems: (
+    input: BulkPatchItemsInput,
+  ) => Promise<IpcResult<BulkMutationResult>>;
   importCollection: (
     input: ImportCollectionInput,
   ) => Promise<IpcResult<boolean>>;
