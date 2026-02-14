@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useStore } from "../store";
 import type { IpcResult } from "../types/ipc";
-import type { PaginatedItemsResult, Item, Collection } from "../types/models";
+import type {
+  PaginatedItemsResult,
+  Item,
+  Collection,
+  ItemData,
+} from "../types/models";
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -45,7 +50,7 @@ function emptyPaginatedResult(
   return { items: [], total: 0, limit, offset };
 }
 
-function makeItem(id: number, data: Record<string, unknown> = {}): Item {
+function makeItem(id: number, data: ItemData = {}): Item {
   return { id, collection_id: 1, data };
 }
 
@@ -270,6 +275,7 @@ describe("bulkDeleteItems", () => {
 
   it("returns null on IPC error", async () => {
     const store = useStore();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockApi.bulkDeleteItems.mockResolvedValue({
       ok: false,
       error: { code: "DB_QUERY_FAILED", message: "fail" },
@@ -281,6 +287,10 @@ describe("bulkDeleteItems", () => {
     });
 
     expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith("[IPC:db:bulkDeleteItems]", {
+      code: "DB_QUERY_FAILED",
+      message: "fail",
+    });
   });
 });
 
@@ -303,6 +313,7 @@ describe("bulkPatchItems", () => {
 
   it("returns null on IPC error", async () => {
     const store = useStore();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockApi.bulkPatchItems.mockResolvedValue({
       ok: false,
       error: { code: "DB_QUERY_FAILED", message: "fail" },
@@ -314,6 +325,10 @@ describe("bulkPatchItems", () => {
     });
 
     expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith("[IPC:db:bulkPatchItems]", {
+      code: "DB_QUERY_FAILED",
+      message: "fail",
+    });
   });
 });
 
