@@ -77,6 +77,8 @@ export function useCollectionItemsQuery({
   const multiSortMeta = ref<MultiSortMeta[]>([])
   const sortStorage = resolveStorage(storage)
   const suppressNextEmptySearchLoad = ref(false)
+  const pendingSortMeta = ref<RawSortMeta[] | null>(null)
+  const isSortHydrationPending = ref(false)
 
   function saveSortPreferences() {
     sortStorage.setItem(getSortStorageKey(collectionId.value), JSON.stringify(multiSortMeta.value))
@@ -84,16 +86,44 @@ export function useCollectionItemsQuery({
 
   function loadSortPreferences() {
     const saved = sortStorage.getItem(getSortStorageKey(collectionId.value))
-    if (!saved) {
-      multiSortMeta.value = []
-      return
+    let parsed: RawSortMeta[] = []
+
+    if (saved) {
+      try {
+        const decoded = JSON.parse(saved) as unknown
+        parsed = Array.isArray(decoded) ? (decoded as RawSortMeta[]) : []
+      } catch {
+        parsed = []
+      }
     }
 
-    try {
-      const parsed = JSON.parse(saved) as RawSortMeta[]
-      multiSortMeta.value = normalizeSortMeta(parsed, safeFields.value)
-    } catch {
-      multiSortMeta.value = []
+    pendingSortMeta.value = parsed
+    isSortHydrationPending.value = true
+    multiSortMeta.value = []
+  }
+
+  function canHydrateSortFromCurrentFields() {
+    return (
+      safeFields.value.length > 0 &&
+      safeFields.value.every(field => field.collection_id === collectionId.value)
+    )
+  }
+
+  async function applyPendingSortPreferences() {
+    if (!isSortHydrationPending.value) return
+
+    const normalized = normalizeSortMeta(pendingSortMeta.value ?? [], safeFields.value)
+    pendingSortMeta.value = null
+    isSortHydrationPending.value = false
+    multiSortMeta.value = normalized
+    saveSortPreferences()
+
+    if (normalized.length > 0) {
+      await loadItems({
+        page: 0,
+        search: '',
+        sort: toItemSort(normalized)
+      })
     }
   }
 
@@ -105,6 +135,8 @@ export function useCollectionItemsQuery({
   }
 
   async function onItemsSort(event: TableSortEventLike) {
+    pendingSortMeta.value = null
+    isSortHydrationPending.value = false
     const nextMeta = normalizeSortMeta((event.multiSortMeta || []) as RawSortMeta[], safeFields.value)
     multiSortMeta.value = nextMeta
     await loadItems({
@@ -120,7 +152,14 @@ export function useCollectionItemsQuery({
     searchQuery.value = ''
   }
 
-  watch(multiSortMeta, () => saveSortPreferences(), { deep: true })
+  watch(
+    multiSortMeta,
+    () => {
+      if (isSortHydrationPending.value) return
+      saveSortPreferences()
+    },
+    { deep: true }
+  )
 
   watch(debouncedSearchQuery, async query => {
     if (query === '' && suppressNextEmptySearchLoad.value) {
@@ -137,6 +176,11 @@ export function useCollectionItemsQuery({
   watch(
     () => safeFields.value,
     () => {
+      if (isSortHydrationPending.value) {
+        void applyPendingSortPreferences()
+        return
+      }
+
       const normalized = normalizeSortMeta(multiSortMeta.value, safeFields.value)
       if (!areSortMetaEqual(multiSortMeta.value, normalized)) {
         multiSortMeta.value = normalized
@@ -154,12 +198,8 @@ export function useCollectionItemsQuery({
     async () => {
       resetSearchQuery()
       loadSortPreferences()
-      if (multiSortMeta.value.length > 0) {
-        await loadItems({
-          page: 0,
-          search: '',
-          sort: toItemSort(multiSortMeta.value)
-        })
+      if (canHydrateSortFromCurrentFields()) {
+        await applyPendingSortPreferences()
       }
     },
     { immediate: true }

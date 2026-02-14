@@ -11,7 +11,7 @@ import {
 function makeField(input: Partial<Field> & Pick<Field, 'id' | 'name'>): Field {
   return {
     id: input.id,
-    collection_id: 1,
+    collection_id: input.collection_id ?? 1,
     name: input.name,
     type: input.type ?? 'text',
     options: input.options ?? null,
@@ -63,7 +63,9 @@ describe('useCollectionItemsQuery', () => {
 
   it('restores saved sort preferences for the active collection', async () => {
     const collectionId = ref(9)
-    const safeFields = ref<Field[]>([makeField({ id: 1, name: 'Title' })])
+    const safeFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', collection_id: 9 })
+    ])
     const storage = createMemoryStorage({
       [getSortStorageKey(9)]: JSON.stringify([
         { field: 'data.Title', order: -1 },
@@ -97,6 +99,50 @@ describe('useCollectionItemsQuery', () => {
         search: '',
         sort: [{ field: 'data.Title', order: -1 }]
       })
+    })
+  })
+
+  it('does not overwrite saved sorts before current fields are loaded', async () => {
+    const collectionId = ref(7)
+    const safeFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Legacy', collection_id: 1 })
+    ])
+    const savedSort = JSON.stringify([{ field: 'data.Title', order: 1 }])
+    const storage = createMemoryStorage({
+      [getSortStorageKey(7)]: savedSort
+    })
+    const loadItems = vi.fn(async () => undefined)
+
+    await withScope(async scope => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          safeFields,
+          storage,
+          loadItems,
+          debounceMs: 10
+        })
+      )
+
+      if (!query) {
+        throw new Error('Query composable failed to initialize')
+      }
+
+      await nextTick()
+      expect(query.multiSortMeta.value).toEqual([])
+      expect(storage.getItem(getSortStorageKey(7))).toBe(savedSort)
+      expect(loadItems).not.toHaveBeenCalled()
+
+      safeFields.value = [makeField({ id: 2, name: 'Title', collection_id: 7 })]
+      await nextTick()
+
+      expect(query.multiSortMeta.value).toEqual([{ field: 'data.Title', order: 1 }])
+      expect(loadItems).toHaveBeenCalledWith({
+        page: 0,
+        search: '',
+        sort: [{ field: 'data.Title', order: 1 }]
+      })
+      expect(storage.getItem(getSortStorageKey(7))).toBe(savedSort)
     })
   })
 
