@@ -18,6 +18,7 @@ A desktop application for organizing personal data collections with a flexible, 
 
 ## Contributor Quick Map
 
+```
 ┌─────────────────────────────────────────┐
 │  Renderer Process (Vue 3 + TypeScript)  │
 │  ┌────────────┐      ┌────────────┐     │
@@ -45,6 +46,7 @@ A desktop application for organizing personal data collections with a flexible, 
 │         │  SQLite Database │            │
 │         └──────────────────┘            │
 └─────────────────────────────────────────┘
+```
 
 ## Installation
 

@@ -27,6 +27,7 @@ type LoadItemsOptions = {
 };
 
 const DEFAULT_ITEMS_ROWS = 50;
+const MAX_ITEMS_ROWS = 100;
 
 export const useStore = defineStore("main", () => {
   // State
@@ -138,7 +139,7 @@ export const useStore = defineStore("main", () => {
 
   async function loadItems(collectionId: number, options: LoadItemsOptions = {}) {
     if (options.rows !== undefined) {
-      itemsRows.value = Math.max(1, options.rows);
+      itemsRows.value = Math.min(MAX_ITEMS_ROWS, Math.max(1, options.rows));
     }
     if (options.page !== undefined) {
       itemsPage.value = Math.max(0, options.page);
@@ -150,7 +151,7 @@ export const useStore = defineStore("main", () => {
       itemsSort.value = options.sort;
     }
 
-    const limit = itemsRows.value;
+    const limit = Math.min(MAX_ITEMS_ROWS, Math.max(1, itemsRows.value));
     const offset = itemsPage.value * limit;
     const requestToken = ++itemsRequestToken;
     itemsLoading.value = true;

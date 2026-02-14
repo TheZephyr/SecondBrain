@@ -73,7 +73,8 @@ export function useCollectionImportExport({
   }
 
   async function fetchAllItemsForExport(collectionId: number): Promise<Item[]> {
-    const pageSize = 500;
+    // Keep this aligned with GetItemsInputSchema.limit max (currently 100).
+    const pageSize = 100;
     let offset = 0;
     let total = 0;
     const allItems: Item[] = [];
