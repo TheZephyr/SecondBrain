@@ -52,7 +52,7 @@ A desktop application for organizing personal data collections with a flexible, 
 
 ### Prerequisites
 
-- Node.js 18 or higher
+- Node.js 22.12 or higher
 - Git
 
 ### Setup
@@ -120,7 +120,7 @@ npm run dev
 Useful native rebuild scripts:
 
 - `npm run rebuild:node-native` - rebuild `better-sqlite3` for your local Node runtime.
-- `npm run rebuild:electron-native` - rebuild `better-sqlite3` for Electron runtime.
+- `npm run rebuild:electron-native` - rebuild `better-sqlite3` for Electron runtime (via `@electron/rebuild`).
 
 If you see `NODE_MODULE_VERSION` mismatch errors, run:
 ```bash
