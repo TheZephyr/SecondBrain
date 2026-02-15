@@ -62,6 +62,11 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - Before IPC calls from Renderer/Pinia, normalize payloads into plain values (e.g., map arrays into new plain objects).
 - If you see `An object could not be cloned`, inspect the Renderer callsite payload first.
 
+### 2.4 Error Recovery & Resilience
+- The UI must handle IPC failures by showing error toasts (via the `handleIpc` helper) and disabling affected features. Never crash the Renderer process.
+- Do NOT implement automatic retries for mutations. The user must re-trigger failed operations explicitly to prevent IPC flooding.
+- If the Database Worker is unready or busy, pending requests should fail fast rather than hanging the UI indefinitely.
+
 ## 3. Database Patterns
 
 ### 3.1 Schema
@@ -102,6 +107,11 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - Sort/search inputs must be validated in Main with Zod and constrained to safe, explicit fields.
 - If an optimization path (e.g., FTS) is unavailable, implement a safe fallback (e.g., `LIKE`) rather than crashing.
 
+### 3.5 Schema Migrations
+- The database schema version is tracked using SQLite's `PRAGMA user_version`.
+- Never instruct the user to delete their database to resolve schema conflicts. This is a local-first application; data loss is unacceptable.
+- If you alter existing collections/fields or core indices, you MUST write an incremental migration script in the DB initialization flow that checks `user_version` and executes `ALTER TABLE` or safe data backfill operations.
+
 ## 4. State Management (Pinia)
 
 - **Store**: `src/store.ts` contains the `useStore` (main application state).
@@ -118,6 +128,10 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - Collection switching must reset collection-scoped list query state (page/search/sort/loading context).
 - Collection view query orchestration lives in `src/composables/collection/useCollectionItemsQuery.ts`; avoid duplicating item-load triggers across multiple components/watchers.
 - Do not normalize/persist saved multi-sort state against an uninitialized or transiently empty `safeFields` snapshot during collection switches; this can erase valid saved sort preferences.
+
+### 4.2 UI to Database Throttling
+- Never bind rapid UI events (like keystrokes in a search bar or continuous slider movements) directly to IPC calls.
+- Any continuous input that triggers a database query or mutation MUST be debounced (e.g., using VueUse's `useDebounceFn`) to prevent IPC flooding and Worker thread bottlenecking.
 
 ## 5. Validation (Zod)
 
@@ -151,7 +165,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 
 ## 7. Conventions for Agents
 
-1.  **Adding Features**:
+### 7.1. Adding Features
     - Define Types (`src/types/models.ts`).
     - Define Validation (`src/validation/schemas.ts`).
     - Update `electron/db-worker-protocol.ts` to include new message types.
@@ -163,21 +177,32 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
     - Add/adjust tests for schemas and data logic changes.
     - For Worker logic changes, add/adjust tests in `electron/__tests__/`.
 
-2.  **Safety**:
+### 7.2. Safety
     - Never introduce `remote` module or `nodeIntegration: true`.
     - Always parse inputs in Main process.
     - Handle IPC errors gracefully in the UI (`src/utils/ipc.ts` helper).
 
-3.  **UI/UX**:
+### 7.3. UI/UX
     - Use PrimeVue components where possible for consistency.
     - Use `tailwind` classes for layout and spacing.
     - Respect the dark/light theme tokens (if present, else use standard colors).
 
-4.  **Collection View Boundaries**:
+### 7.4. Collection View Boundaries
     - Keep `src/components/views/Collection.vue` as an orchestrator; put feature-heavy UI and logic in `src/components/views/collection/` and `src/composables/collection/`.
     - Do not call `store.selectCollection(...)` from `Collection.vue`; selection is owned by higher-level navigation/view flow.
     - Keep sort persistence key compatibility as `multi_sort_${collectionId}` unless a migration path is intentionally introduced.
     - `useCollectionImportExport` should be consumed by collection settings/import-export UI (currently `CollectionSettingsDialog.vue`), not the top-level view.
+
+### 7.5 Observability & Debugging
+- Use consistent prefixes for console logs when adding new handlers: `[Main IPC: channelName]`, `[DB Worker: operation]`, `[Store: action]`.
+- All IPC errors must include a context field (the channel name). If throwing an error from the Worker, include the failed query parameters in the error payload for easier debugging.
+- Use `NODE_ENV=development` checks to output verbose Worker logs; keep them silent in production.
+
+### 7.6 Testing Strategy Guidelines
+- When testing Vue components or Pinia stores, you MUST mock `window.electronAPI`. Do not attempt to spin up the actual Main process or Worker in Renderer tests.
+- Always return mock `IpcResult<T>` objects (e.g., `{ ok: true, data: ... }`) from your mocked endpoints to simulate the Main process correctly.
+- Test DB operations exclusively with an in-memory SQLite database (`:memory:`).
+- Rely on your Zod schemas as runtime contract tests at the IPC boundary.
 
 ## 8. Verification Checklist (Before Finishing)
 
@@ -186,6 +211,8 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 - Run node/electron type-check: `cmd /c npx tsc --noEmit -p tsconfig.node.json`
 - If Electron process code changed, run build check: `cmd /c npm run build:electron`
 - Manually smoke test any changed large-list UX paths (pagination/search/sort/export) in app.
+- If the schema was modified, manually test import/export workflows with legacy data files to ensure backward compatibility.
+- Test collection switching, search, sort, and pagination in rapid combination to ensure state clears and aborts correctly.
 
 ## 9. Native Module ABI (Important)
 
