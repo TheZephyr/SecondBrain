@@ -10,6 +10,17 @@ export type Collection = {
   created_at?: string;
 };
 
+export type ViewType = "grid";
+
+export type View = {
+  id: number;
+  collection_id: number;
+  name: string;
+  type: ViewType;
+  is_default: 0 | 1;
+  order: number;
+};
+
 export type Field = {
   id: number;
   collection_id: number;
@@ -55,6 +66,14 @@ export type CollectionItemCount = {
 export type NewCollectionInput = {
   name: string;
   icon: string;
+};
+
+export type NewViewInput = {
+  collectionId: number;
+  name: string;
+  type?: ViewType;
+  isDefault?: 0 | 1;
+  order?: number;
 };
 
 export type UpdateCollectionInput = {

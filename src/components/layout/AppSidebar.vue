@@ -43,16 +43,19 @@
         </Button>
 
         <div v-if="isExpanded(collection.id)" class="ml-4 space-y-1">
-          <Button text class="w-full justify-start rounded-md px-3 py-1.5 text-[13px]" :class="isActiveView(collection.id, 'grid')
-            ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
-            @click="handleViewClick(collection, 'grid')">
-            <div class="flex w-full items-center gap-2">
-              <i class="pi pi-table text-[12px]"></i>
-              <span class="flex-1 truncate">Grid</span>
-              <i class="pi pi-lock text-[11px] text-[var(--text-muted)]"></i>
-            </div>
-          </Button>
+          <template v-if="selectedCollection?.id === collection.id">
+            <Button v-for="view in currentViews" :key="view.id" text
+              class="w-full justify-start rounded-md px-3 py-1.5 text-[13px]" :class="isActiveView(view.id)
+                ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+              @click="handleViewClick(view.id)">
+              <div class="flex w-full items-center gap-2">
+                <i class="pi pi-table text-[12px]"></i>
+                <span class="flex-1 truncate">{{ view.name }}</span>
+                <i v-if="view.is_default === 1" class="pi pi-lock text-[11px] text-[var(--text-muted)]"></i>
+              </div>
+            </Button>
+          </template>
 
           <Button text
             class="w-full justify-start rounded-md px-3 py-1.5 text-[13px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
@@ -127,12 +130,10 @@ import { useIcons } from "../../composables/useIcons";
 import { collectionNameSchema, iconSchema } from "../../validation/schemas";
 import type { Collection } from "../../types/models";
 
-type CollectionViewId = "grid";
-type ActiveView = { collectionId: number; viewId: CollectionViewId };
-
 const { iconOptions } = useIcons();
 const store = useStore();
-const { collections, selectedCollection, currentView } = storeToRefs(store);
+const { collections, selectedCollection, currentView, currentViews, activeViewId } =
+  storeToRefs(store);
 const notifications = useNotificationsStore();
 
 const appVersion = __APP_VERSION__;
@@ -143,7 +144,6 @@ const newCollection = ref({
   icon: "folder",
 });
 const expandedCollectionIds = ref<number[]>([]);
-const activeView = ref<ActiveView | null>(null);
 
 const iconListboxPt = {
   root: {
@@ -188,17 +188,12 @@ function handleCollectionClick(collection: Collection) {
   store.selectCollection(collection);
 }
 
-function handleViewClick(collection: Collection, viewId: CollectionViewId) {
-  store.selectCollection(collection);
-  ensureExpanded(collection.id);
-  activeView.value = { collectionId: collection.id, viewId };
+function handleViewClick(viewId: number) {
+  store.setActiveViewId(viewId);
 }
 
-function isActiveView(collectionId: number, viewId: CollectionViewId) {
-  return (
-    activeView.value?.collectionId === collectionId &&
-    activeView.value?.viewId === viewId
-  );
+function isActiveView(viewId: number) {
+  return activeViewId.value === viewId;
 }
 
 function handleAddViewClick() {
@@ -253,20 +248,17 @@ function cancelNewCollection() {
   newCollection.value = { name: "", icon: "folder" };
 }
 
+onMounted(() => {
+  store.loadCollections();
+});
+
 watch(
   selectedCollection,
   (collection) => {
     if (collection) {
       ensureExpanded(collection.id);
-      activeView.value = { collectionId: collection.id, viewId: "grid" };
-    } else {
-      activeView.value = null;
     }
   },
   { immediate: true },
 );
-
-onMounted(() => {
-  store.loadCollections();
-});
 </script>

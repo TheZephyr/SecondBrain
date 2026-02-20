@@ -8,6 +8,7 @@ export const iconSchema = z
   .min(1)
   .max(32)
   .regex(/^[a-z0-9-]+$/);
+export const viewNameSchema = z.string().trim().min(1).max(80);
 
 export const fieldNameSchema = z
   .string()
@@ -25,6 +26,9 @@ export const fieldNameSchema = z
 export const positiveIntSchema = z.number().int().positive();
 export const orderIndexSchema = z.number().int().min(0);
 export const nonNegativeIntSchema = z.number().int().min(0);
+export const viewTypeSchema = z.enum(["grid"]);
+export const viewIsDefaultSchema = z.union([z.literal(0), z.literal(1)]);
+export const viewOrderSchema = nonNegativeIntSchema;
 export const MAX_BULK_DELETE_IDS = 1000;
 export const MAX_BULK_PATCH_UPDATES = 500;
 
@@ -94,6 +98,14 @@ export const itemDataSchema = z.preprocess((value, ctx) => {
 export const NewCollectionInputSchema = z.object({
   name: collectionNameSchema,
   icon: iconSchema,
+});
+
+export const NewViewInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  name: viewNameSchema,
+  type: viewTypeSchema.optional().default("grid"),
+  isDefault: viewIsDefaultSchema.optional().default(0),
+  order: viewOrderSchema.optional(),
 });
 
 export const UpdateCollectionInputSchema = z.object({

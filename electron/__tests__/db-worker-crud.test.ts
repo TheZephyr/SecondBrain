@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
 import type {
   Collection,
+  View,
   Field,
   NewCollectionInput,
+  NewViewInput,
   NewFieldInput,
   NewItemInput,
   UpdateCollectionInput,
@@ -48,6 +50,14 @@ function updateCollection(input: UpdateCollectionInput): boolean {
 
 function deleteCollection(id: number): boolean {
   return handleOperation({ type: "deleteCollection", id }) as boolean;
+}
+
+function getViews(collectionId: number): View[] {
+  return handleOperation({ type: "getViews", collectionId }) as View[];
+}
+
+function addView(input: NewViewInput): View {
+  return handleOperation({ type: "addView", input }) as View;
 }
 
 function getCollectionItemCounts(): CollectionItemCount[] {
@@ -197,6 +207,69 @@ describe("collection CRUD", () => {
   it("returns empty array when no collections exist", () => {
     setupInMemoryDb();
     expect(getCollections()).toEqual([]);
+  });
+});
+
+// ======================== VIEWS ========================
+
+describe("view CRUD", () => {
+  it("creates a default view when a collection is added", () => {
+    setupInMemoryDb();
+    const created = addCollection({ name: "Notes", icon: "note" });
+
+    const views = getViews(created.id);
+    expect(views).toHaveLength(1);
+    expect(views[0].name).toBe("Grid");
+    expect(views[0].type).toBe("grid");
+    expect(views[0].is_default).toBe(1);
+    expect(views[0].order).toBe(0);
+  });
+
+  it("adds a view and returns it", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Views", icon: "grid" });
+
+    const created = addView({
+      collectionId: col.id,
+      name: "Alt Grid",
+      type: "grid",
+      isDefault: 0,
+      order: 2,
+    });
+
+    expect(created.id).toBeGreaterThan(0);
+    expect(created.collection_id).toBe(col.id);
+    expect(created.name).toBe("Alt Grid");
+    expect(created.type).toBe("grid");
+    expect(created.is_default).toBe(0);
+    expect(created.order).toBe(2);
+  });
+
+  it('returns views sorted by "order" then id', () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Ordered", icon: "sort" });
+
+    addView({
+      collectionId: col.id,
+      name: "Second",
+      type: "grid",
+      isDefault: 0,
+      order: 2,
+    });
+    addView({
+      collectionId: col.id,
+      name: "First",
+      type: "grid",
+      isDefault: 0,
+      order: 1,
+    });
+
+    const views = getViews(col.id);
+    expect(views.map((view) => view.name)).toEqual([
+      "Grid",
+      "First",
+      "Second",
+    ]);
   });
 });
 

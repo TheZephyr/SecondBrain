@@ -2,6 +2,7 @@ import type {
   ImportCollectionInput,
   GetItemsInput,
   NewCollectionInput,
+  NewViewInput,
   NewFieldInput,
   NewItemInput,
   UpdateCollectionInput,
@@ -19,6 +20,8 @@ export type DbWorkerOperation =
   | { type: "addCollection"; input: NewCollectionInput }
   | { type: "updateCollection"; input: UpdateCollectionInput }
   | { type: "deleteCollection"; id: number }
+  | { type: "getViews"; collectionId: number }
+  | { type: "addView"; input: NewViewInput }
   | { type: "getFields"; collectionId: number }
   | { type: "addField"; input: NewFieldInput }
   | { type: "updateField"; input: UpdateFieldInput }

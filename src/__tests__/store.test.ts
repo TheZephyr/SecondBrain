@@ -24,6 +24,8 @@ function makeElectronAPIMock() {
     addCollection: vi.fn(),
     updateCollection: vi.fn(),
     deleteCollection: vi.fn(),
+    getViews: vi.fn(),
+    addView: vi.fn(),
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
@@ -190,6 +192,18 @@ describe("selectCollection", () => {
     const col: Collection = { id: 5, name: "Books", icon: "book" };
     mockApi.getFields.mockResolvedValue(ok([]));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(
+      ok([
+        {
+          id: 10,
+          collection_id: 5,
+          name: "Grid",
+          type: "grid",
+          is_default: 1,
+          order: 0,
+        },
+      ]),
+    );
 
     // Pre-populate some state to verify it's cleared
     store.items = [makeItem(99)];
@@ -204,10 +218,54 @@ describe("selectCollection", () => {
     expect(store.itemsSearch).toBe("");
   });
 
+  it("loads views and sets activeViewId to the default view", async () => {
+    const store = useStore();
+    const col: Collection = { id: 7, name: "Notes", icon: "note" };
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(
+      ok([
+        {
+          id: 21,
+          collection_id: 7,
+          name: "Alt Grid",
+          type: "grid",
+          is_default: 0,
+          order: 1,
+        },
+        {
+          id: 22,
+          collection_id: 7,
+          name: "Grid",
+          type: "grid",
+          is_default: 1,
+          order: 0,
+        },
+      ]),
+    );
+
+    store.selectCollection(col);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockApi.getViews).toHaveBeenCalledOnce();
+    expect(store.activeViewId).toBe(22);
+  });
+
   it("resets to dashboard when selecting null", () => {
     const store = useStore();
     store.selectedCollection = { id: 1, name: "A", icon: "a" };
     store.currentView = "collection";
+    store.currentViews = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "Grid",
+        type: "grid",
+        is_default: 1,
+        order: 0,
+      },
+    ];
+    store.activeViewId = 1;
 
     store.selectCollection(null);
 
@@ -215,6 +273,8 @@ describe("selectCollection", () => {
     expect(store.currentView).toBe("dashboard");
     expect(store.fields).toEqual([]);
     expect(store.items).toEqual([]);
+    expect(store.currentViews).toEqual([]);
+    expect(store.activeViewId).toBeNull();
   });
 });
 

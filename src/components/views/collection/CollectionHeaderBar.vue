@@ -7,13 +7,17 @@
         <span class="font-semibold text-[var(--text-primary)]">
           {{ collection.name }}
         </span>
+        <span class="text-[var(--text-muted)]">/</span>
+        <span class="font-semibold text-[var(--text-primary)]">
+          {{ activeViewName }}
+        </span>
       </div>
 
       <div class="flex items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-0.5">
         <button type="button"
           class="flex items-center gap-1.5 rounded-md bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-primary)]">
           <LayoutGrid :size="14" />
-          Grid
+          {{ activeViewName }}
         </button>
       </div>
     </div>
@@ -59,6 +63,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useStore } from '../../../store'
 import {
   LayoutGrid,
   Columns,
@@ -84,6 +90,21 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const store = useStore()
+const { currentViews, activeViewId } = storeToRefs(store)
+
+const activeViewName = computed(() => {
+  const activeView = currentViews.value.find(
+    (view) => view.id === activeViewId.value
+  )
+  if (activeView) {
+    return activeView.name
+  }
+  if (currentViews.value.length > 0) {
+    return currentViews.value[0].name
+  }
+  return 'Grid'
+})
 
 const searchModel = computed({
   get: () => props.searchQuery,

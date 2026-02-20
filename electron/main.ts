@@ -12,6 +12,7 @@ import type {
   ItemData,
   GetItemsInput,
   NewCollectionInput,
+  NewViewInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
@@ -31,6 +32,7 @@ import type {
 } from "./db-worker-protocol";
 import {
   NewCollectionInputSchema,
+  NewViewInputSchema,
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
@@ -428,6 +430,17 @@ handleIpc(
 handleIpc("db:deleteCollection", async (_, id) => {
   const collectionId = parsePositiveInt(id, "db:deleteCollection");
   return invokeDbWorker({ type: "deleteCollection", id: collectionId });
+});
+
+// ==================== VIEWS ====================
+handleIpc("db:getViews", async (_, collectionId: number) => {
+  const parsedCollectionId = parsePositiveInt(collectionId, "db:getViews");
+  return invokeDbWorker({ type: "getViews", collectionId: parsedCollectionId });
+});
+
+handleIpc("db:addView", async (_, view: NewViewInput) => {
+  const input = parseOrThrow(NewViewInputSchema, view, "db:addView");
+  return invokeDbWorker({ type: "addView", input });
 });
 
 // ==================== FIELDS ====================

@@ -26,8 +26,10 @@ const FIELD_ORDER_UNIQUE_INDEX = "idx_fields_collection_order_unique";
 type CountRow = { count: number | bigint };
 type TotalRow = { total: number | bigint };
 type MaxOrderRow = { maxOrderIndex: number | bigint | null };
+type MaxViewOrderRow = { maxOrder: number | bigint | null };
 type IdRow = { id: number };
 type ItemDataRow = { id: number; data: string };
+type UserVersionRow = { user_version: number | bigint };
 
 function serializeDetails(details: unknown): string | undefined {
   if (!details) return undefined;
@@ -99,6 +101,23 @@ function getNextFieldOrderIndex(
   return maxOrderIndex + 1;
 }
 
+function getNextViewOrderIndex(
+  database: Database.Database,
+  collectionId: number,
+): number {
+  const row = database
+    .prepare(
+      'SELECT MAX("order") AS maxOrder FROM views WHERE collection_id = ?',
+    )
+    .get(collectionId) as MaxViewOrderRow | undefined;
+
+  const maxOrder =
+    row?.maxOrder === null || row?.maxOrder === undefined
+      ? -1
+      : toNumber(row.maxOrder);
+  return maxOrder + 1;
+}
+
 function hasIndex(database: Database.Database, indexName: string): boolean {
   const row = database
     .prepare(
@@ -144,6 +163,44 @@ function ensureFieldOrderIntegrity(database: Database.Database): void {
   });
 
   migrateFieldOrder();
+}
+
+function migrateViewsTable(database: Database.Database): void {
+  const row = database.prepare("PRAGMA user_version").get() as
+    | UserVersionRow
+    | undefined;
+  const userVersion = row ? toNumber(row.user_version) : 0;
+
+  if (userVersion >= 1) {
+    return;
+  }
+
+  const migrate = database.transaction(() => {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS views (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        collection_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'grid',
+        is_default INTEGER NOT NULL DEFAULT 0,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.exec(`
+      INSERT INTO views (collection_id, name, type, is_default, "order")
+      SELECT c.id, 'Grid', 'grid', 1, 0
+      FROM collections c
+      WHERE NOT EXISTS (
+        SELECT 1 FROM views v WHERE v.collection_id = c.id
+      )
+    `);
+
+    database.exec("PRAGMA user_version = 1");
+  });
+
+  migrate();
 }
 
 function ensureReorderPayloadMatchesCollection(
@@ -666,6 +723,7 @@ export function initDatabase(dbPath: string): boolean {
     )
   `);
   ensureFieldOrderIntegrity(db);
+  migrateViewsTable(db);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS items (
@@ -747,19 +805,30 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
     }
     case "addCollection": {
       const database = requireDb();
-      const stmt = database.prepare(
-        "INSERT INTO collections (name, icon) VALUES (?, ?)",
-      );
-      const info = stmt.run(
-        operation.input.name,
-        operation.input.icon || "folder",
-      );
+      const createCollection = database.transaction(() => {
+        const stmt = database.prepare(
+          "INSERT INTO collections (name, icon) VALUES (?, ?)",
+        );
+        const info = stmt.run(
+          operation.input.name,
+          operation.input.icon || "folder",
+        );
+        const collectionId = Number(info.lastInsertRowid);
 
-      return {
-        id: Number(info.lastInsertRowid),
-        name: operation.input.name,
-        icon: operation.input.icon,
-      };
+        database
+          .prepare(
+            'INSERT INTO views (collection_id, name, type, is_default, "order") VALUES (?, ?, ?, ?, ?)',
+          )
+          .run(collectionId, "Grid", "grid", 1, 0);
+
+        return {
+          id: collectionId,
+          name: operation.input.name,
+          icon: operation.input.icon || "folder",
+        };
+      });
+
+      return createCollection();
     }
     case "updateCollection": {
       const database = requireDb();
@@ -779,6 +848,42 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
 
       deleteCollection(operation.id);
       return true;
+    }
+    case "getViews": {
+      const database = requireDb();
+      return database
+        .prepare(
+          'SELECT * FROM views WHERE collection_id = ? ORDER BY "order" ASC, id ASC',
+        )
+        .all(operation.collectionId);
+    }
+    case "addView": {
+      const database = requireDb();
+      const type = operation.input.type ?? "grid";
+      const isDefault = operation.input.isDefault ?? 0;
+      const order =
+        operation.input.order ??
+        getNextViewOrderIndex(database, operation.input.collectionId);
+      const info = database
+        .prepare(
+          'INSERT INTO views (collection_id, name, type, is_default, "order") VALUES (?, ?, ?, ?, ?)',
+        )
+        .run(
+          operation.input.collectionId,
+          operation.input.name,
+          type,
+          isDefault,
+          order,
+        );
+
+      return {
+        id: Number(info.lastInsertRowid),
+        collection_id: operation.input.collectionId,
+        name: operation.input.name,
+        type,
+        is_default: isDefault,
+        order,
+      };
     }
     case "getFields": {
       const database = requireDb();

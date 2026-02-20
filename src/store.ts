@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import type {
   Collection,
+  View,
   Field,
   Item,
   ItemSortSpec,
@@ -32,6 +33,8 @@ const MAX_ITEMS_ROWS = 100;
 export const useStore = defineStore("main", () => {
   // State
   const collections = ref<Collection[]>([]);
+  const currentViews = ref<View[]>([]);
+  const activeViewId = ref<number | null>(null);
   const fields = ref<Field[]>([]);
   const items = ref<Item[]>([]);
   const itemsTotal = ref(0);
@@ -43,6 +46,7 @@ export const useStore = defineStore("main", () => {
   const selectedCollection = ref<Collection | null>(null);
   const currentView = ref<"dashboard" | "collection">("dashboard");
   let itemsRequestToken = 0;
+  let viewsRequestToken = 0;
 
   function clearItemsState() {
     itemsRequestToken += 1;
@@ -54,10 +58,32 @@ export const useStore = defineStore("main", () => {
     itemsSort.value = [];
   }
 
+  function clearViewsState() {
+    viewsRequestToken += 1;
+    currentViews.value = [];
+    activeViewId.value = null;
+  }
+
   // Actions
   async function loadCollections() {
     const result = await window.electronAPI.getCollections();
     collections.value = handleIpc(result, "db:getCollections", []);
+  }
+
+  async function loadViews(collectionId: number) {
+    const requestToken = ++viewsRequestToken;
+    const result = await window.electronAPI.getViews(collectionId);
+    const views = handleIpc(result, "db:getViews", []);
+    if (requestToken !== viewsRequestToken) {
+      return;
+    }
+    currentViews.value = views;
+    const defaultView = views.find((view) => view.is_default === 1);
+    activeViewId.value = defaultView?.id ?? views[0]?.id ?? null;
+  }
+
+  function setActiveViewId(id: number | null) {
+    activeViewId.value = id;
   }
 
   async function addCollection(collection: NewCollectionInput) {
@@ -84,6 +110,7 @@ export const useStore = defineStore("main", () => {
       await loadCollections();
       if (selectedCollection.value?.id === id) {
         selectedCollection.value = null;
+        clearViewsState();
       }
     }
   }
@@ -286,12 +313,15 @@ export const useStore = defineStore("main", () => {
     if (collection) {
       currentView.value = "collection";
       clearItemsState();
+      clearViewsState();
       loadFields(collection.id);
       loadItems(collection.id);
+      loadViews(collection.id);
     } else {
       currentView.value = "dashboard";
       fields.value = [];
       clearItemsState();
+      clearViewsState();
     }
   }
 
@@ -301,6 +331,8 @@ export const useStore = defineStore("main", () => {
 
   return {
     collections,
+    currentViews,
+    activeViewId,
     fields,
     items,
     itemsTotal,
@@ -312,6 +344,8 @@ export const useStore = defineStore("main", () => {
     selectedCollection,
     currentView,
     loadCollections,
+    loadViews,
+    setActiveViewId,
     addCollection,
     updateCollection,
     deleteCollection,
