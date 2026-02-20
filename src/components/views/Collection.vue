@@ -6,8 +6,8 @@
     <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
       :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
       :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
-      @sort="onItemsSort" @manage-fields="showFieldsManager = true" @edit-item="openEditItemDialog"
-      @delete-item="confirmDeleteItem" />
+      @sort="onItemsSort" @manage-fields="showFieldsManager = true" @delete-item="confirmDeleteItem"
+      @update-item="onInlineUpdateItem" @add-item="openAddItemDialog" />
 
     <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"
       @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
@@ -43,7 +43,8 @@ import {
 import type {
   Collection,
   Field,
-  Item
+  Item,
+  UpdateItemInput
 } from '../../types/models'
 import CollectionHeaderBar from './collection/CollectionHeaderBar.vue'
 import CollectionItemsPanel from './collection/CollectionItemsPanel.vue'
@@ -112,16 +113,15 @@ function openAddItemDialog() {
   showAddItemForm.value = true
 }
 
-function openEditItemDialog(item: Item) {
-  editingItem.value = item
-  showAddItemForm.value = true
-}
-
 function onItemDialogVisibilityChange(nextVisible: boolean) {
   showAddItemForm.value = nextVisible
   if (!nextVisible) {
     editingItem.value = null
   }
+}
+
+async function onInlineUpdateItem(payload: UpdateItemInput) {
+  await store.updateItem(payload)
 }
 
 async function saveItem(payload: ItemEditorSavePayload) {
