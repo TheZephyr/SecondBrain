@@ -1,6 +1,5 @@
 <template>
-  <Dialog :visible="visible" header="Manage Fields" modal :draggable="false" class="max-w-4xl"
-    @update:visible="onVisibilityChange">
+  <div class="flex h-full flex-col">
     <div class="space-y-6">
       <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onRowReorder">
         <Column rowReorder headerStyle="width: 3rem" />
@@ -20,13 +19,13 @@
         </Column>
       </DataTable>
 
-      <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+      <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
         <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
           <Plus :size="14" />
           Add New Field
         </div>
         <div class="flex flex-col gap-3 md:flex-row md:items-center">
-          <InputText v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
+          <InputText ref="addFieldNameRef" v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
           <Select v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
             class="w-full md:w-48" />
           <Button class="md:self-stretch" @click="submitAddField">Add</Button>
@@ -36,10 +35,11 @@
         </div>
       </div>
     </div>
-    <template #footer>
+
+    <div class="mt-6 flex justify-end">
       <Button @click="$emit('update:visible', false)">Done</Button>
-    </template>
-  </Dialog>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -48,7 +48,6 @@ import { Plus, Trash2 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
-import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
@@ -86,6 +85,8 @@ function createEmptyFieldDraft(): FieldDraftInput {
 }
 
 const newField = ref<FieldDraftInput>(createEmptyFieldDraft())
+const addFieldSectionRef = ref<HTMLElement | null>(null)
+const addFieldNameRef = ref<unknown>(null)
 
 watch(
   () => newField.value.type,
@@ -105,10 +106,6 @@ watch(
   }
 )
 
-function onVisibilityChange(nextVisible: boolean) {
-  emit('update:visible', nextVisible)
-}
-
 function submitAddField() {
   emit('add-field', { ...newField.value })
   newField.value = createEmptyFieldDraft()
@@ -118,4 +115,27 @@ function onRowReorder(event: RowReorderEvent) {
   if (!event.value) return
   emit('reorder-fields', event.value)
 }
+
+function focusAddField() {
+  addFieldSectionRef.value?.scrollIntoView({
+    block: 'center',
+    behavior: 'smooth'
+  })
+
+  const raw = addFieldNameRef.value as { $el?: HTMLElement } | HTMLElement | null | undefined
+  const element = (raw && (raw as { $el?: HTMLElement }).$el) ? (raw as { $el?: HTMLElement }).$el : raw
+  if (!element) return
+
+  if (element instanceof HTMLElement) {
+    if (typeof element.focus === 'function') {
+      element.focus()
+      return
+    }
+
+    const input = element.querySelector?.('input,textarea,select,button') as HTMLElement | null
+    input?.focus()
+  }
+}
+
+defineExpose({ focusAddField })
 </script>

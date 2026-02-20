@@ -1,20 +1,26 @@
 <template>
   <div class="mx-auto max-w-6xl px-10 py-8">
-    <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery"
-      @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog" />
+    <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery" :fieldsOpen="showFieldsManager"
+      @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog"
+      @toggle-fields="toggleFieldsDrawer" />
 
     <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
       :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
       :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
-      @sort="onItemsSort" @manage-fields="showFieldsManager = true" @delete-item="confirmDeleteItem"
-      @update-item="onInlineUpdateItem" @add-item="openAddItemDialog" />
+      @sort="onItemsSort" @manage-fields="openFieldsDrawer({ focusAddField: true })" @delete-item="confirmDeleteItem"
+      @update-item="onInlineUpdateItem" @add-item="openAddItemDialog" @open-fields-drawer="openFieldsDrawer({ focusAddField: true })" />
 
     <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"
       @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
 
-    <CollectionFieldsDialog :visible="showFieldsManager" :orderedFields="orderedFields"
-      @update:visible="showFieldsManager = $event" @add-field="addField" @delete-field="confirmDeleteField"
-      @reorder-fields="onFieldsReorder" />
+    <Drawer v-model:visible="showFieldsManager" header="Fields" position="right" :style="{ width: '50%' }" modal
+      @after-show="onFieldsDrawerAfterShow">
+      <div class="p-4">
+        <CollectionFieldsDialog ref="fieldsDialogRef" :visible="showFieldsManager" :orderedFields="orderedFields"
+          @update:visible="showFieldsManager = $event" @add-field="addField" @delete-field="confirmDeleteField"
+          @reorder-fields="onFieldsReorder" />
+      </div>
+    </Drawer>
 
     <CollectionSettingsDialog :visible="showCollectionSettings" :collection="collection" :fields="fields" :itemsTotal="itemsTotal"
       @update:visible="showCollectionSettings = $event" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
@@ -28,6 +34,7 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfirm } from 'primevue/useconfirm'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Drawer from 'primevue/drawer'
 import { useStore } from '../../store'
 import { useNotificationsStore } from '../../stores/notifications'
 import {
@@ -74,6 +81,8 @@ const showAddItemForm = ref(false)
 const showFieldsManager = ref(false)
 const showCollectionSettings = ref(false)
 const editingItem = ref<Item | null>(null)
+const fieldsDialogRef = ref<InstanceType<typeof CollectionFieldsDialog> | null>(null)
+const pendingFocusAddField = ref(false)
 
 const { safeFields, orderedFields } = useSafeFields({
   fields,
@@ -105,12 +114,55 @@ watch(
     showFieldsManager.value = false
     showCollectionSettings.value = false
     editingItem.value = null
+    pendingFocusAddField.value = false
   }
 )
+
+watch(showFieldsManager, (isVisible) => {
+  if (!isVisible) {
+    pendingFocusAddField.value = false
+  }
+})
 
 function openAddItemDialog() {
   editingItem.value = null
   showAddItemForm.value = true
+}
+
+function focusAddFieldInDrawer() {
+  fieldsDialogRef.value?.focusAddField?.()
+}
+
+function openFieldsDrawer(options: { focusAddField?: boolean } = {}) {
+  const { focusAddField = false } = options
+
+  if (showFieldsManager.value) {
+    if (focusAddField) {
+      focusAddFieldInDrawer()
+    }
+    return
+  }
+
+  showFieldsManager.value = true
+  if (focusAddField) {
+    pendingFocusAddField.value = true
+  }
+}
+
+function toggleFieldsDrawer() {
+  if (showFieldsManager.value) {
+    showFieldsManager.value = false
+    pendingFocusAddField.value = false
+    return
+  }
+
+  openFieldsDrawer()
+}
+
+function onFieldsDrawerAfterShow() {
+  if (!pendingFocusAddField.value) return
+  pendingFocusAddField.value = false
+  focusAddFieldInDrawer()
 }
 
 function onItemDialogVisibilityChange(nextVisible: boolean) {

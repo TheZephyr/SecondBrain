@@ -443,11 +443,6 @@ function notifyRowDetail() {
 }
 
 function notifyAddField() {
-  toast.add({
-    severity: 'info',
-    summary: 'Coming soon',
-    life: 2000
-  })
   emit('open-fields-drawer')
 }
 </script>

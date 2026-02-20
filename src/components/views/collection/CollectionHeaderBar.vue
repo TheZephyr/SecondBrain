@@ -24,8 +24,9 @@
 
     <div class="flex h-10 items-center justify-between px-4">
       <div class="flex items-center gap-2">
-        <Button text class="h-8 gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          @click="notifyComingSoon">
+        <Button text class="h-8 gap-2"
+          :class="fieldsOpen ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
+          :aria-pressed="fieldsOpen" @click="$emit('toggle-fields')">
           <Columns :size="16" />
           Fields
         </Button>
@@ -82,10 +83,12 @@ import type { Collection } from '../../../types/models'
 const props = defineProps<{
   collection: Collection
   searchQuery: string
+  fieldsOpen: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'open-add-item'): void
+  (e: 'toggle-fields'): void
   (e: 'update:searchQuery', value: string): void
 }>()
 
