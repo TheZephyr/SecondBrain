@@ -1,12 +1,12 @@
 <template>
   <div class="mx-auto max-w-6xl px-10 py-8">
-    <CollectionHeaderBar :collection="collection" @open-fields="showFieldsManager = true" @open-add-item="openAddItemDialog"
-      @open-settings="showCollectionSettings = true" />
+    <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery"
+      @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog" />
 
     <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
-      :itemsRows="itemsRows" :orderedFields="orderedFields" :searchQuery="searchQuery" :debouncedSearchQuery="debouncedSearchQuery"
-      :multiSortMeta="multiSortMeta" @update:searchQuery="searchQuery = $event" @update:multiSortMeta="multiSortMeta = $event"
-      @page="onItemsPage" @sort="onItemsSort" @manage-fields="showFieldsManager = true" @edit-item="openEditItemDialog"
+      :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
+      :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
+      @sort="onItemsSort" @manage-fields="showFieldsManager = true" @edit-item="openEditItemDialog"
       @delete-item="confirmDeleteItem" />
 
     <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"

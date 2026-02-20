@@ -12,17 +12,7 @@
     </Button>
   </div>
 
-  <div v-else class="space-y-4">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div class="relative flex-1">
-        <Search :size="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-        <InputText v-model="searchModel" class="pl-10" type="text" placeholder="Search..." />
-      </div>
-      <p class="text-xs text-[var(--text-muted)]">
-        Tip: hold Shift/Ctrl while clicking headers to add multiple sorts.
-      </p>
-    </div>
-
+  <div v-else>
     <DataTable :value="items" dataKey="id" stripedRows sortMode="multiple" removableSort v-model:multiSortMeta="sortModel"
       :rowHover="true" lazy paginator :rows="itemsRows" :first="itemsPage * itemsRows" :totalRecords="itemsTotal"
       :rowsPerPageOptions="[25, 50, 100]" :loading="itemsLoading" @page="onPage" @sort="onSort"
@@ -83,7 +73,6 @@ import {
 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
-import InputText from 'primevue/inputtext'
 import Column from 'primevue/column'
 import { formatDateForDisplay } from '../../../utils/date'
 import type { Field, FieldType, Item, ItemDataValue } from '../../../types/models'
@@ -100,13 +89,11 @@ const props = defineProps<{
   itemsPage: number
   itemsRows: number
   orderedFields: Field[]
-  searchQuery: string
   debouncedSearchQuery: string
   multiSortMeta: MultiSortMeta[]
 }>()
 
 const emit = defineEmits<{
-  'update:searchQuery': [value: string]
   'update:multiSortMeta': [value: MultiSortMeta[]]
   page: [value: TablePageEventLike]
   sort: [value: TableSortEventLike]
@@ -114,11 +101,6 @@ const emit = defineEmits<{
   'edit-item': [value: Item]
   'delete-item': [value: Item]
 }>()
-
-const searchModel = computed({
-  get: () => props.searchQuery,
-  set: (value: string) => emit('update:searchQuery', value)
-})
 
 const sortModel = computed({
   get: () => props.multiSortMeta,
