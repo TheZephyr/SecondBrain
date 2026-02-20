@@ -1,7 +1,7 @@
 <template>
   <div class="h-screen w-full">
     <div class="flex h-full overflow-hidden">
-      <AppNavigation />
+      <AppSidebar />
       <AppContent />
     </div>
     <Toast position="bottom-right" />
@@ -12,7 +12,7 @@
 import { watch } from "vue";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
-import AppNavigation from "./components/layout/AppNavigation.vue";
+import AppSidebar from "./components/layout/AppSidebar.vue";
 import AppContent from "./components/layout/AppContent.vue";
 import { useNotificationsStore } from "./stores/notifications";
 
