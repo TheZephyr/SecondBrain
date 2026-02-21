@@ -8,6 +8,9 @@ import type {
   UpdateCollectionInput,
   UpdateFieldInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   ReorderFieldsInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
@@ -29,6 +32,9 @@ export type DbWorkerOperation =
   | { type: "deleteField"; id: number }
   | { type: "getItems"; input: GetItemsInput }
   | { type: "addItem"; input: NewItemInput }
+  | { type: "insertItemAt"; input: InsertItemAtInput }
+  | { type: "duplicateItem"; input: DuplicateItemInput }
+  | { type: "moveItem"; input: MoveItemInput }
   | { type: "updateItem"; input: UpdateItemInput }
   | { type: "deleteItem"; id: number }
   | { type: "bulkDeleteItems"; input: BulkDeleteItemsInput }

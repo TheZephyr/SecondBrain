@@ -33,6 +33,7 @@ describe("collectionImportExport utils", () => {
     {
       id: 1,
       collection_id: 1,
+      order: 1,
       data: {
         Title: "Dune",
         Author: "Frank",
@@ -41,6 +42,7 @@ describe("collectionImportExport utils", () => {
     {
       id: 2,
       collection_id: 1,
+      order: 2,
       data: {
         Title: 'He said "hi"',
         Author: null,
@@ -207,7 +209,7 @@ describe("serializeItemsToCsv – edge cases", () => {
       },
     ];
     const testItems: Item[] = [
-      { id: 1, collection_id: 1, data: { A: "value", B: null } },
+      { id: 1, collection_id: 1, order: 1, data: { A: "value", B: null } },
     ];
 
     const csv = serializeItemsToCsv(testItems, testFields);
@@ -235,7 +237,7 @@ describe("serializeItemsToCsv – edge cases", () => {
       },
     ];
     const testItems: Item[] = [
-      { id: 1, collection_id: 1, data: { A: "only-a" } },
+      { id: 1, collection_id: 1, order: 1, data: { A: "only-a" } },
     ];
 
     const csv = serializeItemsToCsv(testItems, testFields);
@@ -298,7 +300,7 @@ describe("serializeItemsToJson – edge cases", () => {
       },
     ];
     const testItems: Item[] = [
-      { id: 1, collection_id: 1, data: { A: "value" } },
+      { id: 1, collection_id: 1, order: 1, data: { A: "value" } },
     ];
 
     const json = serializeItemsToJson(testItems, testFields);
@@ -327,7 +329,7 @@ describe("serializeItemsToJson – edge cases", () => {
       },
     ];
     const testItems: Item[] = [
-      { id: 1, collection_id: 1, data: { Zebra: "z", Alpha: "a" } },
+      { id: 1, collection_id: 1, order: 1, data: { Zebra: "z", Alpha: "a" } },
     ];
 
     const json = serializeItemsToJson(testItems, testFields);

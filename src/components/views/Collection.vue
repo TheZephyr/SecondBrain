@@ -8,7 +8,9 @@
       :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
       :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
       @sort="onItemsSort" @manage-fields="openFieldsDrawer({ focusAddField: true })" @delete-item="confirmDeleteItem"
-      @update-item="onInlineUpdateItem" @add-item="openAddItemDialog" @open-fields-drawer="openFieldsDrawer({ focusAddField: true })" />
+      @update-item="onInlineUpdateItem" @add-item="openAddItemDialog"
+      @open-fields-drawer="openFieldsDrawer({ focusAddField: true })" @insert-item-at="onInsertItemAt"
+      @duplicate-item="onDuplicateItem" @move-item="onMoveItem" />
 
     <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"
       @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
@@ -51,6 +53,9 @@ import type {
   Collection,
   Field,
   Item,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   UpdateItemInput
 } from '../../types/models'
 import CollectionHeaderBar from './collection/CollectionHeaderBar.vue'
@@ -176,6 +181,18 @@ async function onInlineUpdateItem(payload: UpdateItemInput) {
   await store.updateItem(payload)
 }
 
+async function onInsertItemAt(payload: InsertItemAtInput) {
+  await store.insertItemAt(payload)
+}
+
+async function onDuplicateItem(payload: DuplicateItemInput) {
+  await store.duplicateItem(payload)
+}
+
+async function onMoveItem(payload: MoveItemInput) {
+  await store.moveItem(payload)
+}
+
 async function saveItem(payload: ItemEditorSavePayload) {
   if (payload.editingItemId) {
     await store.updateItem({
@@ -294,7 +311,7 @@ async function onFieldsReorder(reorderedFields: Field[]) {
 async function confirmDeleteItem(item: Item) {
   confirm.require({
     header: 'Delete Item',
-    message: 'Are you sure you want to delete this item? This action cannot be undone.',
+    message: 'Are you sure you want to delete this row?',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Delete',
     rejectLabel: 'Cancel',

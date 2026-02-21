@@ -6,8 +6,11 @@ import type {
   BulkPatchItemsInput,
   GetItemsInput,
   ImportCollectionInput,
+  InsertItemAtInput,
   ItemData,
   ItemSortSpec,
+  DuplicateItemInput,
+  MoveItemInput,
   ReorderFieldsInput,
 } from "../src/types/models";
 import { itemDataSchema } from "../src/validation/schemas";
@@ -27,8 +30,16 @@ type CountRow = { count: number | bigint };
 type TotalRow = { total: number | bigint };
 type MaxOrderRow = { maxOrderIndex: number | bigint | null };
 type MaxViewOrderRow = { maxOrder: number | bigint | null };
+type MaxItemOrderRow = { maxOrder: number | bigint | null };
 type IdRow = { id: number };
 type ItemDataRow = { id: number; data: string };
+type ItemOrderRow = { id: number; order: number | bigint };
+type ItemRow = {
+  id: number;
+  collection_id: number;
+  data: string;
+  order: number | bigint;
+};
 type UserVersionRow = { user_version: number | bigint };
 
 function serializeDetails(details: unknown): string | undefined {
@@ -118,6 +129,20 @@ function getNextViewOrderIndex(
   return maxOrder + 1;
 }
 
+function getNextItemOrderIndex(
+  database: Database.Database,
+  collectionId: number,
+): number {
+  const row = database
+    .prepare(
+      'SELECT COALESCE(MAX("order"), 0) AS maxOrder FROM items WHERE collection_id = ?',
+    )
+    .get(collectionId) as MaxItemOrderRow | undefined;
+
+  const maxOrder = row?.maxOrder ?? 0;
+  return toNumber(maxOrder) + 1;
+}
+
 function hasIndex(database: Database.Database, indexName: string): boolean {
   const row = database
     .prepare(
@@ -198,6 +223,29 @@ function migrateViewsTable(database: Database.Database): void {
     `);
 
     database.exec("PRAGMA user_version = 1");
+  });
+
+  migrate();
+}
+
+function migrateItemsOrderColumn(database: Database.Database): void {
+  const row = database.prepare("PRAGMA user_version").get() as
+    | UserVersionRow
+    | undefined;
+  const userVersion = row ? toNumber(row.user_version) : 0;
+
+  if (userVersion >= 2) {
+    return;
+  }
+
+  const migrate = database.transaction(() => {
+    database.exec('ALTER TABLE items ADD COLUMN "order" INTEGER');
+    database.exec('UPDATE items SET "order" = rowid WHERE "order" IS NULL');
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_items_collection_order
+      ON items (collection_id, "order" ASC)
+    `);
+    database.exec("PRAGMA user_version = 2");
   });
 
   migrate();
@@ -609,7 +657,7 @@ function buildSearchQueryContext(input: GetItemsInput): {
   const whereParts: string[] = ["i.collection_id = ?"];
   const params: unknown[] = [input.collectionId];
   let joinClause = "";
-  let defaultOrderClause = "i.created_at DESC, i.id DESC";
+  let defaultOrderClause = 'i."order" ASC, i.id ASC';
   const searchTokens = tokenizeSearch(input.search);
 
   if (searchTokens.length === 0) {
@@ -625,7 +673,7 @@ function buildSearchQueryContext(input: GetItemsInput): {
     joinClause = "JOIN items_fts fts ON fts.rowid = i.id";
     whereParts.push("fts.content MATCH ?");
     params.push(buildFtsMatchQuery(searchTokens));
-    defaultOrderClause = "bm25(items_fts) ASC, i.created_at DESC, i.id DESC";
+    defaultOrderClause = 'bm25(items_fts) ASC, i."order" ASC, i.id ASC';
     return {
       joinClause,
       whereClause: whereParts.join(" AND "),
@@ -660,7 +708,7 @@ function getItems(database: Database.Database, input: GetItemsInput) {
   const sortClauses = getItemSortClause(input.sort);
   const orderByClause =
     sortClauses.length > 0
-      ? `${sortClauses.join(", ")}, i.created_at DESC, i.id DESC`
+      ? `${sortClauses.join(', ')}, i."order" ASC, i.id ASC`
       : defaultOrderClause;
 
   const rowsSql = `
@@ -735,6 +783,7 @@ export function initDatabase(dbPath: string): boolean {
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `);
+  migrateItemsOrderColumn(db);
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_items_collection_created_at_id
@@ -771,11 +820,13 @@ function runImport(database: Database.Database, input: ImportCollectionInput) {
       }
 
       if (data.items.length > 0) {
+        let nextOrder = getNextItemOrderIndex(database, data.collectionId);
         const insertItem = database.prepare(
-          "INSERT INTO items (collection_id, data) VALUES (?, ?)",
+          'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
         );
         for (const item of data.items) {
-          insertItem.run(item.collectionId, JSON.stringify(item.data));
+          insertItem.run(item.collectionId, JSON.stringify(item.data), nextOrder);
+          nextOrder += 1;
         }
       }
     },
@@ -949,14 +1000,131 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
       const database = requireDb();
       const dataJson = JSON.stringify(operation.input.data);
       const info = database
-        .prepare("INSERT INTO items (collection_id, data) VALUES (?, ?)")
-        .run(operation.input.collectionId, dataJson);
+        .prepare(
+          'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, (SELECT COALESCE(MAX("order"), 0) + 1 FROM items WHERE collection_id = ?))',
+        )
+        .run(operation.input.collectionId, dataJson, operation.input.collectionId);
 
       return {
         id: Number(info.lastInsertRowid),
         collection_id: operation.input.collectionId,
+        order: getNextItemOrderIndex(database, operation.input.collectionId) - 1,
         data: operation.input.data,
       };
+    }
+    case "insertItemAt": {
+      const database = requireDb();
+      const insertItem = database.transaction((input: InsertItemAtInput) => {
+        const targetOrder = input.afterOrder === null ? 0 : input.afterOrder + 1;
+        database
+          .prepare(
+            'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
+          )
+          .run(input.collectionId, targetOrder);
+
+        const info = database
+          .prepare(
+            'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
+          )
+          .run(input.collectionId, JSON.stringify({}), targetOrder);
+
+        return {
+          id: Number(info.lastInsertRowid),
+          collection_id: input.collectionId,
+          order: targetOrder,
+          data: {},
+        };
+      });
+
+      return insertItem(operation.input);
+    }
+    case "duplicateItem": {
+      const database = requireDb();
+      const duplicateItem = database.transaction((input: DuplicateItemInput) => {
+        const source = database
+          .prepare(
+            'SELECT id, collection_id, data, "order" FROM items WHERE id = ? AND collection_id = ?',
+          )
+          .get(input.itemId, input.collectionId) as ItemRow | undefined;
+
+        if (!source) {
+          throw new Error(
+            `Duplicate failed. Item ${input.itemId} not found in collection ${input.collectionId}.`,
+          );
+        }
+
+        const targetOrder = toNumber(source.order) + 1;
+        database
+          .prepare(
+            'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
+          )
+          .run(input.collectionId, targetOrder);
+
+        const info = database
+          .prepare(
+            'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
+          )
+          .run(input.collectionId, source.data, targetOrder);
+
+        return {
+          id: Number(info.lastInsertRowid),
+          collection_id: input.collectionId,
+          order: targetOrder,
+          data: JSON.parse(source.data) as ItemData,
+        };
+      });
+
+      return duplicateItem(operation.input);
+    }
+    case "moveItem": {
+      const database = requireDb();
+      const moveItem = database.transaction((input: MoveItemInput) => {
+        const source = database
+          .prepare(
+            'SELECT id, "order" FROM items WHERE id = ? AND collection_id = ?',
+          )
+          .get(input.itemId, input.collectionId) as ItemOrderRow | undefined;
+
+        if (!source) {
+          throw new Error(
+            `Move failed. Item ${input.itemId} not found in collection ${input.collectionId}.`,
+          );
+        }
+
+        const sourceOrder = toNumber(source.order);
+        const neighbor = database
+          .prepare(
+            input.direction === "up"
+              ? 'SELECT id, "order" FROM items WHERE collection_id = ? AND "order" < ? ORDER BY "order" DESC, id DESC LIMIT 1'
+              : 'SELECT id, "order" FROM items WHERE collection_id = ? AND "order" > ? ORDER BY "order" ASC, id ASC LIMIT 1',
+          )
+          .get(input.collectionId, sourceOrder) as ItemOrderRow | undefined;
+
+        if (!neighbor) {
+          throw new Error(
+            `Move failed. Item ${input.itemId} is already at the ${input.direction === "up" ? "top" : "bottom"} of collection ${input.collectionId}.`,
+          );
+        }
+
+        const neighborOrder = toNumber(neighbor.order);
+        database
+          .prepare(
+            'UPDATE items SET "order" = CASE WHEN id = ? THEN ? WHEN id = ? THEN ? ELSE "order" END WHERE collection_id = ? AND id IN (?, ?)',
+          )
+          .run(
+            source.id,
+            neighborOrder,
+            neighbor.id,
+            sourceOrder,
+            input.collectionId,
+            source.id,
+            neighbor.id,
+          );
+
+        return true;
+      });
+
+      return moveItem(operation.input);
     }
     case "updateItem": {
       const database = requireDb();

@@ -33,6 +33,7 @@ export type Field = {
 export type Item = {
   id: number;
   collection_id: number;
+  order: number;
   data: ItemData;
   created_at?: string;
   updated_at?: string;
@@ -116,6 +117,22 @@ export type NewItemInput = {
 export type UpdateItemInput = {
   id: number;
   data: ItemData;
+};
+
+export type InsertItemAtInput = {
+  collectionId: number;
+  afterOrder: number | null;
+};
+
+export type DuplicateItemInput = {
+  collectionId: number;
+  itemId: number;
+};
+
+export type MoveItemInput = {
+  collectionId: number;
+  itemId: number;
+  direction: "up" | "down";
 };
 
 export type BulkDeleteItemsInput = {

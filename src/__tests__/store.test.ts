@@ -33,6 +33,9 @@ function makeElectronAPIMock() {
     deleteField: vi.fn(),
     getItems: vi.fn(),
     addItem: vi.fn(),
+    insertItemAt: vi.fn(),
+    duplicateItem: vi.fn(),
+    moveItem: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
     bulkDeleteItems: vi.fn(),
@@ -53,7 +56,7 @@ function emptyPaginatedResult(
 }
 
 function makeItem(id: number, data: ItemData = {}): Item {
-  return { id, collection_id: 1, data };
+  return { id, collection_id: 1, order: id, data };
 }
 
 // ---------------------------------------------------------------------------

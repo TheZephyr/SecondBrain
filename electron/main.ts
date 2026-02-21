@@ -19,6 +19,9 @@ import type {
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -39,6 +42,9 @@ import {
   ReorderFieldsInputSchema,
   NewItemInputSchema,
   UpdateItemInputSchema,
+  InsertItemAtInputSchema,
+  DuplicateItemInputSchema,
+  MoveItemInputSchema,
   BulkDeleteItemsInputSchema,
   BulkPatchItemsInputSchema,
   ImportCollectionInputSchema,
@@ -480,6 +486,7 @@ handleIpc("db:deleteField", async (_, id) => {
 type ItemRow = {
   id: number;
   collection_id: number;
+  order: number;
   data: string;
   created_at?: string;
   updated_at?: string;
@@ -539,6 +546,29 @@ handleIpc("db:getItems", async (_, input: GetItemsInput) => {
 handleIpc("db:addItem", async (_, item: NewItemInput) => {
   const input = parseOrThrow(NewItemInputSchema, item, "db:addItem");
   return invokeDbWorker({ type: "addItem", input });
+});
+
+handleIpc("db:insertItemAt", async (_, payload: InsertItemAtInput) => {
+  const input = parseOrThrow(
+    InsertItemAtInputSchema,
+    payload,
+    "db:insertItemAt",
+  );
+  return invokeDbWorker({ type: "insertItemAt", input });
+});
+
+handleIpc("db:duplicateItem", async (_, payload: DuplicateItemInput) => {
+  const input = parseOrThrow(
+    DuplicateItemInputSchema,
+    payload,
+    "db:duplicateItem",
+  );
+  return invokeDbWorker({ type: "duplicateItem", input });
+});
+
+handleIpc("db:moveItem", async (_, payload: MoveItemInput) => {
+  const input = parseOrThrow(MoveItemInputSchema, payload, "db:moveItem");
+  return invokeDbWorker({ type: "moveItem", input });
 });
 
 handleIpc("db:updateItem", async (_, item: UpdateItemInput) => {

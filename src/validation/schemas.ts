@@ -186,6 +186,22 @@ export const UpdateItemInputSchema = z.object({
   data: itemDataSchema,
 });
 
+export const InsertItemAtInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  afterOrder: z.union([nonNegativeIntSchema, z.null()]),
+});
+
+export const DuplicateItemInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  itemId: positiveIntSchema,
+});
+
+export const MoveItemInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  itemId: positiveIntSchema,
+  direction: z.enum(["up", "down"]),
+});
+
 export const BulkDeleteItemsInputSchema = z
   .object({
     collectionId: positiveIntSchema,

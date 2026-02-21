@@ -13,6 +13,9 @@ import type {
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -241,6 +244,49 @@ export const useStore = defineStore("main", () => {
     return created;
   }
 
+  async function insertItemAt(input: InsertItemAtInput) {
+    const payload: InsertItemAtInput = {
+      collectionId: input.collectionId,
+      afterOrder: input.afterOrder === null ? null : Number(input.afterOrder),
+    };
+
+    const result = await window.electronAPI.insertItemAt(payload);
+    const created = handleIpc(result, "db:insertItemAt", null);
+    if (created && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return created;
+  }
+
+  async function duplicateItem(input: DuplicateItemInput) {
+    const payload: DuplicateItemInput = {
+      collectionId: input.collectionId,
+      itemId: input.itemId,
+    };
+
+    const result = await window.electronAPI.duplicateItem(payload);
+    const created = handleIpc(result, "db:duplicateItem", null);
+    if (created && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return created;
+  }
+
+  async function moveItem(input: MoveItemInput) {
+    const payload: MoveItemInput = {
+      collectionId: input.collectionId,
+      itemId: input.itemId,
+      direction: input.direction,
+    };
+
+    const result = await window.electronAPI.moveItem(payload);
+    const success = handleIpc(result, "db:moveItem", false);
+    if (success && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return success;
+  }
+
   async function updateItem(item: UpdateItemInput) {
     if (!selectedCollection.value) return;
     const result = await window.electronAPI.updateItem(item);
@@ -356,6 +402,9 @@ export const useStore = defineStore("main", () => {
     deleteField,
     loadItems,
     addItem,
+    insertItemAt,
+    duplicateItem,
+    moveItem,
     updateItem,
     deleteItem,
     bulkDeleteItems,

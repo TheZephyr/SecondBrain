@@ -44,6 +44,7 @@ describe('useCollectionItemForm', () => {
     const item: Item = {
       id: 42,
       collection_id: 1,
+      order: 1,
       data: {
         Title: 'Dune',
         Published: '2025-01-15',
@@ -80,6 +81,7 @@ describe('useCollectionItemForm', () => {
     const item: Item = {
       id: 7,
       collection_id: 1,
+      order: 1,
       data: {
         Title: 'Neuromancer',
         Published: '2024-08-11'

@@ -51,6 +51,9 @@ const electronAPI: IElectronAPI = {
   // Items
   getItems: (input) => invoke("db:getItems", input),
   addItem: (item) => invoke("db:addItem", item),
+  insertItemAt: (input) => invoke("db:insertItemAt", input),
+  duplicateItem: (input) => invoke("db:duplicateItem", input),
+  moveItem: (input) => invoke("db:moveItem", input),
   updateItem: (item) => invoke("db:updateItem", item),
   deleteItem: (id: number) => invoke("db:deleteItem", id),
   bulkDeleteItems: (input) => invoke("db:bulkDeleteItems", input),

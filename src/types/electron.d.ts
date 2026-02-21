@@ -12,6 +12,9 @@ import type {
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -61,6 +64,9 @@ export interface IElectronAPI {
   // Items
   getItems: (input: GetItemsInput) => Promise<IpcResult<PaginatedItemsResult>>;
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
+  insertItemAt: (input: InsertItemAtInput) => Promise<IpcResult<Item | null>>;
+  duplicateItem: (input: DuplicateItemInput) => Promise<IpcResult<Item | null>>;
+  moveItem: (input: MoveItemInput) => Promise<IpcResult<boolean>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
   bulkDeleteItems: (

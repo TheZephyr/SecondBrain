@@ -13,17 +13,19 @@
   </div>
 
   <div v-else>
-    <DataTable :value="tableRows" dataKey="id" stripedRows sortMode="multiple" removableSort
+    <DataTable :value="tableRows" dataKey="id" stripedRows sortMode="multiple" removableSort contextMenu
       v-model:multiSortMeta="sortModel" :rowHover="true" lazy paginator :rows="itemsRows"
       :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :rowsPerPageOptions="[25, 50, 100]"
-      :loading="itemsLoading" editMode="cell" :rowClass="getRowClass" @page="onPage" @sort="onSort"
-      @cell-edit-init="onCellEditInit" @cell-edit-complete="onCellEditComplete" @cell-edit-cancel="onCellEditCancel"
+      :loading="itemsLoading" editMode="cell" :rowClass="getRowClass"
+      v-model:contextMenuSelection="contextMenuSelection" @row-contextmenu="onRowContextMenu" @page="onPage"
+      @sort="onSort" @cell-edit-init="onCellEditInit" @cell-edit-complete="onCellEditComplete"
+      @cell-edit-cancel="onCellEditCancel"
       tableStyle="table-layout: fixed; width: 100%">
       <Column style="width: 60px">
-        <template #body="{ data, index }">
+        <template #body="{ index }">
           <div class="relative flex items-center justify-end pr-1">
             <span class="text-right text-xs text-[var(--text-muted)] transition-opacity"
-              :class="isRowSelected(data) ? 'opacity-0' : 'group-hover:opacity-0'">
+              :class="'group-hover:opacity-0'">
               {{ getAbsoluteIndex(index) }}
             </span>
             <div class="absolute right-1 flex items-center gap-1">
@@ -31,16 +33,6 @@
                 class="h-6 w-6 p-0 text-[var(--text-muted)] opacity-0 transition-opacity hover:text-[var(--text-primary)] group-hover:opacity-100"
                 title="Expand" @click.stop="notifyRowDetail">
                 <ChevronRight :size="14" />
-              </Button>
-              <div class="transition-opacity"
-                :class="isRowSelected(data) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'">
-                <Checkbox binary :modelValue="isRowSelected(data)"
-                  @update:modelValue="value => onRowSelectionChange(data, value)" />
-              </div>
-              <Button text
-                class="h-6 w-6 p-0 text-[var(--danger)] opacity-0 transition-opacity hover:bg-[rgba(239,68,68,0.12)] group-hover:opacity-100"
-                title="Delete" @click.stop="$emit('delete-item', data)">
-                <Trash2 :size="14" />
               </Button>
             </div>
           </div>
@@ -100,6 +92,8 @@
       </template>
     </DataTable>
 
+    <ContextMenu ref="contextMenuRef" :model="contextMenuItems" />
+
     <button type="button"
       class="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] py-3 text-sm text-[var(--text-muted)] transition hover:bg-[var(--bg-hover)]"
       @click="$emit('add-item')">
@@ -120,13 +114,12 @@ import {
   Columns,
   Plus,
   Search,
-  Trash2,
   FileText,
   Database,
   ChevronRight
 } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import Checkbox from 'primevue/checkbox'
+import ContextMenu from 'primevue/contextmenu'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import DatePicker from 'primevue/datepicker'
@@ -135,8 +128,18 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
+import type { MenuItem } from 'primevue/menuitem'
 import { formatDateForDisplay, formatDateForStorage, parseDateValue } from '../../../utils/date'
-import type { Field, FieldType, Item, ItemData, ItemDataValue } from '../../../types/models'
+import type {
+  Field,
+  FieldType,
+  Item,
+  ItemData,
+  ItemDataValue,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput
+} from '../../../types/models'
 import type {
   MultiSortMeta,
   TablePageEventLike,
@@ -144,7 +147,7 @@ import type {
 } from './types'
 
 type TableRowValue = ItemDataValue | Date | null
-type TableRow = Item & Record<string, TableRowValue>
+type TableRow = Item & Record<`data.${string}`, TableRowValue>
 
 type CellEditInitEvent = {
   originalEvent: Event
@@ -158,6 +161,12 @@ type CellEditCompleteEvent = CellEditInitEvent & {
   value: unknown
   newValue: unknown
   type: string
+}
+
+type RowContextMenuEvent = {
+  originalEvent: Event
+  data: TableRow
+  index: number
 }
 
 const props = defineProps<{
@@ -180,6 +189,9 @@ const emit = defineEmits<{
   'update-item': [value: { id: number; data: ItemData }]
   'add-item': []
   'open-fields-drawer': []
+  'insert-item-at': [value: InsertItemAtInput]
+  'duplicate-item': [value: DuplicateItemInput]
+  'move-item': [value: MoveItemInput]
 }>()
 
 const toast = useToast()
@@ -191,8 +203,11 @@ const sortModel = computed({
 
 const activeCellKey = ref<string | null>(null)
 const editingCellKey = ref<string | null>(null)
-const selectedRowIds = ref<Set<number>>(new Set())
 const editorRefs = new Map<string, unknown>()
+const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
+const contextMenuSelection = ref<TableRow | null>(null)
+const contextMenuRow = ref<TableRow | null>(null)
+const contextMenuRowIndex = ref<number | null>(null)
 
 const dataColumnWidth = computed(() => {
   const fieldCount = Math.max(props.orderedFields.length, 1)
@@ -203,13 +218,72 @@ const tableRows = computed(() => {
   return props.items.map(item => buildTableRow(item, props.orderedFields))
 })
 
+const contextMenuItems = computed<MenuItem[]>(() => {
+  const row = contextMenuRow.value
+  const rowIndex = contextMenuRowIndex.value
+  const totalRows = tableRows.value.length
+  const isFirstOnPage = rowIndex === 0
+  const isLastOnPage = rowIndex !== null && rowIndex === totalRows - 1
+  const collectionId = row?.collection_id
+
+  return [
+    {
+      label: 'Insert row above',
+      command: () => {
+        if (!row || collectionId === undefined) return
+        const afterOrder = row.order <= 0 ? null : row.order - 1
+        emit('insert-item-at', { collectionId, afterOrder })
+      }
+    },
+    {
+      label: 'Insert row below',
+      command: () => {
+        if (!row || collectionId === undefined) return
+        emit('insert-item-at', { collectionId, afterOrder: row.order })
+      }
+    },
+    {
+      label: 'Duplicate row',
+      command: () => {
+        if (!row || collectionId === undefined) return
+        emit('duplicate-item', { collectionId, itemId: row.id })
+      }
+    },
+    { separator: true },
+    {
+      label: 'Move up',
+      disabled: !row || isFirstOnPage,
+      command: () => {
+        if (!row || collectionId === undefined || isFirstOnPage) return
+        emit('move-item', { collectionId, itemId: row.id, direction: 'up' })
+      }
+    },
+    {
+      label: 'Move down',
+      disabled: !row || isLastOnPage,
+      command: () => {
+        if (!row || collectionId === undefined || isLastOnPage) return
+        emit('move-item', { collectionId, itemId: row.id, direction: 'down' })
+      }
+    },
+    { separator: true },
+    {
+      label: 'Delete row',
+      command: () => {
+        if (!row) return
+        emit('delete-item', row as Item)
+      }
+    }
+  ]
+})
+
 watch(editingCellKey, async key => {
   if (!key) return
   await nextTick()
   focusEditor(key)
 })
 
-function getFieldKey(fieldName: string) {
+function getFieldKey(fieldName: string): `data.${string}` {
   return `data.${fieldName}`
 }
 
@@ -273,27 +347,8 @@ function getAbsoluteIndex(index: number) {
   return props.itemsPage * props.itemsRows + index + 1
 }
 
-function isRowSelected(row: Item) {
-  return selectedRowIds.value.has(row.id)
-}
-
-function toggleRowSelection(row: Item, value?: boolean) {
-  const next = new Set(selectedRowIds.value)
-  const shouldSelect = typeof value === 'boolean' ? value : !next.has(row.id)
-  if (shouldSelect) {
-    next.add(row.id)
-  } else {
-    next.delete(row.id)
-  }
-  selectedRowIds.value = next
-}
-
-function onRowSelectionChange(row: Item, value: boolean) {
-  toggleRowSelection(row, value)
-}
-
-function getRowClass(row: Item) {
-  return isRowSelected(row) ? 'group bg-[var(--accent-light)]' : 'group'
+function getRowClass(_row: Item) {
+  return 'group'
 }
 
 function isActiveCell(cellKey: string) {
@@ -432,6 +487,13 @@ function onCellEditComplete(event: CellEditCompleteEvent) {
 function onCellEditCancel() {
   activeCellKey.value = null
   editingCellKey.value = null
+}
+
+function onRowContextMenu(event: RowContextMenuEvent) {
+  contextMenuSelection.value = event.data
+  contextMenuRow.value = event.data
+  contextMenuRowIndex.value = event.index
+  contextMenuRef.value?.show(event.originalEvent)
 }
 
 function notifyRowDetail() {
