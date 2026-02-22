@@ -28,14 +28,14 @@
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <div
         class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-secondary)] divide-y divide-[var(--border-color)]">
-        <DataTable :value="tableRows" dataKey="id" stripedRows sortMode="multiple" removableSort contextMenu
+        <DataTable :value="tableRows" dataKey="id" sortMode="multiple" removableSort contextMenu
           v-model:multiSortMeta="sortModel" :rowHover="true" lazy :rows="itemsRows"
           :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :loading="itemsLoading" editMode="cell"
           :rowClass="getRowClass" v-model:contextMenuSelection="contextMenuSelection"
           @row-contextmenu="onRowContextMenu" @sort="onSort" @cell-edit-init="onCellEditInit"
           @cell-edit-complete="onCellEditComplete" @cell-edit-cancel="onCellEditCancel" :pt="dataTablePt"
           scrollable scrollHeight="flex" class="flex-1"
-          tableStyle="table-layout: fixed; width: 100%">
+          showGridlines tableStyle="table-layout: fixed; width: 100%">
           <Column style="width: 60px">
             <template #body="{ data, index }">
               <div class="relative flex items-center justify-end pr-2">

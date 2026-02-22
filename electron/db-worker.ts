@@ -935,6 +935,30 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
         order,
       };
     }
+    case "updateView": {
+      const database = requireDb();
+      const info = database
+        .prepare("UPDATE views SET name = ? WHERE id = ?")
+        .run(operation.input.name, operation.input.id);
+
+      if (toNumber(info.changes) !== 1) {
+        throw new Error(`Failed to update view ${operation.input.id}.`);
+      }
+
+      return true;
+    }
+    case "deleteView": {
+      const database = requireDb();
+      const info = database
+        .prepare("DELETE FROM views WHERE id = ?")
+        .run(operation.id);
+
+      if (toNumber(info.changes) !== 1) {
+        throw new Error(`Failed to delete view ${operation.id}.`);
+      }
+
+      return true;
+    }
     case "getFields": {
       const database = requireDb();
       return database

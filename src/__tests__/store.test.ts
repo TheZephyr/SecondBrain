@@ -26,6 +26,8 @@ function makeElectronAPIMock() {
     deleteCollection: vi.fn(),
     getViews: vi.fn(),
     addView: vi.fn(),
+    updateView: vi.fn(),
+    deleteView: vi.fn(),
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
@@ -254,6 +256,33 @@ describe("selectCollection", () => {
     expect(store.activeViewId).toBe(22);
   });
 
+  it("adds a view, reloads views, and sets activeViewId to the new view", async () => {
+    const store = useStore();
+    const created = {
+      id: 5,
+      collection_id: 1,
+      name: "Kanban",
+      type: "kanban",
+      is_default: 0,
+      order: 1,
+    };
+
+    mockApi.addView.mockResolvedValue(ok(created));
+    mockApi.getViews.mockResolvedValue(ok([created]));
+
+    await store.addView({
+      collectionId: 1,
+      name: "Kanban",
+      type: "kanban",
+      isDefault: 0,
+    });
+
+    expect(mockApi.addView).toHaveBeenCalledOnce();
+    expect(mockApi.getViews).toHaveBeenCalledOnce();
+    expect(store.currentViews).toEqual([created]);
+    expect(store.activeViewId).toBe(5);
+  });
+
   it("resets to dashboard when selecting null", () => {
     const store = useStore();
     store.selectedCollection = { id: 1, name: "A" };
@@ -306,29 +335,29 @@ describe("collection panel and view state", () => {
     expect(store.collectionSettingsOpen).toBe(false);
   });
 
-  it("resets selectedViewId to 0 when selectCollection is called", () => {
+  it("resets activeViewId to null when selectCollection is called", () => {
     const store = useStore();
     mockApi.getFields.mockResolvedValue(ok([]));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
     mockApi.getViews.mockResolvedValue(ok([]));
 
-    store.selectedViewId = 12;
+    store.activeViewId = 12;
     store.selectCollection({ id: 1, name: "A" });
 
-    expect(store.selectedViewId).toBe(0);
+    expect(store.activeViewId).toBeNull();
   });
 
   it("selectCollection(null) resets panel and view state", () => {
     const store = useStore();
     store.activeCollectionPanel = "fields";
     store.collectionSettingsOpen = true;
-    store.selectedViewId = 12;
+    store.activeViewId = 12;
 
     store.selectCollection(null);
 
     expect(store.activeCollectionPanel).toBe("data");
     expect(store.collectionSettingsOpen).toBe(false);
-    expect(store.selectedViewId).toBe(0);
+    expect(store.activeViewId).toBeNull();
   });
 
   it("setActiveCollectionPanel updates activeCollectionPanel", () => {
@@ -343,10 +372,10 @@ describe("collection panel and view state", () => {
     expect(store.collectionSettingsOpen).toBe(true);
   });
 
-  it("setSelectedViewId updates selectedViewId", () => {
+  it("setActiveViewId updates activeViewId", () => {
     const store = useStore();
-    store.setSelectedViewId(5);
-    expect(store.selectedViewId).toBe(5);
+    store.setActiveViewId(5);
+    expect(store.activeViewId).toBe(5);
   });
 });
 

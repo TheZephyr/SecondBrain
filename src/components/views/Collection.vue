@@ -109,8 +109,8 @@ const {
   itemsRows,
   activeCollectionPanel,
   collectionSettingsOpen,
-  selectedViewId,
-  availableViews
+  currentViews,
+  activeViewId
 } = storeToRefs(store)
 
 const props = defineProps<{
@@ -132,7 +132,7 @@ const { safeFields, orderedFields } = useSafeFields({
 const collectionId = computed(() => props.collection.id)
 
 const activeView = computed(() => {
-  return availableViews.value.find(view => view.id === selectedViewId.value) ?? null
+  return currentViews.value.find(view => view.id === activeViewId.value) ?? null
 })
 
 async function loadCollectionItems(options: LoadItemsOptions = {}) {

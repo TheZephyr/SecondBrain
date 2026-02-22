@@ -9,7 +9,7 @@ export type Collection = {
   created_at?: string;
 };
 
-export type ViewType = "grid";
+export type ViewType = "grid" | "kanban" | "calendar";
 
 export type View = {
   id: number;
@@ -74,6 +74,11 @@ export type NewViewInput = {
   type?: ViewType;
   isDefault?: 0 | 1;
   order?: number;
+};
+
+export type UpdateViewInput = {
+  id: number;
+  name: string;
 };
 
 export type UpdateCollectionInput = {
@@ -163,7 +168,7 @@ export type ImportCollectionInput = {
   items: NewItemInput[];
 };
 
-export type CollectionViewType = "grid" | "kanban" | "calendar";
+export type CollectionViewType = ViewType;
 
 export type CollectionPanelType = "data" | "fields";
 

@@ -3,12 +3,13 @@ import { ref } from "vue";
 import type {
   Collection,
   CollectionPanelType,
-  CollectionView,
   View,
   Field,
   Item,
   ItemSortSpec,
   NewCollectionInput,
+  NewViewInput,
+  UpdateViewInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
@@ -52,10 +53,6 @@ export const useStore = defineStore("main", () => {
   const currentView = ref<"dashboard" | "collection">("dashboard");
   const activeCollectionPanel = ref<CollectionPanelType>("data");
   const collectionSettingsOpen = ref(false);
-  const selectedViewId = ref(0);
-  const availableViews = ref<CollectionView[]>([
-    { id: 0, type: "grid", name: "Grid" },
-  ]);
   let itemsRequestToken = 0;
   let viewsRequestToken = 0;
 
@@ -81,7 +78,10 @@ export const useStore = defineStore("main", () => {
     collections.value = handleIpc(result, "db:getCollections", []);
   }
 
-  async function loadViews(collectionId: number) {
+  async function loadViews(
+    collectionId: number,
+    options: { preserveActive?: boolean } = {},
+  ) {
     const requestToken = ++viewsRequestToken;
     const result = await window.electronAPI.getViews(collectionId);
     const views = handleIpc(result, "db:getViews", []);
@@ -89,12 +89,14 @@ export const useStore = defineStore("main", () => {
       return;
     }
     currentViews.value = views;
+    if (options.preserveActive && activeViewId.value !== null) {
+      const stillExists = views.some((view) => view.id === activeViewId.value);
+      if (stillExists) {
+        return;
+      }
+    }
     const defaultView = views.find((view) => view.is_default === 1);
     activeViewId.value = defaultView?.id ?? views[0]?.id ?? null;
-  }
-
-  function setActiveViewId(id: number | null) {
-    activeViewId.value = id;
   }
 
   function setActiveCollectionPanel(panel: CollectionPanelType) {
@@ -105,8 +107,8 @@ export const useStore = defineStore("main", () => {
     collectionSettingsOpen.value = open;
   }
 
-  function setSelectedViewId(id: number) {
-    selectedViewId.value = id;
+  function setActiveViewId(id: number | null) {
+    activeViewId.value = id;
   }
 
   async function addCollection(collection: NewCollectionInput) {
@@ -116,6 +118,51 @@ export const useStore = defineStore("main", () => {
       await loadCollections();
     }
     return newCollection;
+  }
+
+  async function addView(view: NewViewInput) {
+    const result = await window.electronAPI.addView(view);
+    const created = handleIpc(result, "db:addView", null);
+    if (created) {
+      await loadViews(view.collectionId, { preserveActive: true });
+      activeViewId.value = created.id;
+    }
+    return created;
+  }
+
+  async function updateView(view: UpdateViewInput) {
+    if (!selectedCollection.value) return false;
+    const result = await window.electronAPI.updateView(view);
+    const success = handleIpc(result, "db:updateView", false);
+    if (success) {
+      await loadViews(selectedCollection.value.id, { preserveActive: true });
+      if (
+        activeViewId.value !== null &&
+        !currentViews.value.some((viewItem) => viewItem.id === activeViewId.value)
+      ) {
+        const fallback = currentViews.value[0];
+        activeViewId.value = fallback?.id ?? null;
+      }
+    }
+    return success;
+  }
+
+  async function deleteView(id: number) {
+    if (!selectedCollection.value) return false;
+    const result = await window.electronAPI.deleteView(id);
+    const success = handleIpc(result, "db:deleteView", false);
+    if (success) {
+      const previousActiveViewId = activeViewId.value;
+      await loadViews(selectedCollection.value.id, { preserveActive: true });
+      if (
+        previousActiveViewId !== null &&
+        !currentViews.value.some((viewItem) => viewItem.id === previousActiveViewId)
+      ) {
+        const fallback = currentViews.value[0];
+        activeViewId.value = fallback?.id ?? null;
+      }
+    }
+    return success;
   }
 
   async function updateCollection(collection: UpdateCollectionInput) {
@@ -392,7 +439,6 @@ export const useStore = defineStore("main", () => {
 
     activeCollectionPanel.value = "data";
     collectionSettingsOpen.value = false;
-    selectedViewId.value = 0;
   }
 
   function showDashboard() {
@@ -415,14 +461,14 @@ export const useStore = defineStore("main", () => {
     currentView,
     activeCollectionPanel,
     collectionSettingsOpen,
-    selectedViewId,
-    availableViews,
+    addView,
+    updateView,
+    deleteView,
     loadCollections,
     loadViews,
     setActiveViewId,
     setActiveCollectionPanel,
     setCollectionSettingsOpen,
-    setSelectedViewId,
     addCollection,
     updateCollection,
     deleteCollection,

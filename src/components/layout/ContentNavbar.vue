@@ -29,7 +29,7 @@
       :class="collectionSettingsOpen ? activeButtonClass : inactiveButtonClass" :aria-pressed="collectionSettingsOpen"
       @click="toggleSettings">
       <Settings2 :size="14" />
-      Settings
+      Collection Settings
     </Button>
   </div>
 </template>
@@ -46,8 +46,8 @@ const {
   selectedCollection,
   activeCollectionPanel,
   collectionSettingsOpen,
-  selectedViewId,
-  availableViews
+  currentViews,
+  activeViewId
 } = storeToRefs(store)
 
 const activeButtonClass = 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
@@ -60,7 +60,7 @@ const activeViewName = computed(() => {
   if (activeCollectionPanel.value === 'fields') {
     return 'Fields'
   }
-  const activeView = availableViews.value.find(view => view.id === selectedViewId.value)
+  const activeView = currentViews.value.find(view => view.id === activeViewId.value)
   return activeView?.name ?? 'View'
 })
 

@@ -6,6 +6,7 @@ import type {
   GetItemsInput,
   NewCollectionInput,
   NewViewInput,
+  UpdateViewInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
@@ -51,6 +52,8 @@ export interface IElectronAPI {
   // Views
   getViews: (collectionId: number) => Promise<IpcResult<View[]>>;
   addView: (input: NewViewInput) => Promise<IpcResult<View | null>>;
+  updateView: (input: UpdateViewInput) => Promise<IpcResult<boolean>>;
+  deleteView: (id: number) => Promise<IpcResult<boolean>>;
 
   // Fields
   getFields: (collectionId: number) => Promise<IpcResult<Field[]>>;
