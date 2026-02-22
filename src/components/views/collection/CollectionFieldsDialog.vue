@@ -9,7 +9,6 @@
             <Tag class="uppercase">{{ data.type }}</Tag>
           </template>
         </Column>
-        <!-- TODO: Legacy delete icon column retained until field delete moves elsewhere. -->
         <Column header="Actions" style="width: 120px">
           <template #body="{ data }">
             <Button text

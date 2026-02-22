@@ -32,7 +32,6 @@
             <span class="flex items-center" @click.stop="toggleExpanded(collection.id)">
               <i class="pi text-xs" :class="isExpanded(collection.id) ? 'pi-angle-down' : 'pi-angle-right'"></i>
             </span>
-            <i class="pi pi-folder text-sm"></i>
             <span class="min-w-0 flex-1 truncate">{{ collection.name }}</span>
           </div>
         </Button>
@@ -128,22 +127,18 @@ function isExpanded(id: number) {
 
 function toggleExpanded(id: number) {
   if (expandedCollectionIds.value.includes(id)) {
-    expandedCollectionIds.value = expandedCollectionIds.value.filter(
-      (entry) => entry !== id,
-    );
+    expandedCollectionIds.value = [];
     return;
   }
-  expandedCollectionIds.value = [...expandedCollectionIds.value, id];
+  expandedCollectionIds.value = [id];
 }
 
 function ensureExpanded(id: number) {
-  if (!expandedCollectionIds.value.includes(id)) {
-    expandedCollectionIds.value = [...expandedCollectionIds.value, id];
-  }
+  expandedCollectionIds.value = [id];
 }
 
 function handleCollectionClick(collection: Collection) {
-  toggleExpanded(collection.id);
+  ensureExpanded(collection.id);
   store.selectCollection(collection);
 }
 
@@ -212,7 +207,9 @@ watch(
   (collection) => {
     if (collection) {
       ensureExpanded(collection.id);
+      return;
     }
+    expandedCollectionIds.value = [];
   },
   { immediate: true },
 );
