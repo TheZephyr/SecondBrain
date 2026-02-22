@@ -1,15 +1,11 @@
 <template>
-  <div class="mb-4 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]">
+  <div class="mb-4 overflow-hidden bg-[var(--bg-secondary)]">
     <div class="flex h-12 items-center justify-between border-b border-[var(--border-color)] px-4">
       <div class="flex min-w-0 items-center gap-2 text-sm">
         <span class="text-[var(--text-muted)]">Collections</span>
         <span class="text-[var(--text-muted)]">/</span>
-        <span class="min-w-0 truncate font-semibold text-[var(--text-primary)]">
+        <span class="min-w-0 truncate text-[var(--text-primary)]">
           {{ collection.name }}
-        </span>
-        <span class="text-[var(--text-muted)]">/</span>
-        <span class="min-w-0 truncate font-semibold text-[var(--text-primary)]">
-          {{ activeViewName }}
         </span>
       </div>
 
@@ -19,8 +15,9 @@
           <LayoutGrid :size="14" />
           <span class="max-w-[140px] truncate">{{ activeViewName }}</span>
         </button>
-        <button type="button"
-          class="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]">
+        <button type="button" class="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold text-[var(--accent-primary)] transition hover:bg-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+          :class="fieldsOpen ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
+          :aria-pressed="fieldsOpen" @click="$emit('toggle-fields')">
           <Columns :size="14" />
           <span class="max-w-[140px] truncate">Fields</span>
         </button>
@@ -35,12 +32,6 @@
 
     <div class="flex h-10 items-center justify-between px-4">
       <div class="flex items-center gap-2">
-        <Button text class="h-8 gap-2 text-sm hover:bg-[var(--bg-hover)]"
-          :class="fieldsOpen ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
-          :aria-pressed="fieldsOpen" @click="$emit('toggle-fields')">
-          <Columns :size="16" />
-          Fields
-        </Button>
         <Button text
           class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">

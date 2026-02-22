@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <div v-if="orderedFields.length === 0"
-      class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
+      class="flex flex-col items-center border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
       <p class="mt-2 text-sm text-[var(--text-muted)]">
@@ -15,7 +15,7 @@
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <div
-        class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] divide-y divide-[var(--border-color)]">
+        class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-secondary)] divide-y divide-[var(--border-color)]">
         <DataTable :value="tableRows" dataKey="id" stripedRows sortMode="multiple" removableSort contextMenu
           v-model:multiSortMeta="sortModel" :rowHover="true" lazy :rows="itemsRows"
           :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :loading="itemsLoading" editMode="cell"

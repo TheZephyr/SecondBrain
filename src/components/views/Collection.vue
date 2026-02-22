@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto flex h-full min-h-0 max-w-6xl flex-col px-8 py-6">
+  <div class="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
     <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery" :fieldsOpen="showFieldsManager"
       @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog"
       @toggle-fields="toggleFieldsDrawer" @open-settings="showCollectionSettings = true" />
