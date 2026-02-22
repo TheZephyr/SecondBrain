@@ -70,15 +70,10 @@ npm install
 
 3. Rebuild native modules for Electron:
 ```bash
-npm run rebuild:electron-native
+npm run rebuild:electron
 ```
 
-4. Build Electron main process:
-```bash
-npm run build:electron
-```
-
-5. Start the development server:
+4. Start the development server:
 ```bash
 npm run dev
 ```
@@ -107,9 +102,9 @@ npx vue-tsc --noEmit
 npx tsc --noEmit -p tsconfig.node.json
 ```
 
-5. Validate Electron main/worker build (includes Electron-targeted native rebuild via `prebuild:electron`):
+5. Validate the production build:
 ```bash
-npm run build:electron
+npm run build:win
 ```
 
 6. Launch app for manual smoke testing (includes Electron-targeted native rebuild via `predev:electron`):
@@ -124,12 +119,12 @@ npm run dev
 
 Useful native rebuild scripts:
 
-- `npm run rebuild:node-native` - rebuild `better-sqlite3` for your local Node runtime.
-- `npm run rebuild:electron-native` - rebuild `better-sqlite3` for Electron runtime (via `@electron/rebuild`).
+- `npm run rebuild:node` - rebuild `better-sqlite3` for your local Node runtime.
+- `npm run rebuild:electron` - rebuild `better-sqlite3` for Electron runtime (via `@electron/rebuild`).
 
 If you see `NODE_MODULE_VERSION` mismatch errors, run:
 ```bash
-npm run rebuild:electron-native
+npm run rebuild:electron
 ```
 
 ## Build for Production
