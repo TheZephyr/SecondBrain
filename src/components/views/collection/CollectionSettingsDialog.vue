@@ -15,18 +15,6 @@
               <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name </label>
               <InputText v-model="collectionName" type="text" placeholder="Collection name" />
             </div>
-
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
-              <Listbox v-model="collectionIcon" :options="iconOptions" optionLabel="label" optionValue="value" :pt="iconListboxPt"
-                class="w-full">
-                <template #option="{ option }">
-                  <div class="flex flex-col items-center gap-1">
-                    <component :is="option.component" :size="20" />
-                  </div>
-                </template>
-              </Listbox>
-            </div>
           </div>
         </AccordionContent>
       </AccordionPanel>
@@ -238,13 +226,11 @@ import AccordionPanel from 'primevue/accordionpanel'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Listbox from 'primevue/listbox'
 import RadioButton from 'primevue/radiobutton'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import type { Collection, Field } from '../../../types/models'
 import { useCollectionImportExport } from '../../../composables/useCollectionImportExport'
-import { useIcons } from '../../../composables/useIcons'
 import { isSafeFieldName } from '../../../validation/fieldNames'
 import type { CollectionSettingsSavePayload } from './types'
 
@@ -261,9 +247,7 @@ const emit = defineEmits<{
   (e: 'delete-collection'): void
 }>()
 
-const { iconOptions } = useIcons()
 const collectionName = ref('')
-const collectionIcon = ref('')
 
 const safeFields = computed(() => {
   return props.fields.filter(field => isSafeFieldName(field.name))
@@ -286,27 +270,8 @@ const {
   fields: toRef(props, 'fields')
 })
 
-const iconListboxPt = {
-  root: {
-    class:
-      'w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]'
-  },
-  list: {
-    class: 'grid grid-cols-[repeat(auto-fit,minmax(60px,1fr))] justify-items-center gap-1 p-2'
-  },
-  item: ({ context }: { context: { selected: boolean } }) => ({
-    class: [
-      'flex w-full flex-col items-center justify-center gap-1 rounded-md border p-1.5 text-xs transition',
-      context.selected
-        ? 'border-[var(--accent-primary)] bg-[var(--accent-light)] text-[var(--accent-primary)]'
-        : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]'
-    ].join(' ')
-  })
-}
-
 function resetSettingsState() {
   collectionName.value = props.collection.name
-  collectionIcon.value = props.collection.icon
 }
 
 watch(
@@ -342,8 +307,7 @@ function cancelSettings() {
 
 function saveSettings() {
   emit('save-settings', {
-    name: collectionName.value,
-    icon: collectionIcon.value
+    name: collectionName.value
   })
 }
 </script>

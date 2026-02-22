@@ -875,7 +875,6 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
         return {
           id: collectionId,
           name: operation.input.name,
-          icon: operation.input.icon || "folder",
         };
       });
 

@@ -192,7 +192,7 @@ describe("loadItems", () => {
 describe("selectCollection", () => {
   it("sets selectedCollection, clears items state, and triggers loads", async () => {
     const store = useStore();
-    const col: Collection = { id: 5, name: "Books", icon: "book" };
+    const col: Collection = { id: 5, name: "Books" };
     mockApi.getFields.mockResolvedValue(ok([]));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
     mockApi.getViews.mockResolvedValue(
@@ -223,7 +223,7 @@ describe("selectCollection", () => {
 
   it("loads views and sets activeViewId to the default view", async () => {
     const store = useStore();
-    const col: Collection = { id: 7, name: "Notes", icon: "note" };
+    const col: Collection = { id: 7, name: "Notes" };
     mockApi.getFields.mockResolvedValue(ok([]));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
     mockApi.getViews.mockResolvedValue(
@@ -256,7 +256,7 @@ describe("selectCollection", () => {
 
   it("resets to dashboard when selecting null", () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A", icon: "a" };
+    store.selectedCollection = { id: 1, name: "A" };
     store.currentView = "collection";
     store.currentViews = [
       {
@@ -284,7 +284,7 @@ describe("selectCollection", () => {
 describe("deleteCollection", () => {
   it("clears selectedCollection when deleting the active collection", async () => {
     const store = useStore();
-    const col: Collection = { id: 3, name: "ToDelete", icon: "trash" };
+    const col: Collection = { id: 3, name: "ToDelete" };
     store.selectedCollection = col;
 
     mockApi.deleteCollection.mockResolvedValue(ok(true));
@@ -297,7 +297,7 @@ describe("deleteCollection", () => {
 
   it("keeps selectedCollection when deleting a different collection", async () => {
     const store = useStore();
-    const active: Collection = { id: 1, name: "Active", icon: "star" };
+    const active: Collection = { id: 1, name: "Active" };
     store.selectedCollection = active;
 
     mockApi.deleteCollection.mockResolvedValue(ok(true));
@@ -322,7 +322,7 @@ describe("deleteCollection", () => {
 describe("bulkDeleteItems", () => {
   it("re-fetches items after successful bulk delete on active collection", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A", icon: "a" };
+    store.selectedCollection = { id: 1, name: "A" };
 
     mockApi.bulkDeleteItems.mockResolvedValue(ok({ affectedCount: 2 }));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
@@ -360,7 +360,7 @@ describe("bulkDeleteItems", () => {
 describe("bulkPatchItems", () => {
   it("re-fetches items after successful bulk patch on active collection", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A", icon: "a" };
+    store.selectedCollection = { id: 1, name: "A" };
 
     mockApi.bulkPatchItems.mockResolvedValue(ok({ affectedCount: 1 }));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
@@ -399,8 +399,8 @@ describe("loadCollections", () => {
   it("populates collections from IPC response", async () => {
     const store = useStore();
     const cols: Collection[] = [
-      { id: 1, name: "A", icon: "a" },
-      { id: 2, name: "B", icon: "b" },
+      { id: 1, name: "A" },
+      { id: 2, name: "B" },
     ];
     mockApi.getCollections.mockResolvedValue(ok(cols));
 

@@ -6,7 +6,6 @@ export type ItemData = Record<string, ItemDataValue>;
 export type Collection = {
   id: number;
   name: string;
-  icon: string;
   created_at?: string;
 };
 

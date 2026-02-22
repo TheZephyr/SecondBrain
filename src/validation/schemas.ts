@@ -2,12 +2,6 @@ import { z } from "zod";
 import { isSafeFieldName, normalizeFieldName } from "./fieldNames";
 
 export const collectionNameSchema = z.string().trim().min(1).max(80);
-export const iconSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(32)
-  .regex(/^[a-z0-9-]+$/);
 export const viewNameSchema = z.string().trim().min(1).max(80);
 
 export const fieldNameSchema = z
@@ -96,8 +90,7 @@ export const itemDataSchema = z.preprocess((value, ctx) => {
 }, z.record(z.string(), itemDataValueSchema));
 
 export const NewCollectionInputSchema = z.object({
-  name: collectionNameSchema,
-  icon: iconSchema,
+  name: collectionNameSchema
 });
 
 export const NewViewInputSchema = z.object({
@@ -110,8 +103,7 @@ export const NewViewInputSchema = z.object({
 
 export const UpdateCollectionInputSchema = z.object({
   id: positiveIntSchema,
-  name: collectionNameSchema,
-  icon: iconSchema,
+  name: collectionNameSchema
 });
 
 export const NewFieldInputSchema = z.object({

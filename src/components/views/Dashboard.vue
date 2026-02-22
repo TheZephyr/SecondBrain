@@ -23,10 +23,6 @@
         @click="$emit('select-collection', collection)">
         <template #content>
           <div class="flex items-center gap-4">
-            <div
-              class="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--accent-light)] text-[var(--accent-primary)]">
-              <component :is="getIcon(collection.icon)" :size="28" :stroke-width="1.5" />
-            </div>
             <div class="min-w-0 flex-1">
               <h3 class="truncate text-base font-semibold text-[var(--text-primary)]">
                 {{ collection.name }}
@@ -52,10 +48,8 @@ import {
   FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
 import Card from 'primevue/card'
-import { useIcons } from '../../composables/useIcons'
 import { handleIpc } from '../../utils/ipc'
 
-const { getIcon } = useIcons()
 const store = useStore()
 const { collections } = storeToRefs(store)
 

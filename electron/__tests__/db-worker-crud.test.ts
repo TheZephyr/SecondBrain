@@ -138,11 +138,10 @@ afterEach(() => {
 describe("collection CRUD", () => {
   it("adds and retrieves a collection", () => {
     setupInMemoryDb();
-    const created = addCollection({ name: "Books", icon: "book" });
+    const created = addCollection({ name: "Books" });
 
     expect(created.id).toBeGreaterThan(0);
     expect(created.name).toBe("Books");
-    expect(created.icon).toBe("book");
 
     const all = getCollections();
     expect(all).toHaveLength(1);
@@ -152,27 +151,26 @@ describe("collection CRUD", () => {
 
   it("returns collections in created_at ASC order", () => {
     setupInMemoryDb();
-    const a = addCollection({ name: "A", icon: "a" });
-    const b = addCollection({ name: "B", icon: "b" });
-    const c = addCollection({ name: "C", icon: "c" });
+    const a = addCollection({ name: "A" });
+    const b = addCollection({ name: "B" });
+    const c = addCollection({ name: "C" });
 
     const all = getCollections();
     expect(all.map((col) => col.id)).toEqual([a.id, b.id, c.id]);
   });
 
-  it("updates a collection name and icon", () => {
+  it("updates a collection name", () => {
     setupInMemoryDb();
-    const created = addCollection({ name: "Old", icon: "old" });
-    updateCollection({ id: created.id, name: "New", icon: "new" });
+    const created = addCollection({ name: "Old" });
+    updateCollection({ id: created.id, name: "New" });
 
     const all = getCollections();
     expect(all[0].name).toBe("New");
-    expect(all[0].icon).toBe("new");
   });
 
   it("deletes a collection and cascades to fields and items", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Temp", icon: "trash" });
+    const col = addCollection({ name: "Temp" });
     addField({
       collectionId: col.id,
       name: "Title",
@@ -191,8 +189,8 @@ describe("collection CRUD", () => {
 
   it("returns item counts grouped by collection", () => {
     setupInMemoryDb();
-    const col1 = addCollection({ name: "A", icon: "a" });
-    const col2 = addCollection({ name: "B", icon: "b" });
+    const col1 = addCollection({ name: "A" });
+    const col2 = addCollection({ name: "B" });
     addItem({ collectionId: col1.id, data: { X: "1" } });
     addItem({ collectionId: col1.id, data: { X: "2" } });
     addItem({ collectionId: col2.id, data: { Y: "1" } });
@@ -215,7 +213,7 @@ describe("collection CRUD", () => {
 describe("view CRUD", () => {
   it("creates a default view when a collection is added", () => {
     setupInMemoryDb();
-    const created = addCollection({ name: "Notes", icon: "note" });
+    const created = addCollection({ name: "Notes" });
 
     const views = getViews(created.id);
     expect(views).toHaveLength(1);
@@ -227,7 +225,7 @@ describe("view CRUD", () => {
 
   it("adds a view and returns it", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Views", icon: "grid" });
+    const col = addCollection({ name: "Views" });
 
     const created = addView({
       collectionId: col.id,
@@ -247,7 +245,7 @@ describe("view CRUD", () => {
 
   it('returns views sorted by "order" then id', () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Ordered", icon: "sort" });
+    const col = addCollection({ name: "Ordered" });
 
     addView({
       collectionId: col.id,
@@ -278,7 +276,7 @@ describe("view CRUD", () => {
 describe("field CRUD", () => {
   it("adds fields with auto-incrementing order_index", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
 
     const f1 = addField({
       collectionId: col.id,
@@ -306,7 +304,7 @@ describe("field CRUD", () => {
 
   it("adds a field with explicit orderIndex", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
 
     addField({
       collectionId: col.id,
@@ -322,7 +320,7 @@ describe("field CRUD", () => {
 
   it("updates a field", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     const field = addField({
       collectionId: col.id,
       name: "OldName",
@@ -345,7 +343,7 @@ describe("field CRUD", () => {
 
   it("deletes a field", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     const field = addField({
       collectionId: col.id,
       name: "Title",
@@ -360,7 +358,7 @@ describe("field CRUD", () => {
 
   it("reorders fields (happy path)", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     const f1 = addField({
       collectionId: col.id,
       name: "A",
@@ -399,7 +397,7 @@ describe("field CRUD", () => {
 
   it("returns fields sorted by order_index", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addField({
       collectionId: col.id,
       name: "Z",
@@ -428,7 +426,7 @@ describe("field CRUD", () => {
 
   it("returns empty array for a collection with no fields", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Empty", icon: "folder" });
+    const col = addCollection({ name: "Empty" });
     expect(getFields(col.id)).toEqual([]);
   });
 });
@@ -438,7 +436,7 @@ describe("field CRUD", () => {
 describe("item CRUD", () => {
   it("adds and retrieves an item", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     const created = addItem({ collectionId: col.id, data: { Title: "Hello" } });
 
     expect(created.id).toBeGreaterThan(0);
@@ -454,7 +452,7 @@ describe("item CRUD", () => {
 
   it("updates an item", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     const created = addItem({
       collectionId: col.id,
       data: { Title: "Original" },
@@ -469,7 +467,7 @@ describe("item CRUD", () => {
 
   it("deletes an item", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     const created = addItem({ collectionId: col.id, data: { Title: "Gone" } });
 
     deleteItem(created.id);
@@ -481,8 +479,8 @@ describe("item CRUD", () => {
 
   it("returns items from the correct collection only", () => {
     setupInMemoryDb();
-    const col1 = addCollection({ name: "A", icon: "a" });
-    const col2 = addCollection({ name: "B", icon: "b" });
+    const col1 = addCollection({ name: "A" });
+    const col2 = addCollection({ name: "B" });
     addItem({ collectionId: col1.id, data: { X: "1" } });
     addItem({ collectionId: col2.id, data: { Y: "2" } });
 
@@ -501,7 +499,7 @@ describe("item CRUD", () => {
 describe("getItems pagination", () => {
   it("respects limit and offset", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     for (let i = 0; i < 10; i++) {
       addItem({ collectionId: col.id, data: { Index: String(i) } });
     }
@@ -524,7 +522,7 @@ describe("getItems pagination", () => {
 
   it("returns fewer items when offset nears the end", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     for (let i = 0; i < 5; i++) {
       addItem({ collectionId: col.id, data: { N: String(i) } });
     }
@@ -536,7 +534,7 @@ describe("getItems pagination", () => {
 
   it("returns empty items array for empty collection", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Empty", icon: "folder" });
+    const col = addCollection({ name: "Empty" });
 
     const result = getItems(col.id);
     expect(result.items).toEqual([]);
@@ -549,7 +547,7 @@ describe("getItems pagination", () => {
 describe("getItems search", () => {
   it("filters items by search token (FTS or LIKE)", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addItem({ collectionId: col.id, data: { Title: "Apple Pie" } });
     addItem({ collectionId: col.id, data: { Title: "Banana Split" } });
     addItem({ collectionId: col.id, data: { Title: "Cherry Tart" } });
@@ -562,7 +560,7 @@ describe("getItems search", () => {
 
   it("returns all items when search is empty", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addItem({ collectionId: col.id, data: { Title: "A" } });
     addItem({ collectionId: col.id, data: { Title: "B" } });
 
@@ -572,7 +570,7 @@ describe("getItems search", () => {
 
   it("returns no results for non-matching search", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addItem({ collectionId: col.id, data: { Title: "Hello" } });
 
     const result = getItems(col.id, { search: "nonexistent" });
@@ -582,7 +580,7 @@ describe("getItems search", () => {
 
   it("searches across multiple data fields", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addItem({
       collectionId: col.id,
       data: { Title: "Dune", Author: "Frank Herbert" },
@@ -607,7 +605,7 @@ describe("getItems search", () => {
 describe("getItems sorting", () => {
   it("sorts items by a data field ascending", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addField({
       collectionId: col.id,
       name: "Name",
@@ -628,7 +626,7 @@ describe("getItems sorting", () => {
 
   it("sorts items by a data field descending", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addField({
       collectionId: col.id,
       name: "Name",
@@ -649,7 +647,7 @@ describe("getItems sorting", () => {
 
   it("sorts numerically when values are numbers", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Col", icon: "folder" });
+    const col = addCollection({ name: "Col" });
     addField({
       collectionId: col.id,
       name: "Rating",
