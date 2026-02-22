@@ -44,8 +44,7 @@ import { useStore } from '../../store'
 import { useNotificationsStore } from '../../stores/notifications'
 import {
   collectionNameSchema,
-  fieldNameSchema,
-  iconSchema
+  fieldNameSchema
 } from '../../validation/schemas'
 import { useSafeFields } from '../../composables/collection/useSafeFields'
 import {
@@ -335,14 +334,11 @@ async function confirmDeleteItem(item: Item) {
 
 async function saveSettings(payload: CollectionSettingsSavePayload) {
   const nameResult = collectionNameSchema.safeParse(payload.name)
-  const iconResult = iconSchema.safeParse(payload.icon)
 
-  if (!nameResult.success || !iconResult.success) {
+  if (!nameResult.success) {
     let detail = 'Please check your collection settings.'
     if (!nameResult.success) {
       detail = nameResult.error.issues[0]?.message || detail
-    } else if (!iconResult.success) {
-      detail = iconResult.error.issues[0]?.message || detail
     }
 
     notifications.push({
@@ -356,8 +352,7 @@ async function saveSettings(payload: CollectionSettingsSavePayload) {
 
   await store.updateCollection({
     id: props.collection.id,
-    name: nameResult.data,
-    icon: iconResult.data
+    name: nameResult.data
   })
 
   showCollectionSettings.value = false

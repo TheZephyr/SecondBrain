@@ -66,7 +66,6 @@ export type CollectionItemCount = {
 
 export type NewCollectionInput = {
   name: string;
-  icon: string;
 };
 
 export type NewViewInput = {
@@ -80,7 +79,6 @@ export type NewViewInput = {
 export type UpdateCollectionInput = {
   id: number;
   name: string;
-  icon: string;
 };
 
 export type NewFieldInput = {
