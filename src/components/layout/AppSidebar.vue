@@ -39,11 +39,9 @@
         <div v-if="isExpanded(collection.id)" class="ml-4 space-y-1">
           <template v-if="selectedCollection?.id === collection.id">
             <div v-for="view in currentViews" :key="view.id" class="relative">
-              <Button text
-                class="group w-full justify-start rounded-md px-3 py-2 text-sm"
-                :class="isActiveView(view.id)
-                  ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-sm" :class="isActiveView(view.id)
+                ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
                 @click="handleViewClick(view.id)">
                 <div class="flex w-full items-center gap-2">
                   <i class="pi text-xs"
@@ -52,44 +50,30 @@
                   <div class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <span
                       class="flex size-5 items-center justify-center rounded text-[var(--accent-primary)] hover:bg-[var(--bg-hover)]"
-                      title="Rename view"
-                      @mousedown.stop
-                      @click.stop="openEditViewModal(view)"
-                    >
+                      title="Rename view" @mousedown.stop @click.stop="openEditViewModal(view)">
                       <i class="pi pi-pencil text-xs"></i>
                     </span>
                     <span
                       class="flex size-5 items-center justify-center rounded text-[#f87171] hover:bg-[var(--bg-hover)]"
-                      title="Delete view"
-                      @mousedown.stop
-                      @click.stop="toggleDeleteConfirm(view.id)"
-                    >
+                      title="Delete view" @mousedown.stop @click.stop="toggleDeleteConfirm(view.id)">
                       <i class="pi pi-trash text-xs"></i>
                     </span>
                   </div>
                 </div>
               </Button>
 
-              <div
-                v-if="confirmDeleteViewId === view.id"
-                :ref="setDeleteConfirmContainer"
+              <div v-if="confirmDeleteViewId === view.id" :ref="setDeleteConfirmContainer"
                 class="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-2 text-xs text-[var(--text-secondary)] shadow-lg"
-                @mousedown.stop
-              >
+                @mousedown.stop>
                 <div>Are you sure?</div>
                 <div class="mt-2 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
+                  <button type="button"
                     class="rounded px-2 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
-                    @click.stop="closeDeleteConfirm"
-                  >
+                    @click.stop="closeDeleteConfirm">
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    class="rounded bg-[var(--accent-primary)] px-2 py-1 text-white hover:opacity-90"
-                    @click.stop="confirmDeleteView(view)"
-                  >
+                  <button type="button" class="rounded bg-[var(--accent-primary)] px-2 py-1 text-white hover:opacity-90"
+                    @click.stop="confirmDeleteView(view)">
                     Delete
                   </button>
                 </div>
@@ -99,8 +83,7 @@
             <div :ref="setViewPickerContainer" class="relative">
               <Button text
                 class="w-full justify-start rounded-md px-3 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-                :aria-expanded="isViewPickerOpen"
-                aria-controls="view-type-picker"
+                :aria-expanded="isViewPickerOpen" aria-controls="view-type-picker"
                 @click="event => toggleViewPicker(event, collection.id)">
                 <div class="flex w-full items-center gap-2">
                   <i class="pi pi-plus text-xs"></i>
@@ -108,14 +91,9 @@
                 </div>
               </Button>
 
-              <ViewTypePicker
-                id="view-type-picker"
-                :open="isViewPickerOpen"
-                :placement="viewPickerPlacement"
-                :viewTypes="viewTypeOptions"
-                @select="type => handleViewTypeSelect(collection.id, type)"
-                @close="closeViewPicker"
-              />
+              <ViewTypePicker id="view-type-picker" :open="isViewPickerOpen" :placement="viewPickerPlacement"
+                :viewTypes="viewTypeOptions" @select="type => handleViewTypeSelect(collection.id, type)"
+                @close="closeViewPicker" />
             </div>
           </template>
         </div>
@@ -154,14 +132,8 @@
     </template>
   </Dialog>
 
-  <Dialog
-    v-model:visible="showViewModal"
-    :header="viewModalHeader"
-    modal
-    :draggable="false"
-    class="max-w-xl"
-    @hide="closeViewModal"
-  >
+  <Dialog v-model:visible="showViewModal" :header="viewModalHeader" modal :draggable="false" class="max-w-xl"
+    @hide="closeViewModal">
     <div class="space-y-4">
       <div class="space-y-2">
         <label class="text-xs font-medium text-[var(--text-secondary)]">View Name</label>
@@ -180,6 +152,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from "vue";
+import type { ComponentPublicInstance } from "vue";
 import { storeToRefs } from "pinia";
 import { useStore } from "../../store";
 import { useNotificationsStore } from "../../stores/notifications";
@@ -199,9 +172,7 @@ const notifications = useNotificationsStore();
 const appVersion = __APP_VERSION__;
 
 const showNewCollectionModal = ref(false);
-const newCollection = ref({
-  name: "",
-});
+const newCollection = ref({ name: "" });
 const expandedCollectionIds = ref<number[]>([]);
 const viewPickerOpenFor = ref<number | null>(null);
 const viewPickerPlacement = ref<"top" | "bottom">("bottom");
@@ -222,25 +193,25 @@ const viewTypeOptions: Array<{
   icon: string;
   iconClass: string;
 }> = [
-  {
-    type: "grid",
-    label: "Grid",
-    icon: "pi-table",
-    iconClass: "text-[var(--accent-primary)]",
-  },
-  {
-    type: "kanban",
-    label: "Kanban",
-    icon: "pi-bars",
-    iconClass: "text-[#c084fc]",
-  },
-  {
-    type: "calendar",
-    label: "Calendar",
-    icon: "pi-calendar",
-    iconClass: "text-[#a78bfa]",
-  },
-];
+    {
+      type: "grid",
+      label: "Grid",
+      icon: "pi-table",
+      iconClass: "text-[var(--accent-primary)]",
+    },
+    {
+      type: "kanban",
+      label: "Kanban",
+      icon: "pi-bars",
+      iconClass: "text-[#c084fc]",
+    },
+    {
+      type: "calendar",
+      label: "Calendar",
+      icon: "pi-calendar",
+      iconClass: "text-[#a78bfa]",
+    },
+  ];
 
 const isViewPickerOpen = computed(
   () => viewPickerOpenFor.value !== null && viewPickerOpenFor.value === selectedCollection.value?.id,
@@ -300,8 +271,10 @@ function toggleViewPicker(event: MouseEvent, collectionId: number) {
   nextTick(() => updateViewPickerPlacement());
 }
 
-function setViewPickerContainer(element: HTMLElement | null) {
-  viewPickerContainer.value = element;
+function setViewPickerContainer(
+  element: Element | ComponentPublicInstance | null,
+) {
+  viewPickerContainer.value = element instanceof HTMLElement ? element : null;
 }
 
 function closeViewPicker() {
@@ -403,8 +376,10 @@ function toggleDeleteConfirm(viewId: number) {
     confirmDeleteViewId.value === viewId ? null : viewId;
 }
 
-function setDeleteConfirmContainer(element: HTMLElement | null) {
-  deleteConfirmContainer.value = element;
+function setDeleteConfirmContainer(
+  element: Element | ComponentPublicInstance | null,
+) {
+  deleteConfirmContainer.value = element instanceof HTMLElement ? element : null;
 }
 
 function closeDeleteConfirm() {
