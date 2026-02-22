@@ -46,7 +46,7 @@
                 <div class="flex w-full items-center gap-2">
                   <i class="pi text-xs"
                     :class="[getViewTypeMeta(view.type).icon, getViewTypeMeta(view.type).iconClass]"></i>
-                  <span class="flex-1 truncate">{{ view.name }}</span>
+                  <span class="flex-1 truncate text-left">{{ view.name }}</span>
                   <div class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <span
                       class="flex size-5 items-center justify-center rounded text-[var(--accent-primary)] hover:bg-[var(--bg-hover)]"
