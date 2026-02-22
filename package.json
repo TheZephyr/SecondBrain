@@ -13,7 +13,7 @@
     "test": "vitest run --config vitest.config.ts",
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
-    "predev:electron": "npm run rebuild:electron",
+    "predev:electron": "npm run rebuild:electron && node build-electron.js",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "npm version patch && vue-tsc && vite build && node build-electron.js && electron-builder",
     "build:win": "npm run build -- --win",
