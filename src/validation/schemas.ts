@@ -9,7 +9,7 @@ export const fieldNameSchema = z
   .superRefine((value, ctx) => {
     if (!isSafeFieldName(value)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message:
           "Field name must be 1-64 chars, use letters/numbers/spaces/_/-, and avoid dots or reserved names.",
       });
@@ -32,7 +32,7 @@ export const itemSortFieldSchema = z
   .superRefine((value, ctx) => {
     if (!value.startsWith("data.")) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Sort field must start with data.",
       });
       return;
@@ -41,7 +41,7 @@ export const itemSortFieldSchema = z
     const fieldName = value.slice(5);
     if (!isSafeFieldName(fieldName)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Sort field must target a safe field name.",
       });
     }
@@ -54,44 +54,49 @@ export const ItemSortSpecSchema = z.object({
 
 export const itemDataValueSchema = z.union([
   z.string(),
-  z.number().finite(),
+  z
+    .number()
+    .refine((n) => Number.isFinite(n), { message: "Number must be finite" }),
   z.null(),
 ]);
 
-export const itemDataSchema = z.preprocess((value, ctx) => {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Item data must be a plain object.",
-    });
-    return value;
-  }
-
-  const proto = Object.getPrototypeOf(value);
-  if (proto !== Object.prototype && proto !== null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Item data must not use a custom prototype.",
-    });
-  }
-
-  const record = value as Record<string, unknown>;
-  for (const key of Object.keys(record)) {
-    if (!isSafeFieldName(key)) {
+export const itemDataSchema = z.preprocess(
+  (value, ctx) => {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Unsafe field name: ${key}`,
-        path: [key],
+        code: "custom",
+        message: "Item data must be a plain object.",
+      });
+      return value;
+    }
+
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Item data must not use a custom prototype.",
       });
     }
-  }
 
-  return value;
-}, z.record(z.string(), itemDataValueSchema));
+    const record = value as Record<string, unknown>;
+    for (const key of Object.keys(record)) {
+      if (!isSafeFieldName(key)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Unsafe field name: ${key}`,
+          path: [key],
+        });
+      }
+    }
+
+    return value;
+  },
+  z.record(z.string(), itemDataValueSchema),
+);
 
 export const NewCollectionInputSchema = z.object({
   name: collectionNameSchema,
-  icon: z.string().optional().nullable()
+  icon: z.string().optional().nullable(),
 });
 
 export const NewViewInputSchema = z.object({
@@ -105,7 +110,7 @@ export const NewViewInputSchema = z.object({
 export const UpdateCollectionInputSchema = z.object({
   id: positiveIntSchema,
   name: collectionNameSchema,
-  icon: z.string().optional().nullable()
+  icon: z.string().optional().nullable(),
 });
 
 export const NewFieldInputSchema = z.object({
@@ -139,7 +144,7 @@ export const ReorderFieldsInputSchema = z
     const uniqueIds = new Set(ids);
     if (uniqueIds.size !== ids.length) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Field order updates must contain unique field IDs.",
         path: ["fieldOrders"],
       });
@@ -149,7 +154,7 @@ export const ReorderFieldsInputSchema = z
     const uniqueOrderIndexes = new Set(orderIndexes);
     if (uniqueOrderIndexes.size !== orderIndexes.length) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Field order updates must contain unique order indices.",
         path: ["fieldOrders"],
       });
@@ -160,7 +165,7 @@ export const ReorderFieldsInputSchema = z
     for (let i = 0; i < sorted.length; i++) {
       if (sorted[i] !== i) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message:
             "Field order indices must be contiguous and start at 0 (0..n-1).",
           path: ["fieldOrders"],
@@ -205,7 +210,7 @@ export const BulkDeleteItemsInputSchema = z
     const uniqueIds = new Set(value.itemIds);
     if (uniqueIds.size !== value.itemIds.length) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Bulk delete item IDs must be unique.",
         path: ["itemIds"],
       });
@@ -233,7 +238,7 @@ export const BulkPatchItemsInputSchema = z
     const uniqueIds = new Set(ids);
     if (uniqueIds.size !== ids.length) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Bulk patch updates must contain unique item IDs.",
         path: ["updates"],
       });
@@ -251,7 +256,7 @@ export const ImportCollectionInputSchema = z
     value.newFields.forEach((field, index) => {
       if (field.collectionId !== value.collectionId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Field collectionId must match import collectionId.",
           path: ["newFields", index, "collectionId"],
         });
@@ -261,7 +266,7 @@ export const ImportCollectionInputSchema = z
     value.items.forEach((item, index) => {
       if (item.collectionId !== value.collectionId) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Item collectionId must match import collectionId.",
           path: ["items", index, "collectionId"],
         });
