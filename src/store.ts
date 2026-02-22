@@ -2,16 +2,23 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import type {
   Collection,
+  CollectionPanelType,
+  View,
   Field,
   Item,
   ItemSortSpec,
   NewCollectionInput,
+  NewViewInput,
+  UpdateViewInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -32,6 +39,8 @@ const MAX_ITEMS_ROWS = 100;
 export const useStore = defineStore("main", () => {
   // State
   const collections = ref<Collection[]>([]);
+  const currentViews = ref<View[]>([]);
+  const activeViewId = ref<number | null>(null);
   const fields = ref<Field[]>([]);
   const items = ref<Item[]>([]);
   const itemsTotal = ref(0);
@@ -42,7 +51,10 @@ export const useStore = defineStore("main", () => {
   const itemsSort = ref<ItemSortSpec[]>([]);
   const selectedCollection = ref<Collection | null>(null);
   const currentView = ref<"dashboard" | "collection">("dashboard");
+  const activeCollectionPanel = ref<CollectionPanelType>("data");
+  const collectionSettingsOpen = ref(false);
   let itemsRequestToken = 0;
+  let viewsRequestToken = 0;
 
   function clearItemsState() {
     itemsRequestToken += 1;
@@ -54,10 +66,49 @@ export const useStore = defineStore("main", () => {
     itemsSort.value = [];
   }
 
+  function clearViewsState() {
+    viewsRequestToken += 1;
+    currentViews.value = [];
+    activeViewId.value = null;
+  }
+
   // Actions
   async function loadCollections() {
     const result = await window.electronAPI.getCollections();
     collections.value = handleIpc(result, "db:getCollections", []);
+  }
+
+  async function loadViews(
+    collectionId: number,
+    options: { preserveActive?: boolean } = {},
+  ) {
+    const requestToken = ++viewsRequestToken;
+    const result = await window.electronAPI.getViews(collectionId);
+    const views = handleIpc(result, "db:getViews", []);
+    if (requestToken !== viewsRequestToken) {
+      return;
+    }
+    currentViews.value = views;
+    if (options.preserveActive && activeViewId.value !== null) {
+      const stillExists = views.some((view) => view.id === activeViewId.value);
+      if (stillExists) {
+        return;
+      }
+    }
+    const defaultView = views.find((view) => view.is_default === 1);
+    activeViewId.value = defaultView?.id ?? views[0]?.id ?? null;
+  }
+
+  function setActiveCollectionPanel(panel: CollectionPanelType) {
+    activeCollectionPanel.value = panel;
+  }
+
+  function setCollectionSettingsOpen(open: boolean) {
+    collectionSettingsOpen.value = open;
+  }
+
+  function setActiveViewId(id: number | null) {
+    activeViewId.value = id;
   }
 
   async function addCollection(collection: NewCollectionInput) {
@@ -67,6 +118,51 @@ export const useStore = defineStore("main", () => {
       await loadCollections();
     }
     return newCollection;
+  }
+
+  async function addView(view: NewViewInput) {
+    const result = await window.electronAPI.addView(view);
+    const created = handleIpc(result, "db:addView", null);
+    if (created) {
+      await loadViews(view.collectionId, { preserveActive: true });
+      activeViewId.value = created.id;
+    }
+    return created;
+  }
+
+  async function updateView(view: UpdateViewInput) {
+    if (!selectedCollection.value) return false;
+    const result = await window.electronAPI.updateView(view);
+    const success = handleIpc(result, "db:updateView", false);
+    if (success) {
+      await loadViews(selectedCollection.value.id, { preserveActive: true });
+      if (
+        activeViewId.value !== null &&
+        !currentViews.value.some((viewItem) => viewItem.id === activeViewId.value)
+      ) {
+        const fallback = currentViews.value[0];
+        activeViewId.value = fallback?.id ?? null;
+      }
+    }
+    return success;
+  }
+
+  async function deleteView(id: number) {
+    if (!selectedCollection.value) return false;
+    const result = await window.electronAPI.deleteView(id);
+    const success = handleIpc(result, "db:deleteView", false);
+    if (success) {
+      const previousActiveViewId = activeViewId.value;
+      await loadViews(selectedCollection.value.id, { preserveActive: true });
+      if (
+        previousActiveViewId !== null &&
+        !currentViews.value.some((viewItem) => viewItem.id === previousActiveViewId)
+      ) {
+        const fallback = currentViews.value[0];
+        activeViewId.value = fallback?.id ?? null;
+      }
+    }
+    return success;
   }
 
   async function updateCollection(collection: UpdateCollectionInput) {
@@ -84,6 +180,7 @@ export const useStore = defineStore("main", () => {
       await loadCollections();
       if (selectedCollection.value?.id === id) {
         selectedCollection.value = null;
+        clearViewsState();
       }
     }
   }
@@ -214,6 +311,49 @@ export const useStore = defineStore("main", () => {
     return created;
   }
 
+  async function insertItemAt(input: InsertItemAtInput) {
+    const payload: InsertItemAtInput = {
+      collectionId: input.collectionId,
+      afterOrder: input.afterOrder === null ? null : Number(input.afterOrder),
+    };
+
+    const result = await window.electronAPI.insertItemAt(payload);
+    const created = handleIpc(result, "db:insertItemAt", null);
+    if (created && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return created;
+  }
+
+  async function duplicateItem(input: DuplicateItemInput) {
+    const payload: DuplicateItemInput = {
+      collectionId: input.collectionId,
+      itemId: input.itemId,
+    };
+
+    const result = await window.electronAPI.duplicateItem(payload);
+    const created = handleIpc(result, "db:duplicateItem", null);
+    if (created && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return created;
+  }
+
+  async function moveItem(input: MoveItemInput) {
+    const payload: MoveItemInput = {
+      collectionId: input.collectionId,
+      itemId: input.itemId,
+      direction: input.direction,
+    };
+
+    const result = await window.electronAPI.moveItem(payload);
+    const success = handleIpc(result, "db:moveItem", false);
+    if (success && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return success;
+  }
+
   async function updateItem(item: UpdateItemInput) {
     if (!selectedCollection.value) return;
     const result = await window.electronAPI.updateItem(item);
@@ -286,13 +426,19 @@ export const useStore = defineStore("main", () => {
     if (collection) {
       currentView.value = "collection";
       clearItemsState();
+      clearViewsState();
       loadFields(collection.id);
       loadItems(collection.id);
+      loadViews(collection.id);
     } else {
       currentView.value = "dashboard";
       fields.value = [];
       clearItemsState();
+      clearViewsState();
     }
+
+    activeCollectionPanel.value = "data";
+    collectionSettingsOpen.value = false;
   }
 
   function showDashboard() {
@@ -301,6 +447,8 @@ export const useStore = defineStore("main", () => {
 
   return {
     collections,
+    currentViews,
+    activeViewId,
     fields,
     items,
     itemsTotal,
@@ -311,7 +459,16 @@ export const useStore = defineStore("main", () => {
     itemsSort,
     selectedCollection,
     currentView,
+    activeCollectionPanel,
+    collectionSettingsOpen,
+    addView,
+    updateView,
+    deleteView,
     loadCollections,
+    loadViews,
+    setActiveViewId,
+    setActiveCollectionPanel,
+    setCollectionSettingsOpen,
     addCollection,
     updateCollection,
     deleteCollection,
@@ -322,6 +479,9 @@ export const useStore = defineStore("main", () => {
     deleteField,
     loadItems,
     addItem,
+    insertItemAt,
+    duplicateItem,
+    moveItem,
     updateItem,
     deleteItem,
     bulkDeleteItems,

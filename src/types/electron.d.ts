@@ -1,15 +1,21 @@
 import type {
   Collection,
+  View,
   Field,
   Item,
   GetItemsInput,
   NewCollectionInput,
+  NewViewInput,
+  UpdateViewInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -43,6 +49,12 @@ export interface IElectronAPI {
   ) => Promise<IpcResult<boolean>>;
   deleteCollection: (id: number) => Promise<IpcResult<boolean>>;
 
+  // Views
+  getViews: (collectionId: number) => Promise<IpcResult<View[]>>;
+  addView: (input: NewViewInput) => Promise<IpcResult<View | null>>;
+  updateView: (input: UpdateViewInput) => Promise<IpcResult<boolean>>;
+  deleteView: (id: number) => Promise<IpcResult<boolean>>;
+
   // Fields
   getFields: (collectionId: number) => Promise<IpcResult<Field[]>>;
   addField: (
@@ -55,6 +67,9 @@ export interface IElectronAPI {
   // Items
   getItems: (input: GetItemsInput) => Promise<IpcResult<PaginatedItemsResult>>;
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
+  insertItemAt: (input: InsertItemAtInput) => Promise<IpcResult<Item | null>>;
+  duplicateItem: (input: DuplicateItemInput) => Promise<IpcResult<Item | null>>;
+  moveItem: (input: MoveItemInput) => Promise<IpcResult<boolean>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
   bulkDeleteItems: (

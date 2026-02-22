@@ -17,7 +17,6 @@ export type ItemEditorSavePayload = {
 
 export type CollectionSettingsSavePayload = {
   name: string
-  icon: string
 }
 
 export type TablePageEventLike = {

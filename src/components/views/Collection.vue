@@ -1,26 +1,63 @@
 <template>
-  <div class="mx-auto max-w-6xl px-10 py-8">
-    <CollectionHeaderBar :collection="collection" @open-fields="showFieldsManager = true" @open-add-item="openAddItemDialog"
-      @open-settings="showCollectionSettings = true" />
+  <CollectionSettingsPanel
+    v-if="collectionSettingsOpen"
+    :collection="collection"
+    :fields="fields"
+    :itemsTotal="itemsTotal"
+    @save-settings="saveSettings"
+    @delete-collection="confirmDeleteCollection"
+  />
+  <CollectionFieldsPanel
+    v-else-if="activeCollectionPanel === 'fields'"
+    :orderedFields="orderedFields"
+    @add-field="addField"
+    @delete-field="confirmDeleteField"
+    @reorder-fields="onFieldsReorder"
+  />
+  <template v-else>
+    <CollectionGridView
+      v-if="activeView?.type === 'grid'"
+      :items="items"
+      :itemsTotal="itemsTotal"
+      :itemsLoading="itemsLoading"
+      :itemsPage="itemsPage"
+      :itemsRows="itemsRows"
+      :orderedFields="orderedFields"
+      :searchQuery="searchQuery"
+      :debouncedSearchQuery="debouncedSearchQuery"
+      :multiSortMeta="multiSortMeta"
+      @update:searchQuery="searchQuery = $event"
+      @update:multiSortMeta="multiSortMeta = $event"
+      @page="onItemsPage"
+      @sort="onItemsSort"
+      @edit-item="openEditItemDialog"
+      @delete-item="confirmDeleteItem"
+      @update-item="onInlineUpdateItem"
+      @insert-item-at="onInsertItemAt"
+      @duplicate-item="onDuplicateItem"
+      @move-item="onMoveItem"
+      @manage-fields="store.setActiveCollectionPanel('fields')"
+      @open-add-item="openAddItemDialog"
+    />
+    <CollectionKanbanView
+      v-else-if="activeView?.type === 'kanban'"
+      :orderedFields="orderedFields"
+    />
+    <CollectionCalendarView
+      v-else-if="activeView?.type === 'calendar'"
+      :orderedFields="orderedFields"
+    />
+  </template>
 
-    <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
-      :itemsRows="itemsRows" :orderedFields="orderedFields" :searchQuery="searchQuery" :debouncedSearchQuery="debouncedSearchQuery"
-      :multiSortMeta="multiSortMeta" @update:searchQuery="searchQuery = $event" @update:multiSortMeta="multiSortMeta = $event"
-      @page="onItemsPage" @sort="onItemsSort" @manage-fields="showFieldsManager = true" @edit-item="openEditItemDialog"
-      @delete-item="confirmDeleteItem" />
+  <CollectionItemEditorDialog
+    :visible="showAddItemForm"
+    :orderedFields="orderedFields"
+    :editingItem="editingItem"
+    @update:visible="onItemDialogVisibilityChange"
+    @save="saveItem"
+  />
 
-    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"
-      @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
-
-    <CollectionFieldsDialog :visible="showFieldsManager" :orderedFields="orderedFields"
-      @update:visible="showFieldsManager = $event" @add-field="addField" @delete-field="confirmDeleteField"
-      @reorder-fields="onFieldsReorder" />
-
-    <CollectionSettingsDialog :visible="showCollectionSettings" :collection="collection" :fields="fields" :itemsTotal="itemsTotal"
-      @update:visible="showCollectionSettings = $event" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
-
-    <ConfirmDialog />
-  </div>
+  <ConfirmDialog />
 </template>
 
 <script setup lang="ts">
@@ -32,8 +69,7 @@ import { useStore } from '../../store'
 import { useNotificationsStore } from '../../stores/notifications'
 import {
   collectionNameSchema,
-  fieldNameSchema,
-  iconSchema
+  fieldNameSchema
 } from '../../validation/schemas'
 import { useSafeFields } from '../../composables/collection/useSafeFields'
 import {
@@ -43,13 +79,18 @@ import {
 import type {
   Collection,
   Field,
-  Item
+  Item,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
+  UpdateItemInput
 } from '../../types/models'
-import CollectionHeaderBar from './collection/CollectionHeaderBar.vue'
-import CollectionItemsPanel from './collection/CollectionItemsPanel.vue'
+import CollectionGridView from './collection/CollectionGridView.vue'
+import CollectionKanbanView from './collection/CollectionKanbanView.vue'
+import CollectionCalendarView from './collection/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
-import CollectionFieldsDialog from './collection/CollectionFieldsDialog.vue'
-import CollectionSettingsDialog from './collection/CollectionSettingsDialog.vue'
+import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
+import CollectionSettingsPanel from './collection/CollectionSettingsPanel.vue'
 import type {
   CollectionSettingsSavePayload,
   FieldDraftInput,
@@ -59,7 +100,18 @@ import type {
 const store = useStore()
 const confirm = useConfirm()
 const notifications = useNotificationsStore()
-const { fields, items, itemsTotal, itemsLoading, itemsPage, itemsRows } = storeToRefs(store)
+const {
+  fields,
+  items,
+  itemsTotal,
+  itemsLoading,
+  itemsPage,
+  itemsRows,
+  activeCollectionPanel,
+  collectionSettingsOpen,
+  currentViews,
+  activeViewId
+} = storeToRefs(store)
 
 const props = defineProps<{
   collection: Collection
@@ -70,8 +122,6 @@ const emit = defineEmits<{
 }>()
 
 const showAddItemForm = ref(false)
-const showFieldsManager = ref(false)
-const showCollectionSettings = ref(false)
 const editingItem = ref<Item | null>(null)
 
 const { safeFields, orderedFields } = useSafeFields({
@@ -80,6 +130,10 @@ const { safeFields, orderedFields } = useSafeFields({
 })
 
 const collectionId = computed(() => props.collection.id)
+
+const activeView = computed(() => {
+  return currentViews.value.find(view => view.id === activeViewId.value) ?? null
+})
 
 async function loadCollectionItems(options: LoadItemsOptions = {}) {
   await store.loadItems(props.collection.id, options)
@@ -101,9 +155,8 @@ watch(
   () => props.collection.id,
   () => {
     showAddItemForm.value = false
-    showFieldsManager.value = false
-    showCollectionSettings.value = false
     editingItem.value = null
+    store.setCollectionSettingsOpen(false)
   }
 )
 
@@ -122,6 +175,22 @@ function onItemDialogVisibilityChange(nextVisible: boolean) {
   if (!nextVisible) {
     editingItem.value = null
   }
+}
+
+async function onInlineUpdateItem(payload: UpdateItemInput) {
+  await store.updateItem(payload)
+}
+
+async function onInsertItemAt(payload: InsertItemAtInput) {
+  await store.insertItemAt(payload)
+}
+
+async function onDuplicateItem(payload: DuplicateItemInput) {
+  await store.duplicateItem(payload)
+}
+
+async function onMoveItem(payload: MoveItemInput) {
+  await store.moveItem(payload)
 }
 
 async function saveItem(payload: ItemEditorSavePayload) {
@@ -196,7 +265,7 @@ async function onFieldsReorder(reorderedFields: Field[]) {
     notifications.push({
       severity: 'warn',
       summary: 'Unable to reorder fields',
-      detail: 'Field list changed while reordering. Reopen Manage Fields and try again.',
+      detail: 'Field list changed while reordering. Reopen the Fields panel and try again.',
       life: 5000
     })
     return
@@ -224,7 +293,7 @@ async function onFieldsReorder(reorderedFields: Field[]) {
     notifications.push({
       severity: 'warn',
       summary: 'Unable to reorder fields',
-      detail: 'Field reorder payload was incomplete. Reopen Manage Fields and try again.',
+      detail: 'Field reorder payload was incomplete. Reopen the Fields panel and try again.',
       life: 5000
     })
     return
@@ -242,7 +311,7 @@ async function onFieldsReorder(reorderedFields: Field[]) {
 async function confirmDeleteItem(item: Item) {
   confirm.require({
     header: 'Delete Item',
-    message: 'Are you sure you want to delete this item? This action cannot be undone.',
+    message: 'Are you sure you want to delete this row?',
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Delete',
     rejectLabel: 'Cancel',
@@ -254,14 +323,11 @@ async function confirmDeleteItem(item: Item) {
 
 async function saveSettings(payload: CollectionSettingsSavePayload) {
   const nameResult = collectionNameSchema.safeParse(payload.name)
-  const iconResult = iconSchema.safeParse(payload.icon)
 
-  if (!nameResult.success || !iconResult.success) {
+  if (!nameResult.success) {
     let detail = 'Please check your collection settings.'
     if (!nameResult.success) {
       detail = nameResult.error.issues[0]?.message || detail
-    } else if (!iconResult.success) {
-      detail = iconResult.error.issues[0]?.message || detail
     }
 
     notifications.push({
@@ -275,11 +341,10 @@ async function saveSettings(payload: CollectionSettingsSavePayload) {
 
   await store.updateCollection({
     id: props.collection.id,
-    name: nameResult.data,
-    icon: iconResult.data
+    name: nameResult.data
   })
 
-  showCollectionSettings.value = false
+  store.setCollectionSettingsOpen(false)
 }
 
 async function confirmDeleteCollection() {

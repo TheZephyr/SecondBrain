@@ -37,9 +37,11 @@ function addField(input: NewFieldInput): { id: number } & NewFieldInput {
   } & NewFieldInput;
 }
 
-function addItem(
-  input: NewItemInput,
-): { id: number; collection_id: number; data: Record<string, unknown> } {
+function addItem(input: NewItemInput): {
+  id: number;
+  collection_id: number;
+  data: Record<string, unknown>;
+} {
   return handleOperation({ type: "addItem", input }) as {
     id: number;
     collection_id: number;
@@ -82,7 +84,7 @@ afterEach(() => {
 describe("importCollection – append mode", () => {
   it("adds new items without touching existing ones", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
     addItem({ collectionId: col.id, data: { Title: "Existing" } });
 
     runImport({
@@ -103,7 +105,7 @@ describe("importCollection – append mode", () => {
 
   it("creates new fields alongside imported items", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
     addField({
       collectionId: col.id,
       name: "Title",
@@ -145,7 +147,7 @@ describe("importCollection – append mode", () => {
 describe("importCollection – replace mode", () => {
   it("deletes existing items and inserts new ones", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
     addItem({ collectionId: col.id, data: { Title: "Old Item" } });
 
     runImport({
@@ -166,7 +168,7 @@ describe("importCollection – replace mode", () => {
 
   it("preserves existing fields while replacing items", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
     addField({
       collectionId: col.id,
       name: "Title",
@@ -190,8 +192,8 @@ describe("importCollection – replace mode", () => {
 
   it("does not affect items in other collections", () => {
     setupInMemoryDb();
-    const col1 = addCollection({ name: "A", icon: "a" });
-    const col2 = addCollection({ name: "B", icon: "b" });
+    const col1 = addCollection({ name: "A" });
+    const col2 = addCollection({ name: "B" });
     addItem({ collectionId: col1.id, data: { X: "keep" } });
     addItem({ collectionId: col2.id, data: { Y: "also keep" } });
 
@@ -211,7 +213,7 @@ describe("importCollection – replace mode", () => {
 describe("importCollection – edge cases", () => {
   it("handles empty import (0 items, 0 new fields) without error", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
     addItem({ collectionId: col.id, data: { Title: "Existing" } });
 
     runImport({
@@ -227,7 +229,7 @@ describe("importCollection – edge cases", () => {
 
   it("handles empty replace (clears all items)", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
     addItem({ collectionId: col.id, data: { Title: "A" } });
     addItem({ collectionId: col.id, data: { Title: "B" } });
 
@@ -244,7 +246,7 @@ describe("importCollection – edge cases", () => {
 
   it("imports multiple new fields with correct order indices", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Books", icon: "book" });
+    const col = addCollection({ name: "Books" });
 
     runImport({
       collectionId: col.id,
@@ -288,7 +290,7 @@ describe("importCollection – edge cases", () => {
 
   it("imports items with varying data shapes", () => {
     setupInMemoryDb();
-    const col = addCollection({ name: "Mixed", icon: "folder" });
+    const col = addCollection({ name: "Mixed" });
 
     runImport({
       collectionId: col.id,

@@ -6,8 +6,18 @@ export type ItemData = Record<string, ItemDataValue>;
 export type Collection = {
   id: number;
   name: string;
-  icon: string;
   created_at?: string;
+};
+
+export type ViewType = "grid" | "kanban" | "calendar";
+
+export type View = {
+  id: number;
+  collection_id: number;
+  name: string;
+  type: ViewType;
+  is_default: 0 | 1;
+  order: number;
 };
 
 export type Field = {
@@ -22,6 +32,7 @@ export type Field = {
 export type Item = {
   id: number;
   collection_id: number;
+  order: number;
   data: ItemData;
   created_at?: string;
   updated_at?: string;
@@ -54,13 +65,26 @@ export type CollectionItemCount = {
 
 export type NewCollectionInput = {
   name: string;
-  icon: string;
+  icon?: string | null;
+};
+
+export type NewViewInput = {
+  collectionId: number;
+  name: string;
+  type?: ViewType;
+  isDefault?: 0 | 1;
+  order?: number;
+};
+
+export type UpdateViewInput = {
+  id: number;
+  name: string;
 };
 
 export type UpdateCollectionInput = {
   id: number;
   name: string;
-  icon: string;
+  icon?: string | null;
 };
 
 export type NewFieldInput = {
@@ -99,6 +123,22 @@ export type UpdateItemInput = {
   data: ItemData;
 };
 
+export type InsertItemAtInput = {
+  collectionId: number;
+  afterOrder: number | null;
+};
+
+export type DuplicateItemInput = {
+  collectionId: number;
+  itemId: number;
+};
+
+export type MoveItemInput = {
+  collectionId: number;
+  itemId: number;
+  direction: "up" | "down";
+};
+
 export type BulkDeleteItemsInput = {
   collectionId: number;
   itemIds: number[];
@@ -126,4 +166,14 @@ export type ImportCollectionInput = {
   mode: ImportMode;
   newFields: NewFieldInput[];
   items: NewItemInput[];
+};
+
+export type CollectionViewType = ViewType;
+
+export type CollectionPanelType = "data" | "fields";
+
+export type CollectionView = {
+  id: number;
+  type: CollectionViewType;
+  name: string;
 };

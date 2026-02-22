@@ -1,6 +1,5 @@
 <template>
-  <Dialog :visible="visible" header="Collection Settings" modal :draggable="false" class="w-full max-w-4xl"
-    @update:visible="onVisibilityChange" @hide="cancelSettings">
+  <div class="mx-auto max-w-4xl px-10 py-8">
     <Accordion value="0">
       <AccordionPanel value="0">
         <AccordionHeader>
@@ -14,18 +13,6 @@
             <div class="space-y-2">
               <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name </label>
               <InputText v-model="collectionName" type="text" placeholder="Collection name" />
-            </div>
-
-            <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Icon</label>
-              <Listbox v-model="collectionIcon" :options="iconOptions" optionLabel="label" optionValue="value" :pt="iconListboxPt"
-                class="w-full">
-                <template #option="{ option }">
-                  <div class="flex flex-col items-center gap-1">
-                    <component :is="option.component" :size="20" />
-                  </div>
-                </template>
-              </Listbox>
             </div>
           </div>
         </AccordionContent>
@@ -128,7 +115,7 @@
               </div>
 
               <div v-if="safeFields.length === 0"
-                class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]">
+                class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-xs text-[var(--text-secondary)]">
                 <AlertTriangle :size="16" />
                 This collection has no fields. Fields will be automatically created from the import file.
               </div>
@@ -138,7 +125,8 @@
                   Matched Fields ({{ importPreview.matchedFields.length }})
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.matchedFields" :key="field" class="bg-[rgba(16,185,129,0.2)] text-[var(--success)]">
+                  <Tag v-for="field in importPreview.matchedFields" :key="field"
+                    class="bg-[color-mix(in_srgb,var(--success)_20%,transparent)] text-[var(--success)]">
                     {{ field }}
                   </Tag>
                 </div>
@@ -151,20 +139,21 @@
                 </div>
                 <p class="text-xs text-[var(--text-muted)]">These fields will be added to your collection:</p>
                 <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.newFields" :key="field" class="bg-[rgba(245,158,11,0.2)] text-[var(--warning)]">
+                  <Tag v-for="field in importPreview.newFields" :key="field"
+                    class="bg-[color-mix(in_srgb,var(--warning)_20%,transparent)] text-[var(--warning)]">
                     {{ field }}
                   </Tag>
                 </div>
               </div>
 
               <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
-                <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                   Sample Data (first 3 items)
                 </div>
                 <div class="flex gap-2">
                   <div v-for="(item, index) in importPreview.sample" :key="index"
                     class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
-                    <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       Item {{ index + 1 }}
                     </div>
                     <div class="space-y-1">
@@ -211,11 +200,11 @@
       </AccordionPanel>
     </Accordion>
 
-    <template #footer>
-      <Button severity="secondary" text @click="cancelSettings">Cancel</Button>
+    <div class="mt-6 flex justify-end gap-2">
+      <Button severity="secondary" text @click="store.setCollectionSettingsOpen(false)">Cancel</Button>
       <Button @click="saveSettings">Save Changes</Button>
-    </template>
-  </Dialog>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -234,34 +223,30 @@ import AccordionContent from 'primevue/accordioncontent'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionPanel from 'primevue/accordionpanel'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Listbox from 'primevue/listbox'
 import RadioButton from 'primevue/radiobutton'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import type { Collection, Field } from '../../../types/models'
 import { useCollectionImportExport } from '../../../composables/useCollectionImportExport'
-import { useIcons } from '../../../composables/useIcons'
 import { isSafeFieldName } from '../../../validation/fieldNames'
+import { useStore } from '../../../store'
 import type { CollectionSettingsSavePayload } from './types'
 
 const props = defineProps<{
-  visible: boolean
   collection: Collection
   fields: Field[]
   itemsTotal: number
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:visible', value: boolean): void
   (e: 'save-settings', value: CollectionSettingsSavePayload): void
   (e: 'delete-collection'): void
 }>()
 
-const { iconOptions } = useIcons()
+const store = useStore()
+
 const collectionName = ref('')
-const collectionIcon = ref('')
 
 const safeFields = computed(() => {
   return props.fields.filter(field => isSafeFieldName(field.name))
@@ -284,64 +269,21 @@ const {
   fields: toRef(props, 'fields')
 })
 
-const iconListboxPt = {
-  root: {
-    class:
-      'w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)]'
-  },
-  list: {
-    class: 'grid grid-cols-[repeat(auto-fit,minmax(60px,1fr))] justify-items-center gap-1 p-2'
-  },
-  item: ({ context }: { context: { selected: boolean } }) => ({
-    class: [
-      'flex w-full flex-col items-center justify-center gap-1 rounded-md border p-1.5 text-[11px] transition',
-      context.selected
-        ? 'border-[var(--accent-primary)] bg-[var(--accent-light)] text-[var(--accent-primary)]'
-        : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]'
-    ].join(' ')
-  })
-}
-
 function resetSettingsState() {
   collectionName.value = props.collection.name
-  collectionIcon.value = props.collection.icon
 }
-
-watch(
-  () => props.visible,
-  isVisible => {
-    if (isVisible) {
-      resetSettingsState()
-    }
-  },
-  { immediate: true }
-)
 
 watch(
   () => props.collection,
   () => {
-    if (!props.visible) return
     resetSettingsState()
-  }
+  },
+  { immediate: true }
 )
-
-function onVisibilityChange(nextVisible: boolean) {
-  if (!nextVisible) {
-    cancelSettings()
-    return
-  }
-  emit('update:visible', true)
-}
-
-function cancelSettings() {
-  emit('update:visible', false)
-  resetSettingsState()
-}
 
 function saveSettings() {
   emit('save-settings', {
-    name: collectionName.value,
-    icon: collectionIcon.value
+    name: collectionName.value
   })
 }
 </script>

@@ -24,6 +24,10 @@ function makeElectronAPIMock() {
     addCollection: vi.fn(),
     updateCollection: vi.fn(),
     deleteCollection: vi.fn(),
+    getViews: vi.fn(),
+    addView: vi.fn(),
+    updateView: vi.fn(),
+    deleteView: vi.fn(),
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
@@ -31,6 +35,9 @@ function makeElectronAPIMock() {
     deleteField: vi.fn(),
     getItems: vi.fn(),
     addItem: vi.fn(),
+    insertItemAt: vi.fn(),
+    duplicateItem: vi.fn(),
+    moveItem: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
     bulkDeleteItems: vi.fn(),
@@ -51,7 +58,7 @@ function emptyPaginatedResult(
 }
 
 function makeItem(id: number, data: ItemData = {}): Item {
-  return { id, collection_id: 1, data };
+  return { id, collection_id: 1, order: id, data };
 }
 
 // ---------------------------------------------------------------------------
@@ -187,9 +194,21 @@ describe("loadItems", () => {
 describe("selectCollection", () => {
   it("sets selectedCollection, clears items state, and triggers loads", async () => {
     const store = useStore();
-    const col: Collection = { id: 5, name: "Books", icon: "book" };
+    const col: Collection = { id: 5, name: "Books" };
     mockApi.getFields.mockResolvedValue(ok([]));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(
+      ok([
+        {
+          id: 10,
+          collection_id: 5,
+          name: "Grid",
+          type: "grid",
+          is_default: 1,
+          order: 0,
+        },
+      ]),
+    );
 
     // Pre-populate some state to verify it's cleared
     store.items = [makeItem(99)];
@@ -204,10 +223,81 @@ describe("selectCollection", () => {
     expect(store.itemsSearch).toBe("");
   });
 
+  it("loads views and sets activeViewId to the default view", async () => {
+    const store = useStore();
+    const col: Collection = { id: 7, name: "Notes" };
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(
+      ok([
+        {
+          id: 21,
+          collection_id: 7,
+          name: "Alt Grid",
+          type: "grid",
+          is_default: 0,
+          order: 1,
+        },
+        {
+          id: 22,
+          collection_id: 7,
+          name: "Grid",
+          type: "grid",
+          is_default: 1,
+          order: 0,
+        },
+      ]),
+    );
+
+    store.selectCollection(col);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockApi.getViews).toHaveBeenCalledOnce();
+    expect(store.activeViewId).toBe(22);
+  });
+
+  it("adds a view, reloads views, and sets activeViewId to the new view", async () => {
+    const store = useStore();
+    const created = {
+      id: 5,
+      collection_id: 1,
+      name: "Kanban",
+      type: "kanban",
+      is_default: 0,
+      order: 1,
+    };
+
+    mockApi.addView.mockResolvedValue(ok(created));
+    mockApi.getViews.mockResolvedValue(ok([created]));
+
+    await store.addView({
+      collectionId: 1,
+      name: "Kanban",
+      type: "kanban",
+      isDefault: 0,
+    });
+
+    expect(mockApi.addView).toHaveBeenCalledOnce();
+    expect(mockApi.getViews).toHaveBeenCalledOnce();
+    expect(store.currentViews).toEqual([created]);
+    expect(store.activeViewId).toBe(5);
+  });
+
   it("resets to dashboard when selecting null", () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A", icon: "a" };
+    store.selectedCollection = { id: 1, name: "A" };
     store.currentView = "collection";
+    store.currentViews = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "Grid",
+        type: "grid",
+        is_default: 1,
+        order: 0,
+      },
+    ];
+    store.activeViewId = 1;
 
     store.selectCollection(null);
 
@@ -215,13 +305,84 @@ describe("selectCollection", () => {
     expect(store.currentView).toBe("dashboard");
     expect(store.fields).toEqual([]);
     expect(store.items).toEqual([]);
+    expect(store.currentViews).toEqual([]);
+    expect(store.activeViewId).toBeNull();
+  });
+});
+
+describe("collection panel and view state", () => {
+  it("resets activeCollectionPanel to 'data' when selectCollection is called", () => {
+    const store = useStore();
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(ok([]));
+
+    store.activeCollectionPanel = "fields";
+    store.selectCollection({ id: 1, name: "A" });
+
+    expect(store.activeCollectionPanel).toBe("data");
+  });
+
+  it("resets collectionSettingsOpen to false when selectCollection is called", () => {
+    const store = useStore();
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(ok([]));
+
+    store.collectionSettingsOpen = true;
+    store.selectCollection({ id: 1, name: "A" });
+
+    expect(store.collectionSettingsOpen).toBe(false);
+  });
+
+  it("resets activeViewId to null when selectCollection is called", () => {
+    const store = useStore();
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(ok([]));
+
+    store.activeViewId = 12;
+    store.selectCollection({ id: 1, name: "A" });
+
+    expect(store.activeViewId).toBeNull();
+  });
+
+  it("selectCollection(null) resets panel and view state", () => {
+    const store = useStore();
+    store.activeCollectionPanel = "fields";
+    store.collectionSettingsOpen = true;
+    store.activeViewId = 12;
+
+    store.selectCollection(null);
+
+    expect(store.activeCollectionPanel).toBe("data");
+    expect(store.collectionSettingsOpen).toBe(false);
+    expect(store.activeViewId).toBeNull();
+  });
+
+  it("setActiveCollectionPanel updates activeCollectionPanel", () => {
+    const store = useStore();
+    store.setActiveCollectionPanel("fields");
+    expect(store.activeCollectionPanel).toBe("fields");
+  });
+
+  it("setCollectionSettingsOpen updates collectionSettingsOpen", () => {
+    const store = useStore();
+    store.setCollectionSettingsOpen(true);
+    expect(store.collectionSettingsOpen).toBe(true);
+  });
+
+  it("setActiveViewId updates activeViewId", () => {
+    const store = useStore();
+    store.setActiveViewId(5);
+    expect(store.activeViewId).toBe(5);
   });
 });
 
 describe("deleteCollection", () => {
   it("clears selectedCollection when deleting the active collection", async () => {
     const store = useStore();
-    const col: Collection = { id: 3, name: "ToDelete", icon: "trash" };
+    const col: Collection = { id: 3, name: "ToDelete" };
     store.selectedCollection = col;
 
     mockApi.deleteCollection.mockResolvedValue(ok(true));
@@ -234,7 +395,7 @@ describe("deleteCollection", () => {
 
   it("keeps selectedCollection when deleting a different collection", async () => {
     const store = useStore();
-    const active: Collection = { id: 1, name: "Active", icon: "star" };
+    const active: Collection = { id: 1, name: "Active" };
     store.selectedCollection = active;
 
     mockApi.deleteCollection.mockResolvedValue(ok(true));
@@ -259,7 +420,7 @@ describe("deleteCollection", () => {
 describe("bulkDeleteItems", () => {
   it("re-fetches items after successful bulk delete on active collection", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A", icon: "a" };
+    store.selectedCollection = { id: 1, name: "A" };
 
     mockApi.bulkDeleteItems.mockResolvedValue(ok({ affectedCount: 2 }));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
@@ -297,7 +458,7 @@ describe("bulkDeleteItems", () => {
 describe("bulkPatchItems", () => {
   it("re-fetches items after successful bulk patch on active collection", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A", icon: "a" };
+    store.selectedCollection = { id: 1, name: "A" };
 
     mockApi.bulkPatchItems.mockResolvedValue(ok({ affectedCount: 1 }));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
@@ -336,8 +497,8 @@ describe("loadCollections", () => {
   it("populates collections from IPC response", async () => {
     const store = useStore();
     const cols: Collection[] = [
-      { id: 1, name: "A", icon: "a" },
-      { id: 2, name: "B", icon: "b" },
+      { id: 1, name: "A" },
+      { id: 2, name: "B" },
     ];
     mockApi.getCollections.mockResolvedValue(ok(cols));
 

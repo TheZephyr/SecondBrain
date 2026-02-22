@@ -12,12 +12,17 @@ import type {
   ItemData,
   GetItemsInput,
   NewCollectionInput,
+  NewViewInput,
+  UpdateViewInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -31,12 +36,17 @@ import type {
 } from "./db-worker-protocol";
 import {
   NewCollectionInputSchema,
+  NewViewInputSchema,
+  UpdateViewInputSchema,
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
   ReorderFieldsInputSchema,
   NewItemInputSchema,
   UpdateItemInputSchema,
+  InsertItemAtInputSchema,
+  DuplicateItemInputSchema,
+  MoveItemInputSchema,
   BulkDeleteItemsInputSchema,
   BulkPatchItemsInputSchema,
   ImportCollectionInputSchema,
@@ -430,6 +440,27 @@ handleIpc("db:deleteCollection", async (_, id) => {
   return invokeDbWorker({ type: "deleteCollection", id: collectionId });
 });
 
+// ==================== VIEWS ====================
+handleIpc("db:getViews", async (_, collectionId: number) => {
+  const parsedCollectionId = parsePositiveInt(collectionId, "db:getViews");
+  return invokeDbWorker({ type: "getViews", collectionId: parsedCollectionId });
+});
+
+handleIpc("db:addView", async (_, view: NewViewInput) => {
+  const input = parseOrThrow(NewViewInputSchema, view, "db:addView");
+  return invokeDbWorker({ type: "addView", input });
+});
+
+handleIpc("db:updateView", async (_, view: UpdateViewInput) => {
+  const input = parseOrThrow(UpdateViewInputSchema, view, "db:updateView");
+  return invokeDbWorker({ type: "updateView", input });
+});
+
+handleIpc("db:deleteView", async (_, id) => {
+  const viewId = parsePositiveInt(id, "db:deleteView");
+  return invokeDbWorker({ type: "deleteView", id: viewId });
+});
+
 // ==================== FIELDS ====================
 handleIpc("db:getFields", async (_, collectionId: number) => {
   const parsedCollectionId = parsePositiveInt(collectionId, "db:getFields");
@@ -467,6 +498,7 @@ handleIpc("db:deleteField", async (_, id) => {
 type ItemRow = {
   id: number;
   collection_id: number;
+  order: number;
   data: string;
   created_at?: string;
   updated_at?: string;
@@ -526,6 +558,29 @@ handleIpc("db:getItems", async (_, input: GetItemsInput) => {
 handleIpc("db:addItem", async (_, item: NewItemInput) => {
   const input = parseOrThrow(NewItemInputSchema, item, "db:addItem");
   return invokeDbWorker({ type: "addItem", input });
+});
+
+handleIpc("db:insertItemAt", async (_, payload: InsertItemAtInput) => {
+  const input = parseOrThrow(
+    InsertItemAtInputSchema,
+    payload,
+    "db:insertItemAt",
+  );
+  return invokeDbWorker({ type: "insertItemAt", input });
+});
+
+handleIpc("db:duplicateItem", async (_, payload: DuplicateItemInput) => {
+  const input = parseOrThrow(
+    DuplicateItemInputSchema,
+    payload,
+    "db:duplicateItem",
+  );
+  return invokeDbWorker({ type: "duplicateItem", input });
+});
+
+handleIpc("db:moveItem", async (_, payload: MoveItemInput) => {
+  const input = parseOrThrow(MoveItemInputSchema, payload, "db:moveItem");
+  return invokeDbWorker({ type: "moveItem", input });
 });
 
 handleIpc("db:updateItem", async (_, item: UpdateItemInput) => {
