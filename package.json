@@ -6,18 +6,18 @@
     "node": ">=22.12.0"
   },
   "main": "dist-electron/main.js",
-"scripts": {
-  "rebuild:node": "npm rebuild better-sqlite3",
-  "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
-  "pretest": "npm run rebuild:node",
-  "test": "vitest run --config vitest.config.ts",
-  "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
-  "dev:vite": "vite",
-  "predev:electron": "npm run rebuild:electron",
-  "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
-  "build": "npm run rebuild:electron && vue-tsc && vite build && node build-electron.js && electron-builder",
-  "build:win": "npm run build -- --win"
-},
+  "scripts": {
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
+    "pretest": "npm run rebuild:node",
+    "test": "vitest run --config vitest.config.ts",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "predev:electron": "npm run rebuild:electron",
+    "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
+    "build": "npm version patch && npm run rebuild:electron && vue-tsc && vite build && node build-electron.js && electron-builder",
+    "build:win": "npm run build -- --win"
+  },
   "dependencies": {
     "@primeuix/themes": "^1.2.3",
     "@primevue/forms": "^4.5.4",
