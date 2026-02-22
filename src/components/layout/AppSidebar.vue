@@ -1,6 +1,6 @@
 <template>
   <aside class="flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]">
-    <div class="border-b border-[var(--border-color)] p-5">
+    <div class="border-b border-[var(--border-color)] p-4">
       <div class="flex items-center gap-3">
         <i class="pi pi-lightbulb text-xl text-[var(--accent-primary)]"></i>
         <div>
@@ -23,7 +23,7 @@
       </Button>
 
       <div class="h-px bg-[var(--border-color)]/70"></div>
-      <div class="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+      <div class="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
         Collections
       </div>
 
@@ -45,23 +45,23 @@
         <div v-if="isExpanded(collection.id)" class="ml-4 space-y-1">
           <template v-if="selectedCollection?.id === collection.id">
             <Button v-for="view in currentViews" :key="view.id" text
-              class="w-full justify-start rounded-md px-3 py-1.5 text-[13px]" :class="isActiveView(view.id)
+              class="w-full justify-start rounded-md px-3 py-2 text-sm" :class="isActiveView(view.id)
                 ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
               @click="handleViewClick(view.id)">
               <div class="flex w-full items-center gap-2">
-                <i class="pi pi-table text-[12px]"></i>
+                <i class="pi pi-table text-xs"></i>
                 <span class="flex-1 truncate">{{ view.name }}</span>
-                <i v-if="view.is_default === 1" class="pi pi-lock text-[11px] text-[var(--text-muted)]"></i>
+                <i v-if="view.is_default === 1" class="pi pi-lock text-xs text-[var(--text-muted)]"></i>
               </div>
             </Button>
           </template>
 
           <Button text
-            class="w-full justify-start rounded-md px-3 py-1.5 text-[13px] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+            class="w-full justify-start rounded-md px-3 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
             @click="handleAddViewClick">
             <div class="flex w-full items-center gap-2">
-              <i class="pi pi-plus text-[12px]"></i>
+              <i class="pi pi-plus text-xs"></i>
               <span class="truncate">Add view</span>
             </div>
           </Button>
@@ -79,9 +79,9 @@
     </nav>
 
     <div class="border-t border-[var(--border-color)] p-4">
-      <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+      <div class="flex items-center justify-between text-xs text-[var(--text-muted)]">
         <div class="flex items-center gap-2">
-          <i class="pi pi-cog text-[11px]"></i>
+          <i class="pi pi-cog text-xs"></i>
           <span>Settings</span>
         </div>
         <span>v{{ appVersion }}</span>

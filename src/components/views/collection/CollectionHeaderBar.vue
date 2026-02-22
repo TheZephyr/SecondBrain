@@ -1,46 +1,46 @@
 <template>
   <div class="mb-4 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]">
     <div class="flex h-12 items-center justify-between border-b border-[var(--border-color)] px-4">
-      <div class="flex items-center gap-2 text-sm">
+      <div class="flex min-w-0 items-center gap-2 text-sm">
         <span class="text-[var(--text-muted)]">Collections</span>
         <span class="text-[var(--text-muted)]">/</span>
-        <span class="font-semibold text-[var(--text-primary)]">
+        <span class="min-w-0 truncate font-semibold text-[var(--text-primary)]">
           {{ collection.name }}
         </span>
         <span class="text-[var(--text-muted)]">/</span>
-        <span class="font-semibold text-[var(--text-primary)]">
+        <span class="min-w-0 truncate font-semibold text-[var(--text-primary)]">
           {{ activeViewName }}
         </span>
       </div>
 
       <div class="flex items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-0.5">
         <button type="button"
-          class="flex items-center gap-1.5 rounded-md bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-primary)]">
+          class="flex items-center gap-1.5 rounded-md bg-[var(--accent-light)] px-3 py-2 text-xs font-semibold text-[var(--accent-primary)] transition hover:bg-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]">
           <LayoutGrid :size="14" />
-          {{ activeViewName }}
+          <span class="max-w-[140px] truncate">{{ activeViewName }}</span>
         </button>
       </div>
     </div>
 
     <div class="flex h-10 items-center justify-between px-4">
       <div class="flex items-center gap-2">
-        <Button text class="h-8 gap-2"
+        <Button text class="h-8 gap-2 text-sm hover:bg-[var(--bg-hover)]"
           :class="fieldsOpen ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
           :aria-pressed="fieldsOpen" @click="$emit('toggle-fields')">
           <Columns :size="16" />
           Fields
         </Button>
-        <Button text class="h-8 gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        <Button text class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">
           <Filter :size="16" />
           Filter
         </Button>
-        <Button text class="h-8 gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        <Button text class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">
           <ArrowUpDown :size="16" />
           Sort
         </Button>
-        <Button text class="h-8 gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        <Button text class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">
           <Rows3 :size="16" />
           Group
@@ -48,14 +48,14 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <Button class="h-8 gap-2" @click="$emit('open-add-item')">
+        <Button class="h-8 gap-2 text-sm" @click="$emit('open-add-item')">
           <Plus :size="16" />
           Add Item
         </Button>
         <div class="relative">
           <Search :size="16"
             class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <InputText v-model="searchModel" class="h-8 w-52 pl-8 text-sm" type="text" placeholder="Search..." />
+          <InputText v-model="searchModel" class="h-8 w-40 pl-8 text-sm md:w-52" type="text" placeholder="Search..." />
         </div>
       </div>
     </div>

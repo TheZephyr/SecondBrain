@@ -1,22 +1,24 @@
 <template>
-  <div class="mx-auto max-w-6xl px-10 py-8">
+  <div class="mx-auto flex h-full min-h-0 max-w-6xl flex-col px-8 py-6">
     <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery" :fieldsOpen="showFieldsManager"
       @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog"
       @toggle-fields="toggleFieldsDrawer" />
 
-    <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
-      :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
-      :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
-      @sort="onItemsSort" @manage-fields="openFieldsDrawer({ focusAddField: true })" @delete-item="confirmDeleteItem"
-      @update-item="onInlineUpdateItem" @add-item="openAddItemDialog"
-      @open-fields-drawer="openFieldsDrawer({ focusAddField: true })" @insert-item-at="onInsertItemAt"
-      @duplicate-item="onDuplicateItem" @move-item="onMoveItem" />
+    <div class="min-h-0 flex-1">
+      <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
+        :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
+        :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
+        @sort="onItemsSort" @delete-item="confirmDeleteItem" @update-item="onInlineUpdateItem"
+        @open-fields-drawer="openFieldsDrawer({ focusAddField: true })" @insert-item-at="onInsertItemAt"
+        @duplicate-item="onDuplicateItem" @move-item="onMoveItem" />
+    </div>
 
+    <!-- TODO: Legacy add/edit dialog retained for toolbar Add Item until inline add is available. -->
     <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"
       @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
 
     <Drawer v-model:visible="showFieldsManager" header="Fields" position="right" :style="{ width: '50%' }" modal
-      @after-show="onFieldsDrawerAfterShow">
+      :pt="drawerPt" @after-show="onFieldsDrawerAfterShow">
       <div class="p-4">
         <CollectionFieldsDialog ref="fieldsDialogRef" :visible="showFieldsManager" :orderedFields="orderedFields"
           @update:visible="showFieldsManager = $event" @add-field="addField" @delete-field="confirmDeleteField"
@@ -24,8 +26,9 @@
       </div>
     </Drawer>
 
-    <CollectionSettingsDialog :visible="showCollectionSettings" :collection="collection" :fields="fields" :itemsTotal="itemsTotal"
-      @update:visible="showCollectionSettings = $event" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
+    <CollectionSettingsDialog :visible="showCollectionSettings" :collection="collection" :fields="fields"
+      :itemsTotal="itemsTotal" @update:visible="showCollectionSettings = $event" @save-settings="saveSettings"
+      @delete-collection="confirmDeleteCollection" />
 
     <ConfirmDialog />
   </div>
@@ -88,6 +91,15 @@ const showCollectionSettings = ref(false)
 const editingItem = ref<Item | null>(null)
 const fieldsDialogRef = ref<InstanceType<typeof CollectionFieldsDialog> | null>(null)
 const pendingFocusAddField = ref(false)
+
+const drawerPt = {
+  pcCloseButton: {
+    root: {
+      class:
+        'hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+    }
+  }
+}
 
 const { safeFields, orderedFields } = useSafeFields({
   fields,
@@ -265,7 +277,7 @@ async function onFieldsReorder(reorderedFields: Field[]) {
     notifications.push({
       severity: 'warn',
       summary: 'Unable to reorder fields',
-      detail: 'Field list changed while reordering. Reopen Manage Fields and try again.',
+      detail: 'Field list changed while reordering. Reopen the Fields panel and try again.',
       life: 5000
     })
     return
@@ -293,7 +305,7 @@ async function onFieldsReorder(reorderedFields: Field[]) {
     notifications.push({
       severity: 'warn',
       summary: 'Unable to reorder fields',
-      detail: 'Field reorder payload was incomplete. Reopen Manage Fields and try again.',
+      detail: 'Field reorder payload was incomplete. Reopen the Fields panel and try again.',
       life: 5000
     })
     return

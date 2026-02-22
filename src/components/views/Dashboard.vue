@@ -19,7 +19,7 @@
 
     <div v-else class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       <Card v-for="collection in collectionsWithStats" :key="collection.id"
-        class="cursor-pointer border border-[var(--border-color)] bg-[var(--bg-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--accent-primary)] hover:shadow-[0_10px_24px_rgba(139,92,246,0.12)]"
+        class="cursor-pointer border border-[var(--border-color)] bg-[var(--bg-secondary)] transition hover:-translate-y-0.5 hover:border-[var(--accent-primary)] hover:shadow-[0_10px_24px_var(--accent-light)]"
         @click="$emit('select-collection', collection)">
         <template #content>
           <div class="flex items-center gap-4">

@@ -9,10 +9,12 @@
             <Tag class="uppercase">{{ data.type }}</Tag>
           </template>
         </Column>
+        <!-- TODO: Legacy delete icon column retained until field delete moves elsewhere. -->
         <Column header="Actions" style="width: 120px">
           <template #body="{ data }">
-            <Button text class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[rgba(239,68,68,0.12)]" title="Delete field"
-              @click="$emit('delete-field', data)">
+            <Button text
+              class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+              title="Delete field" @click="$emit('delete-field', data)">
               <Trash2 />
             </Button>
           </template>

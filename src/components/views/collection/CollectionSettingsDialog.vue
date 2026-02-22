@@ -128,7 +128,7 @@
               </div>
 
               <div v-if="safeFields.length === 0"
-                class="flex items-start gap-2 rounded-md border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] p-3 text-xs text-[var(--text-secondary)]">
+                class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-xs text-[var(--text-secondary)]">
                 <AlertTriangle :size="16" />
                 This collection has no fields. Fields will be automatically created from the import file.
               </div>
@@ -138,7 +138,8 @@
                   Matched Fields ({{ importPreview.matchedFields.length }})
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.matchedFields" :key="field" class="bg-[rgba(16,185,129,0.2)] text-[var(--success)]">
+                  <Tag v-for="field in importPreview.matchedFields" :key="field"
+                    class="bg-[color-mix(in_srgb,var(--success)_20%,transparent)] text-[var(--success)]">
                     {{ field }}
                   </Tag>
                 </div>
@@ -151,20 +152,21 @@
                 </div>
                 <p class="text-xs text-[var(--text-muted)]">These fields will be added to your collection:</p>
                 <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.newFields" :key="field" class="bg-[rgba(245,158,11,0.2)] text-[var(--warning)]">
+                  <Tag v-for="field in importPreview.newFields" :key="field"
+                    class="bg-[color-mix(in_srgb,var(--warning)_20%,transparent)] text-[var(--warning)]">
                     {{ field }}
                   </Tag>
                 </div>
               </div>
 
               <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
-                <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                   Sample Data (first 3 items)
                 </div>
                 <div class="flex gap-2">
                   <div v-for="(item, index) in importPreview.sample" :key="index"
                     class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
-                    <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       Item {{ index + 1 }}
                     </div>
                     <div class="space-y-1">
@@ -294,7 +296,7 @@ const iconListboxPt = {
   },
   item: ({ context }: { context: { selected: boolean } }) => ({
     class: [
-      'flex w-full flex-col items-center justify-center gap-1 rounded-md border p-1.5 text-[11px] transition',
+      'flex w-full flex-col items-center justify-center gap-1 rounded-md border p-1.5 text-xs transition',
       context.selected
         ? 'border-[var(--accent-primary)] bg-[var(--accent-light)] text-[var(--accent-primary)]'
         : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:text-[var(--text-primary)]'

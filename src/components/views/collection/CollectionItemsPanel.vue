@@ -1,110 +1,112 @@
 <template>
-  <div v-if="orderedFields.length === 0"
-    class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
-    <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
-    <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
-    <p class="mt-2 text-sm text-[var(--text-muted)]">
-      Define the structure of your collection by adding fields
-    </p>
-    <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="$emit('manage-fields')">
-      <Plus />
-      Add Fields
-    </Button>
-  </div>
+  <div class="flex h-full min-h-0 flex-col">
+    <div v-if="orderedFields.length === 0"
+      class="flex flex-col items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
+      <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
+      <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
+      <p class="mt-2 text-sm text-[var(--text-muted)]">
+        Define the structure of your collection by adding fields
+      </p>
+      <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="$emit('open-fields-drawer')">
+        <Plus />
+        Add Fields
+      </Button>
+    </div>
 
-  <div v-else>
-    <DataTable :value="tableRows" dataKey="id" stripedRows sortMode="multiple" removableSort contextMenu
-      v-model:multiSortMeta="sortModel" :rowHover="true" lazy paginator :rows="itemsRows"
-      :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :rowsPerPageOptions="[25, 50, 100]"
-      :loading="itemsLoading" editMode="cell" :rowClass="getRowClass"
-      v-model:contextMenuSelection="contextMenuSelection" @row-contextmenu="onRowContextMenu" @page="onPage"
-      @sort="onSort" @cell-edit-init="onCellEditInit" @cell-edit-complete="onCellEditComplete"
-      @cell-edit-cancel="onCellEditCancel"
-      tableStyle="table-layout: fixed; width: 100%">
-      <Column style="width: 60px">
-        <template #body="{ index }">
-          <div class="relative flex items-center justify-end pr-1">
-            <span class="text-right text-xs text-[var(--text-muted)] transition-opacity"
-              :class="'group-hover:opacity-0'">
-              {{ getAbsoluteIndex(index) }}
-            </span>
-            <div class="absolute right-1 flex items-center gap-1">
-              <Button text
-                class="h-6 w-6 p-0 text-[var(--text-muted)] opacity-0 transition-opacity hover:text-[var(--text-primary)] group-hover:opacity-100"
-                title="Expand" @click.stop="notifyRowDetail">
-                <ChevronRight :size="14" />
+    <div v-else class="flex min-h-0 flex-1 flex-col">
+      <div
+        class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] divide-y divide-[var(--border-color)]">
+        <DataTable :value="tableRows" dataKey="id" stripedRows sortMode="multiple" removableSort contextMenu
+          v-model:multiSortMeta="sortModel" :rowHover="true" lazy :rows="itemsRows"
+          :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :loading="itemsLoading" editMode="cell"
+          :rowClass="getRowClass" v-model:contextMenuSelection="contextMenuSelection"
+          @row-contextmenu="onRowContextMenu" @sort="onSort" @cell-edit-init="onCellEditInit"
+          @cell-edit-complete="onCellEditComplete" @cell-edit-cancel="onCellEditCancel" :pt="dataTablePt"
+          scrollable scrollHeight="flex" class="flex-1"
+          tableStyle="table-layout: fixed; width: 100%">
+          <Column style="width: 60px">
+            <template #body="{ index }">
+              <div class="relative flex items-center justify-end pr-2">
+                <span class="text-right text-xs text-[var(--text-muted)] transition-opacity"
+                  :class="'group-hover:opacity-0'">
+                  {{ getAbsoluteIndex(index) }}
+                </span>
+                <div class="absolute right-1 flex items-center gap-1">
+                  <Button text
+                    class="h-6 w-6 p-0 text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+                    title="Expand" @click.stop="notifyRowDetail">
+                    <ChevronRight :size="14" />
+                  </Button>
+                </div>
+              </div>
+            </template>
+          </Column>
+
+          <Column v-for="field in orderedFields" :key="field.id" :field="getFieldKey(field.name)" :header="field.name"
+            sortable :style="{ width: dataColumnWidth }">
+            <template #body="{ data }">
+              <div class="flex h-full w-full items-center rounded-sm px-3 py-2 text-sm outline-none transition hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+                tabindex="0" :class="isActiveCell(getCellKey(data, field)) ? 'ring-1 ring-[var(--accent-primary)]' : ''"
+                @click="event => onCellPreviewClick(event, getCellKey(data, field))"
+                @keydown.enter.prevent.stop="event => activateEditor(event, getCellKey(data, field))"
+                @focus="setActiveCell(getCellKey(data, field))">
+                <span class="block max-w-[320px] truncate">
+                  {{ formatFieldValue(getRowFieldValue(data, field), field.type) }}
+                </span>
+              </div>
+            </template>
+            <template #editor="{ data }">
+              <InputText v-if="field.type === 'text'" :modelValue="getTextEditorValue(data, field)"
+                @update:modelValue="value => setTextEditorValue(data, field, value)" class="w-full"
+                :ref="el => setEditorRef(getCellKey(data, field), el)" />
+              <Textarea v-else-if="field.type === 'textarea'" :modelValue="getTextEditorValue(data, field)"
+                @update:modelValue="value => setTextEditorValue(data, field, value)" rows="2" class="w-full"
+                :ref="el => setEditorRef(getCellKey(data, field), el)" />
+              <InputNumber v-else-if="field.type === 'number'" :modelValue="getNumberEditorValue(data, field)"
+                @update:modelValue="value => setNumberEditorValue(data, field, value)" inputClass="w-full" class="w-full"
+                :ref="el => setEditorRef(getCellKey(data, field), el)" />
+              <DatePicker v-else-if="field.type === 'date'" :modelValue="getDateEditorValue(data, field)"
+                @update:modelValue="value => setDateEditorValue(data, field, value)" dateFormat="yy-mm-dd"
+                inputClass="w-full" class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
+              <Select v-else-if="field.type === 'select'" :modelValue="getSelectEditorValue(data, field)"
+                @update:modelValue="value => setSelectEditorValue(data, field, value)" :options="getSelectOptions(field)"
+                class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
+            </template>
+          </Column>
+
+          <Column style="width: 48px">
+            <template #header>
+              <Button text class="h-8 w-8 p-0" title="Add field" @click.stop="notifyAddField">
+                <Plus :size="14" />
               </Button>
+            </template>
+          </Column>
+
+          <template #empty>
+            <div class="flex flex-col items-center gap-3 py-10 text-[var(--text-muted)]">
+              <component :is="itemsTotal === 0 && !debouncedSearchQuery ? FileText : Search" :size="40"
+                :stroke-width="1.5" />
+              <p class="text-sm">
+                {{ itemsTotal === 0 && !debouncedSearchQuery ?
+                  "No items yet. Click \"Add Item\" to get started!" :
+                  "No items match your search."
+                }}
+              </p>
             </div>
-          </div>
-        </template>
-      </Column>
+          </template>
+        </DataTable>
 
-      <Column v-for="field in orderedFields" :key="field.id" :field="getFieldKey(field.name)" :header="field.name"
-        sortable :style="{ width: dataColumnWidth }">
-        <template #body="{ data }">
-          <div class="flex h-full w-full items-center rounded-sm px-2 py-1 text-sm outline-none transition"
-            tabindex="0" :class="isActiveCell(getCellKey(data, field)) ? 'ring-1 ring-[var(--accent-primary)]' : ''"
-            @click="event => onCellPreviewClick(event, getCellKey(data, field))"
-            @keydown.enter.prevent.stop="event => activateEditor(event, getCellKey(data, field))"
-            @focus="setActiveCell(getCellKey(data, field))">
-            <span class="block max-w-[320px] truncate">
-              {{ formatFieldValue(getRowFieldValue(data, field), field.type) }}
-            </span>
-          </div>
-        </template>
-        <template #editor="{ data }">
-          <InputText v-if="field.type === 'text'" :modelValue="getTextEditorValue(data, field)"
-            @update:modelValue="value => setTextEditorValue(data, field, value)" class="w-full"
-            :ref="el => setEditorRef(getCellKey(data, field), el)" />
-          <Textarea v-else-if="field.type === 'textarea'" :modelValue="getTextEditorValue(data, field)"
-            @update:modelValue="value => setTextEditorValue(data, field, value)" rows="2" class="w-full"
-            :ref="el => setEditorRef(getCellKey(data, field), el)" />
-          <InputNumber v-else-if="field.type === 'number'" :modelValue="getNumberEditorValue(data, field)"
-            @update:modelValue="value => setNumberEditorValue(data, field, value)" inputClass="w-full" class="w-full"
-            :ref="el => setEditorRef(getCellKey(data, field), el)" />
-          <DatePicker v-else-if="field.type === 'date'" :modelValue="getDateEditorValue(data, field)"
-            @update:modelValue="value => setDateEditorValue(data, field, value)" dateFormat="yy-mm-dd"
-            inputClass="w-full" class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
-          <Select v-else-if="field.type === 'select'" :modelValue="getSelectEditorValue(data, field)"
-            @update:modelValue="value => setSelectEditorValue(data, field, value)" :options="getSelectOptions(field)"
-            class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
-        </template>
-      </Column>
-
-      <Column style="width: 48px">
-        <template #header>
-          <Button text class="h-8 w-8 p-0" title="Add field" @click.stop="notifyAddField">
-            <Plus :size="14" />
-          </Button>
-        </template>
-      </Column>
-
-      <template #empty>
-        <div class="flex flex-col items-center gap-3 py-10 text-[var(--text-muted)]">
-          <component :is="itemsTotal === 0 && !debouncedSearchQuery ? FileText : Search" :size="40" :stroke-width="1.5" />
-          <p class="text-sm">
-            {{ itemsTotal === 0 && !debouncedSearchQuery ?
-              "No items yet. Click \"Add Item\" to get started!" :
-              "No items match your search."
-            }}
-          </p>
+        <div class="flex items-center justify-between px-3 py-2 text-xs text-[var(--text-muted)]">
+          <span>{{ itemsTotal }} records</span>
+          <Paginator :rows="itemsRows" :first="itemsPage * itemsRows" :totalRecords="itemsTotal"
+            :rowsPerPageOptions="[25, 50, 100]"
+            template="RowsPerPageDropdown FirstPageLink PrevPageLink NextPageLink LastPageLink" :pt="paginatorPt"
+            @page="onPage" />
         </div>
-      </template>
-    </DataTable>
+      </div>
 
-    <ContextMenu ref="contextMenuRef" :model="contextMenuItems" />
-
-    <button type="button"
-      class="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] py-3 text-sm text-[var(--text-muted)] transition hover:bg-[var(--bg-hover)]"
-      @click="$emit('add-item')">
-      <Plus :size="14" />
-      Add record
-    </button>
-  </div>
-
-  <div v-if="itemsTotal > 0" class="mt-4 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-    <Database :size="14" />
-    <span>{{ itemsTotal }} total - {{ items.length }} on page</span>
+      <ContextMenu ref="contextMenuRef" :model="contextMenuItems" :pt="contextMenuPt" />
+    </div>
   </div>
 </template>
 
@@ -115,7 +117,6 @@ import {
   Plus,
   Search,
   FileText,
-  Database,
   ChevronRight
 } from 'lucide-vue-next'
 import Button from 'primevue/button'
@@ -125,6 +126,7 @@ import Column from 'primevue/column'
 import DatePicker from 'primevue/datepicker'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import Paginator from 'primevue/paginator'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
@@ -184,10 +186,8 @@ const emit = defineEmits<{
   'update:multiSortMeta': [value: MultiSortMeta[]]
   page: [value: TablePageEventLike]
   sort: [value: TableSortEventLike]
-  'manage-fields': []
   'delete-item': [value: Item]
   'update-item': [value: { id: number; data: ItemData }]
-  'add-item': []
   'open-fields-drawer': []
   'insert-item-at': [value: InsertItemAtInput]
   'duplicate-item': [value: DuplicateItemInput]
@@ -208,6 +208,82 @@ const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextMenuSelection = ref<TableRow | null>(null)
 const contextMenuRow = ref<TableRow | null>(null)
 const contextMenuRowIndex = ref<number | null>(null)
+
+const dataTablePt = {
+  root: {
+    class: 'flex h-full min-h-0 flex-col border-0 bg-transparent'
+  },
+  tableContainer: {
+    class: 'flex-1 min-h-0 overflow-auto'
+  }
+}
+
+const paginatorPt = {
+  root: {
+    class: 'border-0 bg-transparent p-0'
+  },
+  paginatorContainer: {
+    class: 'flex items-center gap-1'
+  },
+  content: {
+    class: 'flex items-center gap-1'
+  },
+  first: {
+    class:
+      'h-7 w-7 rounded-md text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+  },
+  prev: {
+    class:
+      'h-7 w-7 rounded-md text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+  },
+  next: {
+    class:
+      'h-7 w-7 rounded-md text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+  },
+  last: {
+    class:
+      'h-7 w-7 rounded-md text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+  },
+  page: ({ context }: { context: { active: boolean } }) => ({
+    class: [
+      'h-7 w-7 rounded-md text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]',
+      context.active
+        ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+    ].join(' ')
+  }),
+  pcRowPerPageDropdown: {
+    root: {
+      class: 'h-7 text-xs'
+    },
+    label: {
+      class: 'text-xs'
+    },
+    dropdown: {
+      class: 'h-7 w-7'
+    }
+  }
+}
+
+const contextMenuPt = {
+  root: {
+    class:
+      'rounded-md border border-[var(--border-color)] bg-[var(--bg-secondary)] text-sm shadow-lg'
+  },
+  rootList: {
+    class: 'py-1'
+  },
+  itemContent: {
+    class: 'rounded-md'
+  },
+  itemLink: {
+    class:
+      'flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+  },
+  separator: {
+    class: 'my-1 border-t border-[var(--border-color)]'
+  }
+}
 
 const dataColumnWidth = computed(() => {
   const fieldCount = Math.max(props.orderedFields.length, 1)
@@ -348,7 +424,7 @@ function getAbsoluteIndex(index: number) {
 }
 
 function getRowClass(_row: Item) {
-  return 'group'
+  return 'group transition-colors hover:bg-[var(--bg-hover)]'
 }
 
 function isActiveCell(cellKey: string) {
