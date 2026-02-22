@@ -71,9 +71,10 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 
 ### 3.1 Schema
 
-- **collections**: Groups of items (like tables).
+- **collections**: A set of data presented in a view.
+- **views**: A way to display items in a collection, with default Grid view that acts as source of data for other views.
 - **fields**: Metadata for columns in a collection.
-- **items**: The actual data. stored as a JSON blob in the `data` column.
+- **items**: The actual data stored as a JSON blob in the `data` column.
 
 **Key constraint**: The `items.data` column is a JSON string. Core CRUD still treats it as a whole object, but list/search/sort performance logic may query JSON inside SQL in the Worker (e.g., `json_extract`, `json_each`, FTS index content generation). Keep this logic in the Worker, never in Renderer.
 
@@ -153,10 +154,8 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
   - `db-worker.ts`: Database logic.
   - `db-worker-protocol.ts`: Types for Worker communication.
 - `src/`: Renderer code.
-  - `components/`: Vue components.
-    - `views/Collection.vue`: Thin orchestration view for collection screen.
-    - `views/collection/`: Collection feature components (`CollectionHeaderBar`, `CollectionItemsPanel`, `CollectionItemEditorDialog`, `CollectionFieldsDialog`, `CollectionSettingsDialog`, and local `types.ts`).
-  - `composables/collection/`: Collection-specific logic (`useSafeFields`, `useCollectionItemsQuery`, `useCollectionItemForm`) and their tests.
+  - `components/`: Vue components and local types.
+  - `composables/collection/`: Collection-specific logic and their tests.
   - `store.ts`: Main Pinia store.
   - `stores/`: Feature-specific stores (e.g., notifications).
   - `types/`: Shared TypeScript interfaces.
@@ -191,7 +190,7 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
     - Keep `src/components/views/Collection.vue` as an orchestrator; put feature-heavy UI and logic in `src/components/views/collection/` and `src/composables/collection/`.
     - Do not call `store.selectCollection(...)` from `Collection.vue`; selection is owned by higher-level navigation/view flow.
     - Keep sort persistence key compatibility as `multi_sort_${collectionId}` unless a migration path is intentionally introduced.
-    - `useCollectionImportExport` should be consumed by collection settings/import-export UI (currently `CollectionSettingsDialog.vue`), not the top-level view.
+    - `useCollectionImportExport` should be consumed by collection settings/import-export UI (currently `CollectionSettingsPanel.vue`), not the top-level view.
 
 ### 7.5 Observability & Debugging
 - Use consistent prefixes for console logs when adding new handlers: `[Main IPC: channelName]`, `[DB Worker: operation]`, `[Store: action]`.
@@ -218,6 +217,5 @@ The application follows a strictly separated **Main Process** vs **Renderer Proc
 
 - `better-sqlite3` is native and can break when Node/Electron ABI versions differ (`NODE_MODULE_VERSION` errors).
 - Use the scripts in `package.json`:
-  - `cmd /c npm run rebuild:node-native` for Node-based workflows (tests/typecheck scripts that run under Node),
-  - `cmd /c npm run rebuild:electron-native` for Electron app workflows (`dev`, `build:electron`).
-- `pretest`, `predev:electron`, and `prebuild:electron` already run these rebuilds automatically, but rerun manually if ABI mismatch appears.
+  - `cmd /c npm run rebuild:node` for Node-based workflows (tests/typecheck scripts that run under Node),
+  - `cmd /c npm run rebuild:electron` for Electron app workflows (`dev`, `build:electron`).

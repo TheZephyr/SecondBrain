@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
-import { useStore } from "../store";
-import { useNotificationsStore } from "../stores/notifications";
-import { handleIpc } from "../utils/ipc";
+import { useStore } from "../../store";
+import { useNotificationsStore } from "../../stores/notifications";
+import { handleIpc } from "../../utils/ipc";
 import type {
   Collection,
   Field,
@@ -11,7 +11,7 @@ import type {
   NewItemInput,
   ExportFormat,
   ImportMode,
-} from "../types/models";
+} from "../../types/models";
 import {
   buildImportPreview,
   parseImportContent,
@@ -19,9 +19,9 @@ import {
   serializeItemsToJson,
   type ImportPreview,
   type ParsedImportData,
-} from "../utils/collectionImportExport";
-import { isSafeFieldName } from "../validation/fieldNames";
-import { fieldNameSchema } from "../validation/schemas";
+} from "../../utils/collectionImportExport";
+import { isSafeFieldName } from "../../validation/fieldNames";
+import { fieldNameSchema } from "../../validation/schemas";
 
 type UseCollectionImportExportParams = {
   collection: Ref<Collection>;
