@@ -2,7 +2,7 @@
   <div class="mx-auto flex h-full min-h-0 max-w-6xl flex-col px-8 py-6">
     <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery" :fieldsOpen="showFieldsManager"
       @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog"
-      @toggle-fields="toggleFieldsDrawer" />
+      @toggle-fields="toggleFieldsDrawer" @open-settings="showCollectionSettings = true" />
 
     <div class="min-h-0 flex-1">
       <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"

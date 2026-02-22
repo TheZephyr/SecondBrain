@@ -56,7 +56,7 @@ afterEach(() => {
 describe("db-worker transactional multi-step operations", () => {
   it("rolls back reorderFields when payload contains invalid field IDs", () => {
     setupInMemoryDb();
-    const collection = addCollection({ name: "Books", icon: "book" });
+    const collection = addCollection({ name: "Books" });
     const fieldA = addField({
       collectionId: collection.id,
       name: "Title",
@@ -108,7 +108,7 @@ describe("db-worker transactional multi-step operations", () => {
 
   it("rolls back bulkDeleteItems when request includes IDs outside the collection", () => {
     setupInMemoryDb();
-    const collection = addCollection({ name: "Movies", icon: "film" });
+    const collection = addCollection({ name: "Movies" });
     const item1 = addItem({ collectionId: collection.id, data: { Title: "A" } });
     const item2 = addItem({ collectionId: collection.id, data: { Title: "B" } });
     const item3 = addItem({ collectionId: collection.id, data: { Title: "C" } });
@@ -131,7 +131,7 @@ describe("db-worker transactional multi-step operations", () => {
 
   it("rolls back bulkPatchItems when one requested ID is invalid", () => {
     setupInMemoryDb();
-    const collection = addCollection({ name: "Notes", icon: "book" });
+    const collection = addCollection({ name: "Notes" });
     const item1 = addItem({
       collectionId: collection.id,
       data: { Title: "Original", Status: "New" },

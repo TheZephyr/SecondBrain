@@ -19,7 +19,18 @@
           <LayoutGrid :size="14" />
           <span class="max-w-[140px] truncate">{{ activeViewName }}</span>
         </button>
+        <button type="button"
+          class="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[color-mix(in_srgb,var(--accent-primary)_20%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]">
+          <Columns :size="14" />
+          <span class="max-w-[140px] truncate">Fields</span>
+        </button>
       </div>
+      <button type="button"
+        class="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+        @click="$emit('open-settings')">
+        <Wrench :size="14" />
+        <span class="max-w-[140px] truncate">Settings</span>
+      </button>
     </div>
 
     <div class="flex h-10 items-center justify-between px-4">
@@ -30,17 +41,20 @@
           <Columns :size="16" />
           Fields
         </Button>
-        <Button text class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        <Button text
+          class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">
           <Filter :size="16" />
           Filter
         </Button>
-        <Button text class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        <Button text
+          class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">
           <ArrowUpDown :size="16" />
           Sort
         </Button>
-        <Button text class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        <Button text
+          class="h-8 gap-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="notifyComingSoon">
           <Rows3 :size="16" />
           Group
@@ -73,7 +87,8 @@ import {
   ArrowUpDown,
   Rows3,
   Search,
-  Plus
+  Plus,
+  Wrench
 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -88,6 +103,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'open-add-item'): void
+  (e: 'open-settings'): void
   (e: 'toggle-fields'): void
   (e: 'update:searchQuery', value: string): void
 }>()
