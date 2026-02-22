@@ -1,13 +1,25 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col">
+  <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col px-10 py-8">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+        <span class="uppercase tracking-wide">Sort tip</span>
+        <span>Shift-click column headers to multi-sort</span>
+      </div>
+      <div class="relative">
+        <Search :size="16"
+          class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+        <InputText v-model="searchModel" class="h-8 w-40 pl-8 text-sm md:w-52" type="text" placeholder="Search..." />
+      </div>
+    </div>
+
     <div v-if="orderedFields.length === 0"
-      class="flex flex-col items-center border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
+      class="flex flex-1 flex-col items-center justify-center border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center">
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
       <p class="mt-2 text-sm text-[var(--text-muted)]">
         Define the structure of your collection by adding fields
       </p>
-      <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="$emit('open-fields-drawer')">
+      <Button class="mt-6 gap-2 min-w-[140px] px-4 !text-white" @click="notifyAddField">
         <Plus />
         Add Fields
       </Button>
@@ -25,7 +37,7 @@
           scrollable scrollHeight="flex" class="flex-1"
           tableStyle="table-layout: fixed; width: 100%">
           <Column style="width: 60px">
-            <template #body="{ index }">
+            <template #body="{ data, index }">
               <div class="relative flex items-center justify-end pr-2">
                 <span class="text-right text-xs text-[var(--text-muted)] transition-opacity"
                   :class="'group-hover:opacity-0'">
@@ -34,7 +46,7 @@
                 <div class="absolute right-1 flex items-center gap-1">
                   <Button text
                     class="h-6 w-6 p-0 text-[var(--text-muted)] opacity-0 transition-opacity hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
-                    title="Expand" @click.stop="notifyRowDetail">
+                    title="Expand" @click.stop="emitEditItem(data)">
                     <ChevronRight :size="14" />
                   </Button>
                 </div>
@@ -96,8 +108,11 @@
           </template>
         </DataTable>
 
-        <div class="flex items-center justify-between px-3 py-2 text-xs text-[var(--text-muted)]">
-          <span>{{ itemsTotal }} records</span>
+        <div v-if="itemsTotal > 0" class="flex items-center justify-between px-3 py-2 text-xs text-[var(--text-muted)]">
+          <div class="flex items-center gap-2">
+            <Database :size="14" />
+            <span>{{ itemsTotal }} total — {{ items.length }} on page</span>
+          </div>
           <Paginator :rows="itemsRows" :first="itemsPage * itemsRows" :totalRecords="itemsTotal"
             :rowsPerPageOptions="[25, 50, 100]"
             template="RowsPerPageDropdown FirstPageLink PrevPageLink NextPageLink LastPageLink" :pt="paginatorPt"
@@ -108,6 +123,11 @@
       <ContextMenu ref="contextMenuRef" :model="contextMenuItems" :pt="contextMenuPt" />
     </div>
   </div>
+
+  <Button class="fixed bottom-6 right-6 z-10 gap-2" @click="$emit('open-add-item')">
+    <Plus />
+    Add Item
+  </Button>
 </template>
 
 <script setup lang="ts">
@@ -117,7 +137,8 @@ import {
   Plus,
   Search,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Database
 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
@@ -129,8 +150,6 @@ import InputText from 'primevue/inputtext'
 import Paginator from 'primevue/paginator'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
-import { useToast } from 'primevue/usetoast'
-import type { MenuItem } from 'primevue/menuitem'
 import { formatDateForDisplay, formatDateForStorage, parseDateValue } from '../../../utils/date'
 import type {
   Field,
@@ -178,23 +197,30 @@ const props = defineProps<{
   itemsPage: number
   itemsRows: number
   orderedFields: Field[]
+  searchQuery: string
   debouncedSearchQuery: string
   multiSortMeta: MultiSortMeta[]
 }>()
 
 const emit = defineEmits<{
+  'update:searchQuery': [value: string]
   'update:multiSortMeta': [value: MultiSortMeta[]]
   page: [value: TablePageEventLike]
   sort: [value: TableSortEventLike]
+  'edit-item': [value: Item]
   'delete-item': [value: Item]
+  'manage-fields': []
+  'open-add-item': []
   'update-item': [value: { id: number; data: ItemData }]
-  'open-fields-drawer': []
   'insert-item-at': [value: InsertItemAtInput]
   'duplicate-item': [value: DuplicateItemInput]
   'move-item': [value: MoveItemInput]
 }>()
 
-const toast = useToast()
+const searchModel = computed({
+  get: () => props.searchQuery,
+  set: (value: string) => emit('update:searchQuery', value)
+})
 
 const sortModel = computed({
   get: () => props.multiSortMeta,
@@ -294,7 +320,7 @@ const tableRows = computed(() => {
   return props.items.map(item => buildTableRow(item, props.orderedFields))
 })
 
-const contextMenuItems = computed<MenuItem[]>(() => {
+const contextMenuItems = computed(() => {
   const row = contextMenuRow.value
   const rowIndex = contextMenuRowIndex.value
   const totalRows = tableRows.value.length
@@ -572,15 +598,11 @@ function onRowContextMenu(event: RowContextMenuEvent) {
   contextMenuRef.value?.show(event.originalEvent)
 }
 
-function notifyRowDetail() {
-  toast.add({
-    severity: 'info',
-    summary: 'Row detail coming soon',
-    life: 2000
-  })
+function emitEditItem(row: TableRow) {
+  emit('edit-item', row as Item)
 }
 
 function notifyAddField() {
-  emit('open-fields-drawer')
+  emit('manage-fields')
 }
 </script>

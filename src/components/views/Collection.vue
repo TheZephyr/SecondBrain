@@ -1,37 +1,63 @@
 <template>
-  <div class="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
-    <CollectionHeaderBar :collection="collection" :searchQuery="searchQuery" :fieldsOpen="showFieldsManager"
-      @update:searchQuery="searchQuery = $event" @open-add-item="openAddItemDialog"
-      @toggle-fields="toggleFieldsDrawer" @open-settings="showCollectionSettings = true" />
+  <CollectionSettingsPanel
+    v-if="collectionSettingsOpen"
+    :collection="collection"
+    :fields="fields"
+    :itemsTotal="itemsTotal"
+    @save-settings="saveSettings"
+    @delete-collection="confirmDeleteCollection"
+  />
+  <CollectionFieldsPanel
+    v-else-if="activeCollectionPanel === 'fields'"
+    :orderedFields="orderedFields"
+    @add-field="addField"
+    @delete-field="confirmDeleteField"
+    @reorder-fields="onFieldsReorder"
+  />
+  <template v-else>
+    <CollectionGridView
+      v-if="activeView?.type === 'grid'"
+      :items="items"
+      :itemsTotal="itemsTotal"
+      :itemsLoading="itemsLoading"
+      :itemsPage="itemsPage"
+      :itemsRows="itemsRows"
+      :orderedFields="orderedFields"
+      :searchQuery="searchQuery"
+      :debouncedSearchQuery="debouncedSearchQuery"
+      :multiSortMeta="multiSortMeta"
+      @update:searchQuery="searchQuery = $event"
+      @update:multiSortMeta="multiSortMeta = $event"
+      @page="onItemsPage"
+      @sort="onItemsSort"
+      @edit-item="openEditItemDialog"
+      @delete-item="confirmDeleteItem"
+      @update-item="onInlineUpdateItem"
+      @insert-item-at="onInsertItemAt"
+      @duplicate-item="onDuplicateItem"
+      @move-item="onMoveItem"
+      @manage-fields="store.setActiveCollectionPanel('fields')"
+      @open-add-item="openAddItemDialog"
+    />
+    <CollectionKanbanView
+      v-else-if="activeView?.type === 'kanban'"
+      :orderedFields="orderedFields"
+    />
+    <CollectionCalendarView
+      v-else-if="activeView?.type === 'calendar'"
+      :orderedFields="orderedFields"
+    />
+  </template>
 
-    <div class="min-h-0 flex-1">
-      <CollectionItemsPanel :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsPage="itemsPage"
-        :itemsRows="itemsRows" :orderedFields="orderedFields" :debouncedSearchQuery="debouncedSearchQuery"
-        :multiSortMeta="multiSortMeta" @update:multiSortMeta="multiSortMeta = $event" @page="onItemsPage"
-        @sort="onItemsSort" @delete-item="confirmDeleteItem" @update-item="onInlineUpdateItem"
-        @open-fields-drawer="openFieldsDrawer({ focusAddField: true })" @insert-item-at="onInsertItemAt"
-        @duplicate-item="onDuplicateItem" @move-item="onMoveItem" />
-    </div>
+  <CollectionItemEditorDialog
+    :visible="showAddItemForm"
+    :orderedFields="orderedFields"
+    :editingItem="editingItem"
+    @update:visible="onItemDialogVisibilityChange"
+    @save="saveItem"
+  />
 
-    <!-- TODO: Legacy add/edit dialog retained for toolbar Add Item until inline add is available. -->
-    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="orderedFields" :editingItem="editingItem"
-      @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
-
-    <Drawer v-model:visible="showFieldsManager" header="Fields" position="right" :style="{ width: '50%' }" modal
-      :pt="drawerPt" @after-show="onFieldsDrawerAfterShow">
-      <div class="p-4">
-        <CollectionFieldsDialog ref="fieldsDialogRef" :visible="showFieldsManager" :orderedFields="orderedFields"
-          @update:visible="showFieldsManager = $event" @add-field="addField" @delete-field="confirmDeleteField"
-          @reorder-fields="onFieldsReorder" />
-      </div>
-    </Drawer>
-
-    <CollectionSettingsDialog :visible="showCollectionSettings" :collection="collection" :fields="fields"
-      :itemsTotal="itemsTotal" @update:visible="showCollectionSettings = $event" @save-settings="saveSettings"
-      @delete-collection="confirmDeleteCollection" />
-
-    <ConfirmDialog />
-  </div>
+  <ConfirmDialog />
 </template>
 
 <script setup lang="ts">
@@ -39,7 +65,6 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfirm } from 'primevue/useconfirm'
 import ConfirmDialog from 'primevue/confirmdialog'
-import Drawer from 'primevue/drawer'
 import { useStore } from '../../store'
 import { useNotificationsStore } from '../../stores/notifications'
 import {
@@ -60,11 +85,12 @@ import type {
   MoveItemInput,
   UpdateItemInput
 } from '../../types/models'
-import CollectionHeaderBar from './collection/CollectionHeaderBar.vue'
-import CollectionItemsPanel from './collection/CollectionItemsPanel.vue'
+import CollectionGridView from './collection/CollectionGridView.vue'
+import CollectionKanbanView from './collection/CollectionKanbanView.vue'
+import CollectionCalendarView from './collection/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
-import CollectionFieldsDialog from './collection/CollectionFieldsDialog.vue'
-import CollectionSettingsDialog from './collection/CollectionSettingsDialog.vue'
+import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
+import CollectionSettingsPanel from './collection/CollectionSettingsPanel.vue'
 import type {
   CollectionSettingsSavePayload,
   FieldDraftInput,
@@ -74,7 +100,18 @@ import type {
 const store = useStore()
 const confirm = useConfirm()
 const notifications = useNotificationsStore()
-const { fields, items, itemsTotal, itemsLoading, itemsPage, itemsRows } = storeToRefs(store)
+const {
+  fields,
+  items,
+  itemsTotal,
+  itemsLoading,
+  itemsPage,
+  itemsRows,
+  activeCollectionPanel,
+  collectionSettingsOpen,
+  selectedViewId,
+  availableViews
+} = storeToRefs(store)
 
 const props = defineProps<{
   collection: Collection
@@ -85,20 +122,7 @@ const emit = defineEmits<{
 }>()
 
 const showAddItemForm = ref(false)
-const showFieldsManager = ref(false)
-const showCollectionSettings = ref(false)
 const editingItem = ref<Item | null>(null)
-const fieldsDialogRef = ref<InstanceType<typeof CollectionFieldsDialog> | null>(null)
-const pendingFocusAddField = ref(false)
-
-const drawerPt = {
-  pcCloseButton: {
-    root: {
-      class:
-        'hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
-    }
-  }
-}
 
 const { safeFields, orderedFields } = useSafeFields({
   fields,
@@ -106,6 +130,10 @@ const { safeFields, orderedFields } = useSafeFields({
 })
 
 const collectionId = computed(() => props.collection.id)
+
+const activeView = computed(() => {
+  return availableViews.value.find(view => view.id === selectedViewId.value) ?? null
+})
 
 async function loadCollectionItems(options: LoadItemsOptions = {}) {
   await store.loadItems(props.collection.id, options)
@@ -127,58 +155,19 @@ watch(
   () => props.collection.id,
   () => {
     showAddItemForm.value = false
-    showFieldsManager.value = false
-    showCollectionSettings.value = false
     editingItem.value = null
-    pendingFocusAddField.value = false
+    store.setCollectionSettingsOpen(false)
   }
 )
-
-watch(showFieldsManager, (isVisible) => {
-  if (!isVisible) {
-    pendingFocusAddField.value = false
-  }
-})
 
 function openAddItemDialog() {
   editingItem.value = null
   showAddItemForm.value = true
 }
 
-function focusAddFieldInDrawer() {
-  fieldsDialogRef.value?.focusAddField?.()
-}
-
-function openFieldsDrawer(options: { focusAddField?: boolean } = {}) {
-  const { focusAddField = false } = options
-
-  if (showFieldsManager.value) {
-    if (focusAddField) {
-      focusAddFieldInDrawer()
-    }
-    return
-  }
-
-  showFieldsManager.value = true
-  if (focusAddField) {
-    pendingFocusAddField.value = true
-  }
-}
-
-function toggleFieldsDrawer() {
-  if (showFieldsManager.value) {
-    showFieldsManager.value = false
-    pendingFocusAddField.value = false
-    return
-  }
-
-  openFieldsDrawer()
-}
-
-function onFieldsDrawerAfterShow() {
-  if (!pendingFocusAddField.value) return
-  pendingFocusAddField.value = false
-  focusAddFieldInDrawer()
+function openEditItemDialog(item: Item) {
+  editingItem.value = item
+  showAddItemForm.value = true
 }
 
 function onItemDialogVisibilityChange(nextVisible: boolean) {
@@ -355,7 +344,7 @@ async function saveSettings(payload: CollectionSettingsSavePayload) {
     name: nameResult.data
   })
 
-  showCollectionSettings.value = false
+  store.setCollectionSettingsOpen(false)
 }
 
 async function confirmDeleteCollection() {

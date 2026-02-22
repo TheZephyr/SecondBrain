@@ -65,6 +65,7 @@ export type CollectionItemCount = {
 
 export type NewCollectionInput = {
   name: string;
+  icon?: string | null;
 };
 
 export type NewViewInput = {
@@ -78,6 +79,7 @@ export type NewViewInput = {
 export type UpdateCollectionInput = {
   id: number;
   name: string;
+  icon?: string | null;
 };
 
 export type NewFieldInput = {
@@ -159,4 +161,14 @@ export type ImportCollectionInput = {
   mode: ImportMode;
   newFields: NewFieldInput[];
   items: NewItemInput[];
+};
+
+export type CollectionViewType = "grid" | "kanban" | "calendar";
+
+export type CollectionPanelType = "data" | "fields";
+
+export type CollectionView = {
+  id: number;
+  type: CollectionViewType;
+  name: string;
 };

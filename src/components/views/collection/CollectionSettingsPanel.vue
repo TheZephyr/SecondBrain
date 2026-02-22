@@ -1,6 +1,5 @@
 <template>
-  <Dialog :visible="visible" header="Collection Settings" modal :draggable="false" class="w-full max-w-4xl"
-    @update:visible="onVisibilityChange" @hide="cancelSettings">
+  <div class="mx-auto max-w-4xl px-10 py-8">
     <Accordion value="0">
       <AccordionPanel value="0">
         <AccordionHeader>
@@ -201,11 +200,11 @@
       </AccordionPanel>
     </Accordion>
 
-    <template #footer>
-      <Button severity="secondary" text @click="cancelSettings">Cancel</Button>
+    <div class="mt-6 flex justify-end gap-2">
+      <Button severity="secondary" text @click="store.setCollectionSettingsOpen(false)">Cancel</Button>
       <Button @click="saveSettings">Save Changes</Button>
-    </template>
-  </Dialog>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -224,7 +223,6 @@ import AccordionContent from 'primevue/accordioncontent'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionPanel from 'primevue/accordionpanel'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import RadioButton from 'primevue/radiobutton'
 import Select from 'primevue/select'
@@ -232,20 +230,21 @@ import Tag from 'primevue/tag'
 import type { Collection, Field } from '../../../types/models'
 import { useCollectionImportExport } from '../../../composables/useCollectionImportExport'
 import { isSafeFieldName } from '../../../validation/fieldNames'
+import { useStore } from '../../../store'
 import type { CollectionSettingsSavePayload } from './types'
 
 const props = defineProps<{
-  visible: boolean
   collection: Collection
   fields: Field[]
   itemsTotal: number
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:visible', value: boolean): void
   (e: 'save-settings', value: CollectionSettingsSavePayload): void
   (e: 'delete-collection'): void
 }>()
+
+const store = useStore()
 
 const collectionName = ref('')
 
@@ -275,35 +274,12 @@ function resetSettingsState() {
 }
 
 watch(
-  () => props.visible,
-  isVisible => {
-    if (isVisible) {
-      resetSettingsState()
-    }
+  () => props.collection,
+  () => {
+    resetSettingsState()
   },
   { immediate: true }
 )
-
-watch(
-  () => props.collection,
-  () => {
-    if (!props.visible) return
-    resetSettingsState()
-  }
-)
-
-function onVisibilityChange(nextVisible: boolean) {
-  if (!nextVisible) {
-    cancelSettings()
-    return
-  }
-  emit('update:visible', true)
-}
-
-function cancelSettings() {
-  emit('update:visible', false)
-  resetSettingsState()
-}
 
 function saveSettings() {
   emit('save-settings', {

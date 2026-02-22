@@ -1,44 +1,38 @@
 <template>
-  <div class="flex h-full flex-col">
-    <div class="space-y-6">
-      <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onRowReorder">
-        <Column rowReorder headerStyle="width: 3rem" />
-        <Column field="name" header="Field" />
-        <Column header="Type">
-          <template #body="{ data }">
-            <Tag class="uppercase">{{ data.type }}</Tag>
-          </template>
-        </Column>
-        <Column header="Actions" style="width: 120px">
-          <template #body="{ data }">
-            <Button text
-              class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
-              title="Delete field" @click="$emit('delete-field', data)">
-              <Trash2 />
-            </Button>
-          </template>
-        </Column>
-      </DataTable>
+  <div class="mx-auto max-w-6xl px-10 py-8 space-y-6">
+    <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onRowReorder">
+      <Column rowReorder headerStyle="width: 3rem" />
+      <Column field="name" header="Field" />
+      <Column header="Type">
+        <template #body="{ data }">
+          <Tag class="uppercase">{{ data.type }}</Tag>
+        </template>
+      </Column>
+      <Column header="Actions" style="width: 120px">
+        <template #body="{ data }">
+          <Button text
+            class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+            title="Delete field" @click="$emit('delete-field', data)">
+            <Trash2 />
+          </Button>
+        </template>
+      </Column>
+    </DataTable>
 
-      <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-        <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-          <Plus :size="14" />
-          Add New Field
-        </div>
-        <div class="flex flex-col gap-3 md:flex-row md:items-center">
-          <InputText ref="addFieldNameRef" v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
-          <Select v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
-            class="w-full md:w-48" />
-          <Button class="md:self-stretch" @click="submitAddField">Add</Button>
-        </div>
-        <div v-if="newField.type === 'select'" class="mt-3">
-          <InputText v-model="newField.options" type="text" placeholder="Options (comma-separated: Option1, Option2)" />
-        </div>
+    <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+      <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        <Plus :size="14" />
+        Add New Field
       </div>
-    </div>
-
-    <div class="mt-6 flex justify-end">
-      <Button @click="$emit('update:visible', false)">Done</Button>
+      <div class="flex flex-col gap-3 md:flex-row md:items-center">
+        <InputText ref="addFieldNameRef" v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
+        <Select v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
+          class="w-full md:w-48" />
+        <Button class="md:self-stretch" @click="submitAddField">Add</Button>
+      </div>
+      <div v-if="newField.type === 'select'" class="mt-3">
+        <InputText v-model="newField.options" type="text" placeholder="Options (comma-separated: Option1, Option2)" />
+      </div>
     </div>
   </div>
 </template>
@@ -57,13 +51,11 @@ import type { FieldDraftInput } from './types'
 
 type RowReorderEvent = { value: Field[] }
 
-const props = defineProps<{
-  visible: boolean
+defineProps<{
   orderedFields: Field[]
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:visible', value: boolean): void
   (e: 'add-field', value: FieldDraftInput): void
   (e: 'delete-field', value: Field): void
   (e: 'reorder-fields', value: Field[]): void
@@ -94,15 +86,6 @@ watch(
   type => {
     if (type !== 'select') {
       newField.value.options = ''
-    }
-  }
-)
-
-watch(
-  () => props.visible,
-  isVisible => {
-    if (!isVisible) {
-      newField.value = createEmptyFieldDraft()
     }
   }
 )

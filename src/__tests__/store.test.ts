@@ -281,6 +281,75 @@ describe("selectCollection", () => {
   });
 });
 
+describe("collection panel and view state", () => {
+  it("resets activeCollectionPanel to 'data' when selectCollection is called", () => {
+    const store = useStore();
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(ok([]));
+
+    store.activeCollectionPanel = "fields";
+    store.selectCollection({ id: 1, name: "A" });
+
+    expect(store.activeCollectionPanel).toBe("data");
+  });
+
+  it("resets collectionSettingsOpen to false when selectCollection is called", () => {
+    const store = useStore();
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(ok([]));
+
+    store.collectionSettingsOpen = true;
+    store.selectCollection({ id: 1, name: "A" });
+
+    expect(store.collectionSettingsOpen).toBe(false);
+  });
+
+  it("resets selectedViewId to 0 when selectCollection is called", () => {
+    const store = useStore();
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+    mockApi.getViews.mockResolvedValue(ok([]));
+
+    store.selectedViewId = 12;
+    store.selectCollection({ id: 1, name: "A" });
+
+    expect(store.selectedViewId).toBe(0);
+  });
+
+  it("selectCollection(null) resets panel and view state", () => {
+    const store = useStore();
+    store.activeCollectionPanel = "fields";
+    store.collectionSettingsOpen = true;
+    store.selectedViewId = 12;
+
+    store.selectCollection(null);
+
+    expect(store.activeCollectionPanel).toBe("data");
+    expect(store.collectionSettingsOpen).toBe(false);
+    expect(store.selectedViewId).toBe(0);
+  });
+
+  it("setActiveCollectionPanel updates activeCollectionPanel", () => {
+    const store = useStore();
+    store.setActiveCollectionPanel("fields");
+    expect(store.activeCollectionPanel).toBe("fields");
+  });
+
+  it("setCollectionSettingsOpen updates collectionSettingsOpen", () => {
+    const store = useStore();
+    store.setCollectionSettingsOpen(true);
+    expect(store.collectionSettingsOpen).toBe(true);
+  });
+
+  it("setSelectedViewId updates selectedViewId", () => {
+    const store = useStore();
+    store.setSelectedViewId(5);
+    expect(store.selectedViewId).toBe(5);
+  });
+});
+
 describe("deleteCollection", () => {
   it("clears selectedCollection when deleting the active collection", async () => {
     const store = useStore();

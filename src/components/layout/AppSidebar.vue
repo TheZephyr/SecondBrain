@@ -38,7 +38,7 @@
 
         <div v-if="isExpanded(collection.id)" class="ml-4 space-y-1">
           <template v-if="selectedCollection?.id === collection.id">
-            <Button v-for="view in currentViews" :key="view.id" text
+            <Button v-for="view in availableViews" :key="view.id" text
               class="w-full justify-start rounded-md px-3 py-2 text-sm" :class="isActiveView(view.id)
                 ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
@@ -46,7 +46,6 @@
               <div class="flex items-center gap-2">
                 <i class="pi pi-table text-xs"></i>
                 <span class="flex-1 truncate">{{ view.name }}</span>
-                <i v-if="view.is_default === 1" class="pi pi-lock text-xs text-[var(--text-muted)]"></i>
               </div>
             </Button>
           </template>
@@ -109,7 +108,7 @@ import type { Collection } from "../../types/models";
 import { Brain } from "lucide-vue-next";
 
 const store = useStore();
-const { collections, selectedCollection, currentView, currentViews, activeViewId } =
+const { collections, selectedCollection, currentView, availableViews, selectedViewId } =
   storeToRefs(store);
 const notifications = useNotificationsStore();
 
@@ -143,11 +142,11 @@ function handleCollectionClick(collection: Collection) {
 }
 
 function handleViewClick(viewId: number) {
-  store.setActiveViewId(viewId);
+  store.setSelectedViewId(viewId);
 }
 
 function isActiveView(viewId: number) {
-  return activeViewId.value === viewId;
+  return selectedViewId.value === viewId;
 }
 
 function handleAddViewClick() {

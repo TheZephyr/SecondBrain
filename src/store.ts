@@ -2,6 +2,8 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import type {
   Collection,
+  CollectionPanelType,
+  CollectionView,
   View,
   Field,
   Item,
@@ -48,6 +50,12 @@ export const useStore = defineStore("main", () => {
   const itemsSort = ref<ItemSortSpec[]>([]);
   const selectedCollection = ref<Collection | null>(null);
   const currentView = ref<"dashboard" | "collection">("dashboard");
+  const activeCollectionPanel = ref<CollectionPanelType>("data");
+  const collectionSettingsOpen = ref(false);
+  const selectedViewId = ref(0);
+  const availableViews = ref<CollectionView[]>([
+    { id: 0, type: "grid", name: "Grid" },
+  ]);
   let itemsRequestToken = 0;
   let viewsRequestToken = 0;
 
@@ -87,6 +95,18 @@ export const useStore = defineStore("main", () => {
 
   function setActiveViewId(id: number | null) {
     activeViewId.value = id;
+  }
+
+  function setActiveCollectionPanel(panel: CollectionPanelType) {
+    activeCollectionPanel.value = panel;
+  }
+
+  function setCollectionSettingsOpen(open: boolean) {
+    collectionSettingsOpen.value = open;
+  }
+
+  function setSelectedViewId(id: number) {
+    selectedViewId.value = id;
   }
 
   async function addCollection(collection: NewCollectionInput) {
@@ -369,6 +389,10 @@ export const useStore = defineStore("main", () => {
       clearItemsState();
       clearViewsState();
     }
+
+    activeCollectionPanel.value = "data";
+    collectionSettingsOpen.value = false;
+    selectedViewId.value = 0;
   }
 
   function showDashboard() {
@@ -389,9 +413,16 @@ export const useStore = defineStore("main", () => {
     itemsSort,
     selectedCollection,
     currentView,
+    activeCollectionPanel,
+    collectionSettingsOpen,
+    selectedViewId,
+    availableViews,
     loadCollections,
     loadViews,
     setActiveViewId,
+    setActiveCollectionPanel,
+    setCollectionSettingsOpen,
+    setSelectedViewId,
     addCollection,
     updateCollection,
     deleteCollection,

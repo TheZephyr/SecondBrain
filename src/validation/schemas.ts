@@ -90,7 +90,8 @@ export const itemDataSchema = z.preprocess((value, ctx) => {
 }, z.record(z.string(), itemDataValueSchema));
 
 export const NewCollectionInputSchema = z.object({
-  name: collectionNameSchema
+  name: collectionNameSchema,
+  icon: z.string().optional().nullable()
 });
 
 export const NewViewInputSchema = z.object({
@@ -103,7 +104,8 @@ export const NewViewInputSchema = z.object({
 
 export const UpdateCollectionInputSchema = z.object({
   id: positiveIntSchema,
-  name: collectionNameSchema
+  name: collectionNameSchema,
+  icon: z.string().optional().nullable()
 });
 
 export const NewFieldInputSchema = z.object({
