@@ -9,6 +9,24 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-vue": ["vue", "pinia"],
+          "vendor-primevue": [
+            "primevue",
+            "@primeuix/themes",
+            "@primevue/forms",
+          ],
+          "vendor-utils": [
+            "zod",
+            "papaparse",
+            "@vueuse/core",
+            "lucide-vue-next",
+          ],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

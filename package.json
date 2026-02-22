@@ -8,20 +8,20 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "rebuild:node": "npm rebuild better-sqlite3",
-    "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:electron": "npx @electron/rebuild -f -w better-sqlite3",
     "pretest": "npm run rebuild:node",
     "test": "vitest run --config vitest.config.ts",
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
     "predev:electron": "npm run rebuild:electron",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
-    "build": "npm version patch && npm run rebuild:electron && vue-tsc && vite build && node build-electron.js && electron-builder",
-    "build:win": "npm run build -- --win"
+    "build": "npm version patch && vue-tsc && vite build && node build-electron.js && electron-builder",
+    "build:win": "npm run build -- --win",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@primeuix/themes": "^1.2.3",
     "@primevue/forms": "^4.5.4",
-    "@vue/language-core": "^3.2.5",
     "@vueuse/core": "^14.2.0",
     "better-sqlite3": "^12.6.2",
     "lucide-vue-next": "^0.564.0",
@@ -33,12 +33,11 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
     "@tailwindcss/vite": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/papaparse": "^5.5.2",
-    "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/language-core": "^3.2.5",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
     "electron": "^40.4.1",
