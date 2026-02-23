@@ -112,6 +112,16 @@ describe("validation schemas", () => {
     }
   });
 
+  it("accepts limit of 200 for getItems input", () => {
+    const result = GetItemsInputSchema.safeParse({
+      collectionId: 1,
+      limit: 200,
+      offset: 0,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects invalid paginated getItems input", () => {
     const result = GetItemsInputSchema.safeParse({
       collectionId: 1,

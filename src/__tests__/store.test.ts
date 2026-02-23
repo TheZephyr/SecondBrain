@@ -51,7 +51,7 @@ function makeElectronAPIMock() {
 }
 
 function emptyPaginatedResult(
-  limit = 50,
+  limit = 200,
   offset = 0,
 ): PaginatedItemsResult {
   return { items: [], total: 0, limit, offset };
@@ -98,24 +98,14 @@ describe("loadItems", () => {
     expect(store.itemsLoading).toBe(false);
   });
 
-  it("clamps rows to MAX_ITEMS_ROWS (100)", async () => {
+  it("uses a fixed limit of 200", async () => {
     const store = useStore();
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult(100, 0)));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
-    await store.loadItems(1, { rows: 999 });
+    await store.loadItems(1);
 
     const callArgs = mockApi.getItems.mock.calls[0][0];
-    expect(callArgs.limit).toBe(100);
-  });
-
-  it("clamps rows to minimum of 1", async () => {
-    const store = useStore();
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult(1, 0)));
-
-    await store.loadItems(1, { rows: -5 });
-
-    const callArgs = mockApi.getItems.mock.calls[0][0];
-    expect(callArgs.limit).toBe(1);
+    expect(callArgs.limit).toBe(200);
   });
 
   it("discards stale responses (stale-request token)", async () => {
@@ -160,22 +150,6 @@ describe("loadItems", () => {
     // Store should contain fresh data, not stale
     expect(store.items).toEqual(freshItems);
     expect(store.items).not.toEqual(staleItems);
-  });
-
-  it("computes page from offset/limit in response", async () => {
-    const store = useStore();
-    mockApi.getItems.mockResolvedValue(
-      ok<PaginatedItemsResult>({
-        items: [makeItem(1)],
-        total: 100,
-        limit: 10,
-        offset: 30,
-      }),
-    );
-
-    await store.loadItems(1, { page: 3, rows: 10 });
-
-    expect(store.itemsPage).toBe(3); // 30 / 10 = 3
   });
 
   it("sets itemsLoading to false on completion", async () => {

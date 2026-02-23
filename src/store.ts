@@ -28,13 +28,11 @@ import { handleIpc } from "./utils/ipc";
 
 type LoadItemsOptions = {
   page?: number;
-  rows?: number;
   search?: string;
   sort?: ItemSortSpec[];
 };
 
-const DEFAULT_ITEMS_ROWS = 50;
-const MAX_ITEMS_ROWS = 100;
+const ITEMS_LIMIT = 200;
 
 export const useStore = defineStore("main", () => {
   // State
@@ -46,7 +44,6 @@ export const useStore = defineStore("main", () => {
   const itemsTotal = ref(0);
   const itemsLoading = ref(false);
   const itemsPage = ref(0);
-  const itemsRows = ref(DEFAULT_ITEMS_ROWS);
   const itemsSearch = ref("");
   const itemsSort = ref<ItemSortSpec[]>([]);
   const selectedCollection = ref<Collection | null>(null);
@@ -235,11 +232,10 @@ export const useStore = defineStore("main", () => {
   }
 
   async function loadItems(collectionId: number, options: LoadItemsOptions = {}) {
-    if (options.rows !== undefined) {
-      itemsRows.value = Math.min(MAX_ITEMS_ROWS, Math.max(1, options.rows));
-    }
     if (options.page !== undefined) {
       itemsPage.value = Math.max(0, options.page);
+    } else {
+      itemsPage.value = 0;
     }
     if (options.search !== undefined) {
       itemsSearch.value = options.search;
@@ -248,7 +244,7 @@ export const useStore = defineStore("main", () => {
       itemsSort.value = options.sort;
     }
 
-    const limit = Math.min(MAX_ITEMS_ROWS, Math.max(1, itemsRows.value));
+    const limit = ITEMS_LIMIT;
     const offset = itemsPage.value * limit;
     const requestToken = ++itemsRequestToken;
     itemsLoading.value = true;
@@ -285,7 +281,6 @@ export const useStore = defineStore("main", () => {
 
       items.value = payload.items;
       itemsTotal.value = payload.total;
-      itemsRows.value = payload.limit;
       itemsPage.value = resolvedPage;
 
       if (
@@ -453,8 +448,6 @@ export const useStore = defineStore("main", () => {
     items,
     itemsTotal,
     itemsLoading,
-    itemsPage,
-    itemsRows,
     itemsSearch,
     itemsSort,
     selectedCollection,

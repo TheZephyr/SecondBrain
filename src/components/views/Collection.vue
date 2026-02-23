@@ -15,20 +15,17 @@
     @reorder-fields="onFieldsReorder"
   />
   <template v-else>
-    <CollectionGridView
+    <CollectionGrid
       v-if="activeView?.type === 'grid'"
       :items="items"
       :itemsTotal="itemsTotal"
       :itemsLoading="itemsLoading"
-      :itemsPage="itemsPage"
-      :itemsRows="itemsRows"
       :orderedFields="orderedFields"
       :searchQuery="searchQuery"
       :debouncedSearchQuery="debouncedSearchQuery"
       :multiSortMeta="multiSortMeta"
       @update:searchQuery="searchQuery = $event"
       @update:multiSortMeta="multiSortMeta = $event"
-      @page="onItemsPage"
       @sort="onItemsSort"
       @edit-item="openEditItemDialog"
       @delete-item="confirmDeleteItem"
@@ -85,7 +82,7 @@ import type {
   MoveItemInput,
   UpdateItemInput
 } from '../../types/models'
-import CollectionGridView from './collection/CollectionGridView.vue'
+import CollectionGrid from './collection/grid/CollectionGrid.vue'
 import CollectionKanbanView from './collection/CollectionKanbanView.vue'
 import CollectionCalendarView from './collection/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
@@ -105,8 +102,6 @@ const {
   items,
   itemsTotal,
   itemsLoading,
-  itemsPage,
-  itemsRows,
   activeCollectionPanel,
   collectionSettingsOpen,
   currentViews,
@@ -143,7 +138,6 @@ const {
   searchQuery,
   debouncedSearchQuery,
   multiSortMeta,
-  onItemsPage,
   onItemsSort
 } = useCollectionItemsQuery({
   collectionId,

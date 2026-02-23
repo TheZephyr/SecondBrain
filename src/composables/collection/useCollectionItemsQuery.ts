@@ -3,14 +3,10 @@ import { refDebounced } from '@vueuse/core'
 import type { Field, ItemSortSpec } from '../../types/models'
 import type {
   MultiSortMeta,
-  RawSortMeta,
-  TablePageEventLike,
-  TableSortEventLike
+  RawSortMeta
 } from '../../components/views/collection/types'
 
 export type LoadItemsOptions = {
-  page?: number
-  rows?: number
   search?: string
   sort?: ItemSortSpec[]
 }
@@ -120,27 +116,17 @@ export function useCollectionItemsQuery({
 
     if (normalized.length > 0) {
       await loadItems({
-        page: 0,
         search: '',
         sort: toItemSort(normalized)
       })
     }
   }
 
-  async function onItemsPage(event: TablePageEventLike) {
-    const rowsFromEvent = event.rows ?? 50
-    const rows = rowsFromEvent > 0 ? rowsFromEvent : 50
-    const page = rows > 0 ? Math.floor(event.first / rows) : 0
-    await loadItems({ page, rows })
-  }
-
-  async function onItemsSort(event: TableSortEventLike) {
+  async function onItemsSort(nextMeta: MultiSortMeta[]) {
     pendingSortMeta.value = null
     isSortHydrationPending.value = false
-    const nextMeta = normalizeSortMeta((event.multiSortMeta || []) as RawSortMeta[], safeFields.value)
     multiSortMeta.value = nextMeta
     await loadItems({
-      page: 0,
       sort: toItemSort(nextMeta)
     })
   }
@@ -168,7 +154,6 @@ export function useCollectionItemsQuery({
     }
     suppressNextEmptySearchLoad.value = false
     await loadItems({
-      page: 0,
       search: query
     })
   })
@@ -185,7 +170,6 @@ export function useCollectionItemsQuery({
       if (!areSortMetaEqual(multiSortMeta.value, normalized)) {
         multiSortMeta.value = normalized
         void loadItems({
-          page: 0,
           sort: toItemSort(normalized)
         })
       }
@@ -209,7 +193,6 @@ export function useCollectionItemsQuery({
     searchQuery,
     debouncedSearchQuery,
     multiSortMeta,
-    onItemsPage,
     onItemsSort
   }
 }

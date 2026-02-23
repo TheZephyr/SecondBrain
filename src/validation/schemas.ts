@@ -281,7 +281,7 @@ export const ImportCollectionInputSchema = z
 
 export const GetItemsInputSchema = z.object({
   collectionId: positiveIntSchema,
-  limit: z.number().int().min(1).max(100).default(50),
+  limit: z.number().int().min(1).max(200).default(50),
   offset: nonNegativeIntSchema.default(0),
   search: z.string().trim().max(200).optional().default(""),
   sort: z.array(ItemSortSpecSchema).max(3).optional().default([]),

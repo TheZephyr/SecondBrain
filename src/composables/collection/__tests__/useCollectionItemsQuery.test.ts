@@ -95,7 +95,6 @@ describe('useCollectionItemsQuery', () => {
         { field: 'data.Title', order: -1 }
       ])
       expect(loadItems).toHaveBeenCalledWith({
-        page: 0,
         search: '',
         sort: [{ field: 'data.Title', order: -1 }]
       })
@@ -138,7 +137,6 @@ describe('useCollectionItemsQuery', () => {
 
       expect(query.multiSortMeta.value).toEqual([{ field: 'data.Title', order: 1 }])
       expect(loadItems).toHaveBeenCalledWith({
-        page: 0,
         search: '',
         sort: [{ field: 'data.Title', order: 1 }]
       })
@@ -174,7 +172,6 @@ describe('useCollectionItemsQuery', () => {
         await nextTick()
 
         expect(loadItems).toHaveBeenCalledWith({
-          page: 0,
           search: 'alpha'
         })
       })
