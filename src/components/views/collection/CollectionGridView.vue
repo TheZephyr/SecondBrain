@@ -29,14 +29,14 @@
       <div
         class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-secondary)] divide-y divide-[var(--border-color)]">
         <DataTable :value="tableRows" dataKey="id" sortMode="multiple" removableSort contextMenu
-          v-model:multiSortMeta="sortModel" :rowHover="true" lazy :rows="itemsRows"
-          :first="itemsPage * itemsRows" :totalRecords="itemsTotal" :loading="itemsLoading" editMode="cell"
-          :rowClass="getRowClass" v-model:contextMenuSelection="contextMenuSelection"
-          @row-contextmenu="onRowContextMenu" @sort="onSort" @cell-edit-init="onCellEditInit"
-          @cell-edit-complete="onCellEditComplete" @cell-edit-cancel="onCellEditCancel" :pt="dataTablePt"
-          scrollable scrollHeight="flex" class="flex-1"
-          showGridlines tableStyle="table-layout: fixed; width: 100%">
-          <Column style="width: 60px">
+          v-model:multiSortMeta="sortModel" :rowHover="true" lazy :rows="itemsRows" :first="itemsPage * itemsRows"
+          :totalRecords="itemsTotal" :loading="itemsLoading" editMode="cell" :rowClass="getRowClass"
+          v-model:contextMenuSelection="contextMenuSelection" @row-contextmenu="onRowContextMenu" @sort="onSort"
+          @cell-edit-init="onCellEditInit" @cell-edit-complete="onCellEditComplete" @cell-edit-cancel="onCellEditCancel"
+          :pt="dataTablePt" scrollable scrollHeight="flex" class="flex-1" showGridlines size="small"
+          tableStyle="table-layout: fixed;">
+
+          <Column style="width: 40px">
             <template #body="{ data, index }">
               <div class="relative flex items-center justify-end pr-2">
                 <span class="text-right text-xs text-[var(--text-muted)] transition-opacity"
@@ -57,7 +57,8 @@
           <Column v-for="field in orderedFields" :key="field.id" :field="getFieldKey(field.name)" :header="field.name"
             sortable :style="{ width: dataColumnWidth }">
             <template #body="{ data }">
-              <div class="flex h-full w-full items-center rounded-sm px-3 py-2 text-sm outline-none transition hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+              <div
+                class="flex h-full w-full items-center rounded-sm px-3 py-2 text-sm outline-none transition hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
                 tabindex="0" :class="isActiveCell(getCellKey(data, field)) ? 'ring-1 ring-[var(--accent-primary)]' : ''"
                 @click="event => onCellPreviewClick(event, getCellKey(data, field))"
                 @keydown.enter.prevent.stop="event => activateEditor(event, getCellKey(data, field))"
@@ -75,18 +76,19 @@
                 @update:modelValue="value => setTextEditorValue(data, field, value)" rows="2" class="w-full"
                 :ref="el => setEditorRef(getCellKey(data, field), el)" />
               <InputNumber v-else-if="field.type === 'number'" :modelValue="getNumberEditorValue(data, field)"
-                @update:modelValue="value => setNumberEditorValue(data, field, value)" inputClass="w-full" class="w-full"
-                :ref="el => setEditorRef(getCellKey(data, field), el)" />
+                @update:modelValue="value => setNumberEditorValue(data, field, value)" inputClass="w-full"
+                class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
               <DatePicker v-else-if="field.type === 'date'" :modelValue="getDateEditorValue(data, field)"
                 @update:modelValue="value => setDateEditorValue(data, field, value)" dateFormat="yy-mm-dd"
                 inputClass="w-full" class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
               <Select v-else-if="field.type === 'select'" :modelValue="getSelectEditorValue(data, field)"
-                @update:modelValue="value => setSelectEditorValue(data, field, value)" :options="getSelectOptions(field)"
-                class="w-full" :ref="el => setEditorRef(getCellKey(data, field), el)" />
+                @update:modelValue="value => setSelectEditorValue(data, field, value)"
+                :options="getSelectOptions(field)" class="w-full"
+                :ref="el => setEditorRef(getCellKey(data, field), el)" />
             </template>
           </Column>
 
-          <Column style="width: 48px">
+          <Column style="width: 40px">
             <template #header>
               <Button text class="h-8 w-8 p-0" title="Add field" @click.stop="notifyAddField">
                 <Plus :size="14" />
