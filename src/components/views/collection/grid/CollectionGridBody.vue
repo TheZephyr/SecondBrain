@@ -10,14 +10,14 @@
         <p class="text-sm text-center">
           {{
             itemsTotal === 0 && !debouncedSearchQuery
-              ? 'No items yet. Click "Add Item" to get started!'
+              ? 'No items yet. Click the + row below to get started!'
               : 'No items match your search.'
           }}
         </p>
       </div>
     </div>
 
-    <div v-else class="min-w-full">
+    <div class="min-w-full">
       <CollectionGridRow
         v-for="(row, index) in rows"
         :key="row.id"
@@ -25,8 +25,14 @@
         :rowIndex="index"
         :totalRows="rows.length"
         :gridTemplateColumns="gridTemplateColumns"
+        :orderedFields="orderedFields"
+        :rowIds="rowIds"
         @edit-item="$emit('edit-item', $event)"
         @row-contextmenu="$emit('row-contextmenu', $event)"
+      />
+      <CollectionGridAddRow
+        :gridTemplateColumns="gridTemplateColumns"
+        :orderedFields="orderedFields"
       />
     </div>
 
@@ -40,10 +46,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Row } from '@tanstack/vue-table'
 import { FileText, Search } from 'lucide-vue-next'
-import type { Item } from '../../../../types/models'
+import type { Field, Item } from '../../../../types/models'
 import CollectionGridRow from './CollectionGridRow.vue'
+import CollectionGridAddRow from './CollectionGridAddRow.vue'
 
 type RowContextMenuPayload = {
   event: MouseEvent
@@ -52,13 +60,16 @@ type RowContextMenuPayload = {
   totalRows: number
 }
 
-defineProps<{
+const props = defineProps<{
   rows: Row<Item>[]
   gridTemplateColumns: string
   itemsTotal: number
   itemsLoading: boolean
   debouncedSearchQuery: string
+  orderedFields: Field[]
 }>()
+
+const rowIds = computed(() => props.rows.map(row => row.original.id))
 
 defineEmits<{
   'edit-item': [value: Item]

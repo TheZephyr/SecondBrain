@@ -52,6 +52,7 @@
           :itemsTotal="itemsTotal"
           :itemsLoading="itemsLoading"
           :debouncedSearchQuery="debouncedSearchQuery"
+          :orderedFields="orderedFields"
           @edit-item="emitEditItem"
           @row-contextmenu="onRowContextMenu"
         />
@@ -62,17 +63,12 @@
     </div>
   </div>
 
-  <Button class="fixed bottom-6 right-6 z-10 gap-2" @click="$emit('open-add-item')">
-    <Plus />
-    Add Item
-  </Button>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, provide, ref, toRef } from 'vue'
 import {
   Columns,
-  Plus,
   Search
 } from 'lucide-vue-next'
 import Button from 'primevue/button'
@@ -90,6 +86,9 @@ import type { MultiSortMeta } from '../types'
 import CollectionGridHeader from './CollectionGridHeader.vue'
 import CollectionGridBody from './CollectionGridBody.vue'
 import CollectionGridFooter from './CollectionGridFooter.vue'
+import { gridEditingKey, gridSelectionKey } from './types'
+import { useGridSelection } from '../../../../composables/collection/grid/useGridSelection'
+import { useGridEditing } from '../../../../composables/collection/grid/useGridEditing'
 import { useGridColumns } from '../../../../composables/collection/grid/useGridColumns'
 
 type RowContextMenuPayload = {
@@ -129,6 +128,16 @@ const searchModel = computed({
 })
 
 const columns = useGridColumns({ orderedFields: computed(() => props.orderedFields) })
+
+const selection = useGridSelection()
+const editing = useGridEditing({
+  items: toRef(props, 'items'),
+  orderedFields: toRef(props, 'orderedFields'),
+  selection
+})
+
+provide(gridSelectionKey, selection)
+provide(gridEditingKey, editing)
 
 const table = useVueTable<Item>({
   get data() {
