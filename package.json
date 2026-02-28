@@ -22,6 +22,8 @@
   "dependencies": {
     "@primeuix/themes": "^1.2.3",
     "@primevue/forms": "^4.5.4",
+    "@tanstack/vue-table": "^8.21.3",
+    "@tanstack/vue-virtual": "^3.13.19",
     "@vueuse/core": "^14.2.0",
     "better-sqlite3": "^12.6.2",
     "lucide-vue-next": "^0.564.0",

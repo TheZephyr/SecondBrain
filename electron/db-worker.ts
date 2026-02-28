@@ -12,8 +12,9 @@ import type {
   DuplicateItemInput,
   MoveItemInput,
   ReorderFieldsInput,
+  ViewConfig,
 } from "../src/types/models";
-import { itemDataSchema } from "../src/validation/schemas";
+import { itemDataSchema, ViewConfigSchema } from "../src/validation/schemas";
 import type {
   DbWorkerError,
   DbWorkerOperation,
@@ -41,6 +42,7 @@ type ItemRow = {
   order: number | bigint;
 };
 type UserVersionRow = { user_version: number | bigint };
+type ViewConfigRow = { config: string | null };
 
 function serializeDetails(details: unknown): string | undefined {
   if (!details) return undefined;
@@ -246,6 +248,24 @@ function migrateItemsOrderColumn(database: Database.Database): void {
       ON items (collection_id, "order" ASC)
     `);
     database.exec("PRAGMA user_version = 2");
+  });
+
+  migrate();
+}
+
+function migrateViewConfigColumn(database: Database.Database): void {
+  const row = database.prepare("PRAGMA user_version").get() as
+    | UserVersionRow
+    | undefined;
+  const userVersion = row ? toNumber(row.user_version) : 0;
+
+  if (userVersion >= 3) {
+    return;
+  }
+
+  const migrate = database.transaction(() => {
+    database.exec("ALTER TABLE views ADD COLUMN config TEXT DEFAULT NULL");
+    database.exec("PRAGMA user_version = 3");
   });
 
   migrate();
@@ -784,6 +804,7 @@ export function initDatabase(dbPath: string): boolean {
     )
   `);
   migrateItemsOrderColumn(db);
+  migrateViewConfigColumn(db);
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_items_collection_created_at_id
@@ -833,6 +854,39 @@ function runImport(database: Database.Database, input: ImportCollectionInput) {
   );
 
   importTransaction(input);
+}
+
+function parseStoredViewConfig(config: string | null): ViewConfig | null {
+  if (!config) {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(config);
+  } catch {
+    return null;
+  }
+
+  const validated = ViewConfigSchema.safeParse(parsed);
+  if (!validated.success) {
+    return null;
+  }
+
+  const columnWidths = Object.fromEntries(
+    Object.entries(validated.data.columnWidths).map(([fieldId, width]) => [
+      Number(fieldId),
+      width,
+    ]),
+  ) as Record<number, number>;
+
+  return {
+    columnWidths,
+    sort: validated.data.sort.map((entry) => ({
+      field: entry.field,
+      order: entry.order,
+    })),
+  };
 }
 
 export function handleOperation(operation: DbWorkerOperation): unknown {
@@ -955,6 +1009,43 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
 
       if (toNumber(info.changes) !== 1) {
         throw new Error(`Failed to delete view ${operation.id}.`);
+      }
+
+      return true;
+    }
+    case "getViewConfig": {
+      const database = requireDb();
+      const row = database
+        .prepare("SELECT config FROM views WHERE id = ?")
+        .get(operation.viewId) as ViewConfigRow | undefined;
+
+      if (!row) {
+        return null;
+      }
+
+      return parseStoredViewConfig(row.config);
+    }
+    case "updateViewConfig": {
+      const database = requireDb();
+      const payload: ViewConfig = {
+        columnWidths: Object.fromEntries(
+          Object.entries(operation.input.config.columnWidths).map(
+            ([fieldId, width]) => [Number(fieldId), width],
+          ),
+        ) as Record<number, number>,
+        sort: operation.input.config.sort.map((entry) => ({
+          field: entry.field,
+          order: entry.order,
+        })),
+      };
+      const info = database
+        .prepare("UPDATE views SET config = ? WHERE id = ?")
+        .run(JSON.stringify(payload), operation.input.viewId);
+
+      if (toNumber(info.changes) !== 1) {
+        throw new Error(
+          `Failed to update view config for view ${operation.input.viewId}.`,
+        );
       }
 
       return true;

@@ -42,6 +42,8 @@ const electronAPI: IElectronAPI = {
   addView: (input) => invoke("db:addView", input),
   updateView: (input) => invoke("db:updateView", input),
   deleteView: (id: number) => invoke("db:deleteView", id),
+  getViewConfig: (viewId: number) => invoke("db:getViewConfig", viewId),
+  updateViewConfig: (input) => invoke("db:updateViewConfig", input),
 
   // Fields
   getFields: (collectionId: number) => invoke("db:getFields", collectionId),

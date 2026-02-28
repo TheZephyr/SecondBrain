@@ -6,6 +6,8 @@ import {
   ImportCollectionInputSchema,
   NewFieldInputSchema,
   ReorderFieldsInputSchema,
+  UpdateViewConfigInputSchema,
+  ViewConfigSchema,
   itemDataSchema,
 } from "../schemas";
 
@@ -112,6 +114,16 @@ describe("validation schemas", () => {
     }
   });
 
+  it("accepts limit of 200 for getItems input", () => {
+    const result = GetItemsInputSchema.safeParse({
+      collectionId: 1,
+      limit: 200,
+      offset: 0,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects invalid paginated getItems input", () => {
     const result = GetItemsInputSchema.safeParse({
       collectionId: 1,
@@ -201,6 +213,46 @@ describe("validation schemas", () => {
       updates: [
         { id: 1, patch: {} },
       ],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts valid view config", () => {
+    const result = ViewConfigSchema.safeParse({
+      columnWidths: {
+        1: 120,
+        9: 300,
+      },
+      sort: [
+        { field: "data.Title", order: 1 },
+        { field: "data.Year", order: -1 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects view config with invalid column width", () => {
+    const result = ViewConfigSchema.safeParse({
+      columnWidths: {
+        1: 59,
+      },
+      sort: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid update view config payload", () => {
+    const result = UpdateViewConfigInputSchema.safeParse({
+      viewId: 0,
+      config: {
+        columnWidths: {
+          bad: 120,
+        },
+        sort: [{ field: "Title", order: 1 }],
+      },
     });
 
     expect(result.success).toBe(false);

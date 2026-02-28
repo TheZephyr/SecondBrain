@@ -15,20 +15,20 @@
     @reorder-fields="onFieldsReorder"
   />
   <template v-else>
-    <CollectionGridView
+    <CollectionGrid
       v-if="activeView?.type === 'grid'"
+      :viewId="activeView.id"
       :items="items"
       :itemsTotal="itemsTotal"
       :itemsLoading="itemsLoading"
-      :itemsPage="itemsPage"
-      :itemsRows="itemsRows"
+      :itemsFullyLoaded="itemsFullyLoaded"
       :orderedFields="orderedFields"
       :searchQuery="searchQuery"
       :debouncedSearchQuery="debouncedSearchQuery"
       :multiSortMeta="multiSortMeta"
+      :loadNextPage="loadNextPage"
       @update:searchQuery="searchQuery = $event"
       @update:multiSortMeta="multiSortMeta = $event"
-      @page="onItemsPage"
       @sort="onItemsSort"
       @edit-item="openEditItemDialog"
       @delete-item="confirmDeleteItem"
@@ -85,7 +85,7 @@ import type {
   MoveItemInput,
   UpdateItemInput
 } from '../../types/models'
-import CollectionGridView from './collection/CollectionGridView.vue'
+import CollectionGrid from './collection/grid/CollectionGrid.vue'
 import CollectionKanbanView from './collection/CollectionKanbanView.vue'
 import CollectionCalendarView from './collection/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
@@ -105,8 +105,7 @@ const {
   items,
   itemsTotal,
   itemsLoading,
-  itemsPage,
-  itemsRows,
+  itemsFullyLoaded,
   activeCollectionPanel,
   collectionSettingsOpen,
   currentViews,
@@ -143,12 +142,18 @@ const {
   searchQuery,
   debouncedSearchQuery,
   multiSortMeta,
-  onItemsPage,
-  onItemsSort
+  onItemsSort,
+  loadNextPage
 } = useCollectionItemsQuery({
   collectionId,
+  viewId: activeViewId,
   safeFields,
-  loadItems: loadCollectionItems
+  items,
+  itemsLoading,
+  itemsFullyLoaded,
+  loadItems: loadCollectionItems,
+  loadViewConfig: store.loadViewConfig,
+  saveViewConfig: store.saveViewConfig
 })
 
 watch(

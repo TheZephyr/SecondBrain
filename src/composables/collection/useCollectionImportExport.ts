@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
-import { useStore } from "../store";
-import { useNotificationsStore } from "../stores/notifications";
-import { handleIpc } from "../utils/ipc";
+import { useStore } from "../../store";
+import { useNotificationsStore } from "../../stores/notifications";
+import { handleIpc } from "../../utils/ipc";
 import type {
   Collection,
   Field,
@@ -11,7 +11,7 @@ import type {
   NewItemInput,
   ExportFormat,
   ImportMode,
-} from "../types/models";
+} from "../../types/models";
 import {
   buildImportPreview,
   parseImportContent,
@@ -19,9 +19,9 @@ import {
   serializeItemsToJson,
   type ImportPreview,
   type ParsedImportData,
-} from "../utils/collectionImportExport";
-import { isSafeFieldName } from "../validation/fieldNames";
-import { fieldNameSchema } from "../validation/schemas";
+} from "../../utils/collectionImportExport";
+import { isSafeFieldName } from "../../validation/fieldNames";
+import { fieldNameSchema } from "../../validation/schemas";
 
 type UseCollectionImportExportParams = {
   collection: Ref<Collection>;
@@ -73,8 +73,8 @@ export function useCollectionImportExport({
   }
 
   async function fetchAllItemsForExport(collectionId: number): Promise<Item[]> {
-    // Keep this aligned with GetItemsInputSchema.limit max (currently 100).
-    const pageSize = 100;
+    // Keep this aligned with GetItemsInputSchema.limit max (currently 200).
+    const pageSize = 200;
     let offset = 0;
     let total = 0;
     const allItems: Item[] = [];

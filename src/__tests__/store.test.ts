@@ -7,6 +7,7 @@ import type {
   Item,
   Collection,
   ItemData,
+  ViewConfig,
 } from "../types/models";
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,8 @@ function makeElectronAPIMock() {
     addView: vi.fn(),
     updateView: vi.fn(),
     deleteView: vi.fn(),
+    getViewConfig: vi.fn(),
+    updateViewConfig: vi.fn(),
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
@@ -51,7 +54,7 @@ function makeElectronAPIMock() {
 }
 
 function emptyPaginatedResult(
-  limit = 50,
+  limit = 100,
   offset = 0,
 ): PaginatedItemsResult {
   return { items: [], total: 0, limit, offset };
@@ -98,24 +101,79 @@ describe("loadItems", () => {
     expect(store.itemsLoading).toBe(false);
   });
 
-  it("clamps rows to MAX_ITEMS_ROWS (100)", async () => {
+  it("uses a fixed limit of 100", async () => {
     const store = useStore();
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult(100, 0)));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
-    await store.loadItems(1, { rows: 999 });
+    await store.loadItems(1);
 
     const callArgs = mockApi.getItems.mock.calls[0][0];
     expect(callArgs.limit).toBe(100);
   });
 
-  it("clamps rows to minimum of 1", async () => {
+  it("appends items for page > 0 and deduplicates by id", async () => {
     const store = useStore();
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult(1, 0)));
+    mockApi.getItems
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(1), makeItem(2)],
+          total: 4,
+          limit: 100,
+          offset: 0,
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(2), makeItem(3), makeItem(4)],
+          total: 4,
+          limit: 100,
+          offset: 100,
+        }),
+      );
 
-    await store.loadItems(1, { rows: -5 });
+    await store.loadItems(1, { page: 0 });
+    await store.loadItems(1, { page: 1 });
 
-    const callArgs = mockApi.getItems.mock.calls[0][0];
-    expect(callArgs.limit).toBe(1);
+    expect(store.items.map((item) => item.id)).toEqual([1, 2, 3, 4]);
+    expect(mockApi.getItems.mock.calls[1][0]).toMatchObject({
+      limit: 100,
+      offset: 100,
+    });
+  });
+
+  it("updates itemsFullyLoaded when all rows are fetched", async () => {
+    const store = useStore();
+    const firstPageItems = Array.from({ length: 100 }, (_, index) =>
+      makeItem(index + 1),
+    );
+    const secondPageItems = Array.from({ length: 50 }, (_, index) =>
+      makeItem(index + 101),
+    );
+
+    mockApi.getItems
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: firstPageItems,
+          total: 150,
+          limit: 100,
+          offset: 0,
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: secondPageItems,
+          total: 150,
+          limit: 100,
+          offset: 100,
+        }),
+      );
+
+    await store.loadItems(1, { page: 0 });
+    expect(store.itemsFullyLoaded).toBe(false);
+
+    await store.loadItems(1, { page: 1 });
+    expect(store.items.length).toBe(150);
+    expect(store.itemsFullyLoaded).toBe(true);
   });
 
   it("discards stale responses (stale-request token)", async () => {
@@ -162,20 +220,52 @@ describe("loadItems", () => {
     expect(store.items).not.toEqual(staleItems);
   });
 
-  it("computes page from offset/limit in response", async () => {
+  it("ignores stale page append responses after a reset load", async () => {
     const store = useStore();
-    mockApi.getItems.mockResolvedValue(
+    let resolveAppend: (value: IpcResult<PaginatedItemsResult>) => void;
+    const appendPromise = new Promise<IpcResult<PaginatedItemsResult>>(
+      (resolve) => {
+        resolveAppend = resolve;
+      },
+    );
+
+    mockApi.getItems
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(1)],
+          total: 2,
+          limit: 100,
+          offset: 0,
+        }),
+      )
+      .mockReturnValueOnce(appendPromise)
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(10)],
+          total: 1,
+          limit: 100,
+          offset: 0,
+        }),
+      );
+
+    await store.loadItems(1, { page: 0 });
+    const appendLoad = store.loadItems(1, { page: 1 });
+    const resetLoad = store.loadItems(1, { search: "fresh" });
+
+    resolveAppend!(
       ok<PaginatedItemsResult>({
-        items: [makeItem(1)],
-        total: 100,
-        limit: 10,
-        offset: 30,
+        items: [makeItem(2)],
+        total: 2,
+        limit: 100,
+        offset: 100,
       }),
     );
 
-    await store.loadItems(1, { page: 3, rows: 10 });
+    await appendLoad;
+    await resetLoad;
 
-    expect(store.itemsPage).toBe(3); // 30 / 10 = 3
+    expect(store.items.map((item) => item.id)).toEqual([10]);
+    expect(store.itemsFullyLoaded).toBe(true);
   });
 
   it("sets itemsLoading to false on completion", async () => {
@@ -505,5 +595,39 @@ describe("loadCollections", () => {
     await store.loadCollections();
 
     expect(store.collections).toEqual(cols);
+  });
+});
+
+describe("view config", () => {
+  it("loads view config via IPC", async () => {
+    const store = useStore();
+    const config: ViewConfig = {
+      columnWidths: { 1: 120 },
+      sort: [{ field: "data.Title", order: 1 }],
+    };
+    mockApi.getViewConfig.mockResolvedValue(ok(config));
+
+    const result = await store.loadViewConfig(5);
+
+    expect(mockApi.getViewConfig).toHaveBeenCalledWith(5);
+    expect(result).toEqual(config);
+  });
+
+  it("saves view config via IPC", async () => {
+    const store = useStore();
+    mockApi.updateViewConfig.mockResolvedValue(ok(true));
+
+    await store.saveViewConfig(4, {
+      columnWidths: { 7: 59.4 },
+      sort: [{ field: "data.Title", order: -1 }],
+    });
+
+    expect(mockApi.updateViewConfig).toHaveBeenCalledWith({
+      viewId: 4,
+      config: {
+        columnWidths: { 7: 60 },
+        sort: [{ field: "data.Title", order: -1 }],
+      },
+    });
   });
 });
