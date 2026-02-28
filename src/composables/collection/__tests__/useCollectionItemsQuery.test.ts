@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref, type EffectScope } from 'vue'
-import type { Field, ViewConfig } from '../../../types/models'
+import type { Field, Item, ViewConfig } from '../../../types/models'
 import type { RawSortMeta } from '../../../components/views/collection/types'
 import {
   getSortStorageKey,
@@ -28,6 +28,14 @@ function createMemoryStorage(seed: Record<string, string> = {}) {
     removeItem(key: string) {
       map.delete(key)
     }
+  }
+}
+
+function createPagingState(seedItems: Item[] = []) {
+  return {
+    items: ref<Item[]>(seedItems),
+    itemsLoading: ref(false),
+    itemsFullyLoaded: ref(false)
   }
 }
 
@@ -74,6 +82,7 @@ describe('useCollectionItemsQuery', () => {
       makeField({ id: 1, name: 'Title', collection_id: 9 })
     ])
     const loadItems = vi.fn(async () => undefined)
+    const paging = createPagingState()
     const loadViewConfig = vi.fn(
       async (): Promise<ViewConfig | null> => ({
         columnWidths: { 1: 120 },
@@ -91,6 +100,9 @@ describe('useCollectionItemsQuery', () => {
           collectionId,
           viewId,
           safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
           loadItems,
           loadViewConfig,
           saveViewConfig,
@@ -121,6 +133,7 @@ describe('useCollectionItemsQuery', () => {
       makeField({ id: 1, name: 'Legacy', collection_id: 1 })
     ])
     const loadItems = vi.fn(async () => undefined)
+    const paging = createPagingState()
     const loadViewConfig = vi.fn(
       async (): Promise<ViewConfig | null> => ({
         columnWidths: {},
@@ -135,6 +148,9 @@ describe('useCollectionItemsQuery', () => {
           collectionId,
           viewId,
           safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
           loadItems,
           loadViewConfig,
           saveViewConfig,
@@ -168,6 +184,7 @@ describe('useCollectionItemsQuery', () => {
       makeField({ id: 1, name: 'Title', collection_id: 15 })
     ])
     const loadItems = vi.fn(async () => undefined)
+    const paging = createPagingState()
     const loadViewConfig = vi.fn(
       async (): Promise<ViewConfig | null> => ({
         columnWidths: { 4: 190 },
@@ -182,6 +199,9 @@ describe('useCollectionItemsQuery', () => {
           collectionId,
           viewId,
           safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
           loadItems,
           loadViewConfig,
           saveViewConfig,
@@ -216,6 +236,7 @@ describe('useCollectionItemsQuery', () => {
       ])
     })
     const loadItems = vi.fn(async () => undefined)
+    const paging = createPagingState()
     const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => null)
     const saveViewConfig = vi.fn(async () => undefined)
 
@@ -225,6 +246,9 @@ describe('useCollectionItemsQuery', () => {
           collectionId,
           viewId,
           safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
           storage,
           loadItems,
           loadViewConfig,
@@ -260,6 +284,7 @@ describe('useCollectionItemsQuery', () => {
     const viewId = ref<number | null>(111)
     const safeFields = ref<Field[]>([makeField({ id: 1, name: 'Title', collection_id: 81 })])
     const loadItems = vi.fn(async () => undefined)
+    const paging = createPagingState()
     const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => null)
     const saveViewConfig = vi.fn(async () => undefined)
 
@@ -270,6 +295,9 @@ describe('useCollectionItemsQuery', () => {
             collectionId,
             viewId,
             safeFields,
+            items: paging.items,
+            itemsLoading: paging.itemsLoading,
+            itemsFullyLoaded: paging.itemsFullyLoaded,
             loadItems,
             loadViewConfig,
             saveViewConfig,
@@ -292,5 +320,87 @@ describe('useCollectionItemsQuery', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('loads the next page when not loading and not fully loaded', async () => {
+    const collectionId = ref(11)
+    const viewId = ref<number | null>(null)
+    const safeFields = ref<Field[]>([])
+    const paging = createPagingState(Array.from({ length: 100 }, (_, index) => ({
+      id: index + 1,
+      collection_id: 11,
+      order: index,
+      data: {}
+    })))
+    const loadItems = vi.fn(async () => undefined)
+    const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => null)
+    const saveViewConfig = vi.fn(async () => undefined)
+
+    await withScope(async scope => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig
+        })
+      )
+
+      if (!query) {
+        throw new Error('Query composable failed to initialize')
+      }
+
+      await query.loadNextPage()
+
+      expect(loadItems).toHaveBeenCalledWith({ page: 1 })
+    })
+  })
+
+  it('does not load the next page when already loading or fully loaded', async () => {
+    const collectionId = ref(11)
+    const viewId = ref<number | null>(null)
+    const safeFields = ref<Field[]>([])
+    const paging = createPagingState(Array.from({ length: 100 }, (_, index) => ({
+      id: index + 1,
+      collection_id: 11,
+      order: index,
+      data: {}
+    })))
+    const loadItems = vi.fn(async () => undefined)
+    const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => null)
+    const saveViewConfig = vi.fn(async () => undefined)
+
+    await withScope(async scope => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig
+        })
+      )
+
+      if (!query) {
+        throw new Error('Query composable failed to initialize')
+      }
+
+      paging.itemsLoading.value = true
+      await query.loadNextPage()
+      paging.itemsLoading.value = false
+      paging.itemsFullyLoaded.value = true
+      await query.loadNextPage()
+
+      expect(loadItems).not.toHaveBeenCalled()
+    })
   })
 })

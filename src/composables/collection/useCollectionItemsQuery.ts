@@ -1,12 +1,13 @@
 import { ref, watch, type Ref } from 'vue'
 import { refDebounced } from '@vueuse/core'
-import type { Field, ItemSortSpec, ViewConfig } from '../../types/models'
+import type { Field, Item, ItemSortSpec, ViewConfig } from '../../types/models'
 import type {
   MultiSortMeta,
   RawSortMeta
 } from '../../components/views/collection/types'
 
 export type LoadItemsOptions = {
+  page?: number
   search?: string
   sort?: ItemSortSpec[]
 }
@@ -17,12 +18,17 @@ type UseCollectionItemsQueryParams = {
   collectionId: Ref<number>
   viewId: Ref<number | null>
   safeFields: Ref<Field[]>
+  items: Ref<Item[]>
+  itemsLoading: Ref<boolean>
+  itemsFullyLoaded: Ref<boolean>
   loadItems: (options?: LoadItemsOptions) => Promise<void>
   loadViewConfig: (viewId: number) => Promise<ViewConfig | null>
   saveViewConfig: (viewId: number, config: ViewConfig) => Promise<void>
   storage?: SortStorage
   debounceMs?: number
 }
+
+const ITEMS_PAGE_SIZE = 100
 
 const fallbackStorage: SortStorage = {
   getItem: () => null,
@@ -119,6 +125,9 @@ export function useCollectionItemsQuery({
   collectionId,
   viewId,
   safeFields,
+  items,
+  itemsLoading,
+  itemsFullyLoaded,
   loadItems,
   loadViewConfig,
   saveViewConfig,
@@ -296,10 +305,23 @@ export function useCollectionItemsQuery({
     { immediate: true }
   )
 
+  async function loadNextPage() {
+    if (itemsFullyLoaded.value || itemsLoading.value) {
+      return
+    }
+    if (items.value.length === 0) {
+      return
+    }
+
+    const nextPage = Math.ceil(items.value.length / ITEMS_PAGE_SIZE)
+    await loadItems({ page: nextPage })
+  }
+
   return {
     searchQuery,
     debouncedSearchQuery,
     multiSortMeta,
-    onItemsSort
+    onItemsSort,
+    loadNextPage
   }
 }

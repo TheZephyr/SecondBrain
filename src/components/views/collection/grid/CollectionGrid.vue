@@ -53,8 +53,10 @@
           :gridTemplateColumns="gridTemplateColumns"
           :itemsTotal="itemsTotal"
           :itemsLoading="itemsLoading"
+          :itemsFullyLoaded="itemsFullyLoaded"
           :debouncedSearchQuery="debouncedSearchQuery"
           :orderedFields="orderedFields"
+          :loadNextPage="loadNextPage"
           @edit-item="emitEditItem"
           @row-contextmenu="onRowContextMenu"
         />
@@ -105,10 +107,12 @@ const props = defineProps<{
   items: Item[]
   itemsTotal: number
   itemsLoading: boolean
+  itemsFullyLoaded: boolean
   orderedFields: Field[]
   searchQuery: string
   debouncedSearchQuery: string
   multiSortMeta: MultiSortMeta[]
+  loadNextPage: () => Promise<void>
 }>()
 
 const emit = defineEmits<{

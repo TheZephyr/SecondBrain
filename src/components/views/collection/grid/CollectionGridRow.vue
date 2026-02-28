@@ -2,6 +2,7 @@
   <div
     class="grid items-center border-b border-[var(--border-color)] text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)] group"
     :style="{ gridTemplateColumns }"
+    :aria-rowindex="virtualIndex + 1"
     @contextmenu.prevent="event => emitRowContextMenu(event)"
   >
     <div
@@ -53,8 +54,13 @@ import type { Field, Item, ItemDataValue } from '../../../../types/models'
 import type { GridColumnMeta, GridRow } from './types'
 import CollectionGridCell from './CollectionGridCell.vue'
 
+defineOptions({
+  inheritAttrs: false
+})
+
 const props = defineProps<{
   row: Row<GridRow>
+  virtualIndex: number
   rowIndex: number
   totalRows: number
   gridTemplateColumns: string

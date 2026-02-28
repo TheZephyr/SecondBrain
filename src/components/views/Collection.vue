@@ -21,10 +21,12 @@
       :items="items"
       :itemsTotal="itemsTotal"
       :itemsLoading="itemsLoading"
+      :itemsFullyLoaded="itemsFullyLoaded"
       :orderedFields="orderedFields"
       :searchQuery="searchQuery"
       :debouncedSearchQuery="debouncedSearchQuery"
       :multiSortMeta="multiSortMeta"
+      :loadNextPage="loadNextPage"
       @update:searchQuery="searchQuery = $event"
       @update:multiSortMeta="multiSortMeta = $event"
       @sort="onItemsSort"
@@ -103,6 +105,7 @@ const {
   items,
   itemsTotal,
   itemsLoading,
+  itemsFullyLoaded,
   activeCollectionPanel,
   collectionSettingsOpen,
   currentViews,
@@ -139,11 +142,15 @@ const {
   searchQuery,
   debouncedSearchQuery,
   multiSortMeta,
-  onItemsSort
+  onItemsSort,
+  loadNextPage
 } = useCollectionItemsQuery({
   collectionId,
   viewId: activeViewId,
   safeFields,
+  items,
+  itemsLoading,
+  itemsFullyLoaded,
   loadItems: loadCollectionItems,
   loadViewConfig: store.loadViewConfig,
   saveViewConfig: store.saveViewConfig

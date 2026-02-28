@@ -33,7 +33,17 @@ type LoadItemsOptions = {
   sort?: ItemSortSpec[];
 };
 
-const ITEMS_LIMIT = 200;
+const ITEMS_LIMIT = 100;
+
+function areItemSortSpecsEqual(a: ItemSortSpec[], b: ItemSortSpec[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  return a.every(
+    (entry, index) =>
+      entry.field === b[index]?.field && entry.order === b[index]?.order,
+  );
+}
 
 export const useStore = defineStore("main", () => {
   // State
@@ -44,6 +54,7 @@ export const useStore = defineStore("main", () => {
   const items = ref<Item[]>([]);
   const itemsTotal = ref(0);
   const itemsLoading = ref(false);
+  const itemsFullyLoaded = ref(false);
   const itemsPage = ref(0);
   const itemsSearch = ref("");
   const itemsSort = ref<ItemSortSpec[]>([]);
@@ -59,9 +70,27 @@ export const useStore = defineStore("main", () => {
     items.value = [];
     itemsTotal.value = 0;
     itemsLoading.value = false;
+    itemsFullyLoaded.value = false;
     itemsPage.value = 0;
     itemsSearch.value = "";
     itemsSort.value = [];
+  }
+
+  function appendItems(nextItems: Item[]) {
+    if (nextItems.length === 0) {
+      return;
+    }
+
+    const existingIds = new Set(items.value.map((item) => item.id));
+    const deduped = [...items.value];
+    for (const item of nextItems) {
+      if (existingIds.has(item.id)) {
+        continue;
+      }
+      deduped.push(item);
+      existingIds.add(item.id);
+    }
+    items.value = deduped;
   }
 
   function clearViewsState() {
@@ -271,16 +300,29 @@ export const useStore = defineStore("main", () => {
   }
 
   async function loadItems(collectionId: number, options: LoadItemsOptions = {}) {
-    if (options.page !== undefined) {
-      itemsPage.value = Math.max(0, options.page);
-    } else {
-      itemsPage.value = 0;
-    }
+    const searchChanged =
+      options.search !== undefined && options.search !== itemsSearch.value;
+    const sortChanged =
+      options.sort !== undefined &&
+      !areItemSortSpecsEqual(options.sort, itemsSort.value);
+
     if (options.search !== undefined) {
       itemsSearch.value = options.search;
     }
     if (options.sort !== undefined) {
       itemsSort.value = options.sort;
+    }
+
+    let nextPage = options.page !== undefined ? Math.max(0, options.page) : 0;
+    if (searchChanged || sortChanged) {
+      nextPage = 0;
+    }
+
+    itemsPage.value = nextPage;
+    const shouldResetItems = itemsPage.value === 0;
+    if (shouldResetItems) {
+      items.value = [];
+      itemsFullyLoaded.value = false;
     }
 
     const limit = ITEMS_LIMIT;
@@ -304,8 +346,8 @@ export const useStore = defineStore("main", () => {
       });
 
       const fallback: PaginatedItemsResult = {
-        items: items.value,
-        total: itemsTotal.value,
+        items: shouldResetItems ? [] : items.value,
+        total: shouldResetItems ? 0 : itemsTotal.value,
         limit,
         offset,
       };
@@ -318,17 +360,14 @@ export const useStore = defineStore("main", () => {
       const resolvedPage =
         payload.limit > 0 ? Math.floor(payload.offset / payload.limit) : 0;
 
-      items.value = payload.items;
+      if (resolvedPage === 0) {
+        items.value = payload.items;
+      } else {
+        appendItems(payload.items);
+      }
       itemsTotal.value = payload.total;
       itemsPage.value = resolvedPage;
-
-      if (
-        payload.items.length === 0 &&
-        payload.total > 0 &&
-        resolvedPage > 0
-      ) {
-        await loadItems(collectionId, { page: resolvedPage - 1 });
-      }
+      itemsFullyLoaded.value = items.value.length >= payload.total;
     } finally {
       if (requestToken === itemsRequestToken) {
         itemsLoading.value = false;
@@ -487,6 +526,7 @@ export const useStore = defineStore("main", () => {
     items,
     itemsTotal,
     itemsLoading,
+    itemsFullyLoaded,
     itemsSearch,
     itemsSort,
     selectedCollection,
@@ -512,6 +552,7 @@ export const useStore = defineStore("main", () => {
     reorderFields,
     deleteField,
     loadItems,
+    appendItems,
     addItem,
     insertItemAt,
     duplicateItem,

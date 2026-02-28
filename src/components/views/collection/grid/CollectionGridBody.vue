@@ -1,5 +1,9 @@
 <template>
-  <div class="relative flex min-h-0 flex-1 flex-col overflow-auto bg-[var(--bg-primary)]">
+  <div
+    ref="scrollElementRef"
+    class="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[var(--bg-primary)]"
+    @scroll.passive="onScroll"
+  >
     <div v-if="rows.length === 0 && !itemsLoading" class="flex flex-1 items-center justify-center">
       <div class="flex flex-col items-center gap-3 py-10 text-[var(--text-muted)]">
         <component
@@ -18,22 +22,36 @@
     </div>
 
     <div class="min-w-full">
-      <CollectionGridRow
-        v-for="(row, index) in rows"
-        :key="row.id"
-        :row="row"
-        :rowIndex="index"
-        :totalRows="rows.length"
-        :gridTemplateColumns="gridTemplateColumns"
-        :orderedFields="orderedFields"
-        :rowIds="rowIds"
-        @edit-item="$emit('edit-item', $event)"
-        @row-contextmenu="$emit('row-contextmenu', $event)"
-      />
+      <div class="relative min-w-full" :style="{ height: `${totalSize}px` }">
+        <div
+          v-for="virtualRow in virtualRows"
+          :key="rowAt(virtualRow.index).original.id"
+          class="absolute left-0 top-0 w-full"
+          :style="{ transform: `translateY(${virtualRow.start}px)` }"
+        >
+          <CollectionGridRow
+            :row="rowAt(virtualRow.index)"
+            :virtualIndex="virtualRow.index"
+            :rowIndex="virtualRow.index"
+            :totalRows="rows.length"
+            :gridTemplateColumns="gridTemplateColumns"
+            :orderedFields="orderedFields"
+            :rowIds="rowIds"
+            @edit-item="$emit('edit-item', $event)"
+            @row-contextmenu="$emit('row-contextmenu', $event)"
+          />
+        </div>
+      </div>
       <CollectionGridAddRow
         :gridTemplateColumns="gridTemplateColumns"
         :orderedFields="orderedFields"
       />
+      <div
+        v-if="itemsLoading && rows.length > 0"
+        class="flex h-9 items-center justify-center border-b border-[var(--border-color)] text-xs text-[var(--text-muted)]"
+      >
+        Loading more...
+      </div>
     </div>
 
     <div
@@ -46,8 +64,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Row } from '@tanstack/vue-table'
+import { useVirtualizer } from '@tanstack/vue-virtual'
 import { FileText, Search } from 'lucide-vue-next'
 import type { Field, Item } from '../../../../types/models'
 import CollectionGridRow from './CollectionGridRow.vue'
@@ -65,11 +84,61 @@ const props = defineProps<{
   gridTemplateColumns: string
   itemsTotal: number
   itemsLoading: boolean
+  itemsFullyLoaded: boolean
   debouncedSearchQuery: string
   orderedFields: Field[]
+  loadNextPage: () => Promise<void>
 }>()
 
 const rowIds = computed(() => props.rows.map(row => row.original.id))
+const scrollElementRef = ref<HTMLElement | null>(null)
+let scrollRafId: number | null = null
+
+const virtualizer = useVirtualizer<HTMLElement, HTMLElement>(computed(() => ({
+  count: props.rows.length,
+  getScrollElement: () => scrollElementRef.value,
+  estimateSize: () => 36,
+  overscan: 10
+})))
+
+const virtualRows = computed(() => virtualizer.value.getVirtualItems())
+const totalSize = computed(() => virtualizer.value.getTotalSize())
+
+function rowAt(index: number): Row<Item> {
+  return props.rows[index] as Row<Item>
+}
+
+function checkLoadMoreThreshold() {
+  const scrollElement = scrollElementRef.value
+  if (!scrollElement) {
+    return
+  }
+  if (props.itemsLoading || props.itemsFullyLoaded) {
+    return
+  }
+
+  if (scrollElement.scrollTop + scrollElement.clientHeight > scrollElement.scrollHeight - 300) {
+    void props.loadNextPage()
+  }
+}
+
+function onScroll() {
+  if (scrollRafId !== null) {
+    return
+  }
+
+  scrollRafId = window.requestAnimationFrame(() => {
+    scrollRafId = null
+    checkLoadMoreThreshold()
+  })
+}
+
+onBeforeUnmount(() => {
+  if (scrollRafId !== null) {
+    window.cancelAnimationFrame(scrollRafId)
+    scrollRafId = null
+  }
+})
 
 defineEmits<{
   'edit-item': [value: Item]

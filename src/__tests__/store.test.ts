@@ -54,7 +54,7 @@ function makeElectronAPIMock() {
 }
 
 function emptyPaginatedResult(
-  limit = 200,
+  limit = 100,
   offset = 0,
 ): PaginatedItemsResult {
   return { items: [], total: 0, limit, offset };
@@ -101,14 +101,79 @@ describe("loadItems", () => {
     expect(store.itemsLoading).toBe(false);
   });
 
-  it("uses a fixed limit of 200", async () => {
+  it("uses a fixed limit of 100", async () => {
     const store = useStore();
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
     await store.loadItems(1);
 
     const callArgs = mockApi.getItems.mock.calls[0][0];
-    expect(callArgs.limit).toBe(200);
+    expect(callArgs.limit).toBe(100);
+  });
+
+  it("appends items for page > 0 and deduplicates by id", async () => {
+    const store = useStore();
+    mockApi.getItems
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(1), makeItem(2)],
+          total: 4,
+          limit: 100,
+          offset: 0,
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(2), makeItem(3), makeItem(4)],
+          total: 4,
+          limit: 100,
+          offset: 100,
+        }),
+      );
+
+    await store.loadItems(1, { page: 0 });
+    await store.loadItems(1, { page: 1 });
+
+    expect(store.items.map((item) => item.id)).toEqual([1, 2, 3, 4]);
+    expect(mockApi.getItems.mock.calls[1][0]).toMatchObject({
+      limit: 100,
+      offset: 100,
+    });
+  });
+
+  it("updates itemsFullyLoaded when all rows are fetched", async () => {
+    const store = useStore();
+    const firstPageItems = Array.from({ length: 100 }, (_, index) =>
+      makeItem(index + 1),
+    );
+    const secondPageItems = Array.from({ length: 50 }, (_, index) =>
+      makeItem(index + 101),
+    );
+
+    mockApi.getItems
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: firstPageItems,
+          total: 150,
+          limit: 100,
+          offset: 0,
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: secondPageItems,
+          total: 150,
+          limit: 100,
+          offset: 100,
+        }),
+      );
+
+    await store.loadItems(1, { page: 0 });
+    expect(store.itemsFullyLoaded).toBe(false);
+
+    await store.loadItems(1, { page: 1 });
+    expect(store.items.length).toBe(150);
+    expect(store.itemsFullyLoaded).toBe(true);
   });
 
   it("discards stale responses (stale-request token)", async () => {
@@ -153,6 +218,54 @@ describe("loadItems", () => {
     // Store should contain fresh data, not stale
     expect(store.items).toEqual(freshItems);
     expect(store.items).not.toEqual(staleItems);
+  });
+
+  it("ignores stale page append responses after a reset load", async () => {
+    const store = useStore();
+    let resolveAppend: (value: IpcResult<PaginatedItemsResult>) => void;
+    const appendPromise = new Promise<IpcResult<PaginatedItemsResult>>(
+      (resolve) => {
+        resolveAppend = resolve;
+      },
+    );
+
+    mockApi.getItems
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(1)],
+          total: 2,
+          limit: 100,
+          offset: 0,
+        }),
+      )
+      .mockReturnValueOnce(appendPromise)
+      .mockResolvedValueOnce(
+        ok<PaginatedItemsResult>({
+          items: [makeItem(10)],
+          total: 1,
+          limit: 100,
+          offset: 0,
+        }),
+      );
+
+    await store.loadItems(1, { page: 0 });
+    const appendLoad = store.loadItems(1, { page: 1 });
+    const resetLoad = store.loadItems(1, { search: "fresh" });
+
+    resolveAppend!(
+      ok<PaginatedItemsResult>({
+        items: [makeItem(2)],
+        total: 2,
+        limit: 100,
+        offset: 100,
+      }),
+    );
+
+    await appendLoad;
+    await resetLoad;
+
+    expect(store.items.map((item) => item.id)).toEqual([10]);
+    expect(store.itemsFullyLoaded).toBe(true);
   });
 
   it("sets itemsLoading to false on completion", async () => {
