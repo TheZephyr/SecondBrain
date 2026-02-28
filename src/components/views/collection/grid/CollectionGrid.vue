@@ -44,6 +44,8 @@
           :multiSortMeta="multiSortMeta"
           @sort="onSort"
           @manage-fields="notifyAddField"
+          @set-column-width="onSetColumnWidth"
+          @persist-column-widths="onPersistColumnWidths"
         />
         <CollectionGridBody
           class="min-h-0 flex-1"
@@ -99,6 +101,7 @@ type RowContextMenuPayload = {
 }
 
 const props = defineProps<{
+  viewId: number
   items: Item[]
   itemsTotal: number
   itemsLoading: boolean
@@ -127,7 +130,15 @@ const searchModel = computed({
   set: (value: string) => emit('update:searchQuery', value)
 })
 
-const columns = useGridColumns({ orderedFields: computed(() => props.orderedFields) })
+const {
+  columns,
+  gridTemplateColumns,
+  setColumnWidth,
+  persistColumnWidths
+} = useGridColumns({
+  orderedFields: computed(() => props.orderedFields),
+  viewId: toRef(props, 'viewId')
+})
 
 const selection = useGridSelection()
 const editing = useGridEditing({
@@ -152,11 +163,6 @@ const table = useVueTable<Item>({
 
 const rows = computed<Row<Item>[]>(() => table.getRowModel().rows)
 const headerGroups = computed<HeaderGroup<Item>[]>(() => table.getHeaderGroups())
-
-const gridTemplateColumns = computed(() => {
-  const fieldCount = Math.max(props.orderedFields.length, 1)
-  return `40px repeat(${fieldCount}, minmax(0, 1fr)) 40px`
-})
 
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextMenuRow = ref<Item | null>(null)
@@ -245,6 +251,14 @@ const contextMenuItems = computed(() => {
 function onSort(nextMeta: MultiSortMeta[]) {
   emit('update:multiSortMeta', nextMeta)
   emit('sort', nextMeta)
+}
+
+function onSetColumnWidth(payload: { fieldId: number; width: number }) {
+  setColumnWidth(payload.fieldId, payload.width)
+}
+
+function onPersistColumnWidths() {
+  void persistColumnWidths()
 }
 
 function onRowContextMenu(payload: RowContextMenuPayload) {

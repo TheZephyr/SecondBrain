@@ -7,6 +7,7 @@ import type {
   Item,
   Collection,
   ItemData,
+  ViewConfig,
 } from "../types/models";
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,8 @@ function makeElectronAPIMock() {
     addView: vi.fn(),
     updateView: vi.fn(),
     deleteView: vi.fn(),
+    getViewConfig: vi.fn(),
+    updateViewConfig: vi.fn(),
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
@@ -479,5 +482,39 @@ describe("loadCollections", () => {
     await store.loadCollections();
 
     expect(store.collections).toEqual(cols);
+  });
+});
+
+describe("view config", () => {
+  it("loads view config via IPC", async () => {
+    const store = useStore();
+    const config: ViewConfig = {
+      columnWidths: { 1: 120 },
+      sort: [{ field: "data.Title", order: 1 }],
+    };
+    mockApi.getViewConfig.mockResolvedValue(ok(config));
+
+    const result = await store.loadViewConfig(5);
+
+    expect(mockApi.getViewConfig).toHaveBeenCalledWith(5);
+    expect(result).toEqual(config);
+  });
+
+  it("saves view config via IPC", async () => {
+    const store = useStore();
+    mockApi.updateViewConfig.mockResolvedValue(ok(true));
+
+    await store.saveViewConfig(4, {
+      columnWidths: { 7: 59.4 },
+      sort: [{ field: "data.Title", order: -1 }],
+    });
+
+    expect(mockApi.updateViewConfig).toHaveBeenCalledWith({
+      viewId: 4,
+      config: {
+        columnWidths: { 7: 60 },
+        sort: [{ field: "data.Title", order: -1 }],
+      },
+    });
   });
 });

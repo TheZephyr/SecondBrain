@@ -17,6 +17,7 @@
   <template v-else>
     <CollectionGrid
       v-if="activeView?.type === 'grid'"
+      :viewId="activeView.id"
       :items="items"
       :itemsTotal="itemsTotal"
       :itemsLoading="itemsLoading"
@@ -141,8 +142,11 @@ const {
   onItemsSort
 } = useCollectionItemsQuery({
   collectionId,
+  viewId: activeViewId,
   safeFields,
-  loadItems: loadCollectionItems
+  loadItems: loadCollectionItems,
+  loadViewConfig: store.loadViewConfig,
+  saveViewConfig: store.saveViewConfig
 })
 
 watch(

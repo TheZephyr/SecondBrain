@@ -52,6 +52,15 @@ export const ItemSortSpecSchema = z.object({
   order: z.union([z.literal(1), z.literal(-1)]),
 });
 
+export const viewConfigColumnKeySchema = z
+  .string()
+  .regex(/^[1-9]\d*$/, "Column width key must be a positive integer field ID.");
+
+export const ViewConfigSchema = z.object({
+  columnWidths: z.record(viewConfigColumnKeySchema, z.number().int().min(60)),
+  sort: z.array(ItemSortSpecSchema),
+});
+
 export const itemDataValueSchema = z.union([
   z.string(),
   z
@@ -110,6 +119,11 @@ export const NewViewInputSchema = z.object({
 export const UpdateViewInputSchema = z.object({
   id: positiveIntSchema,
   name: viewNameSchema,
+});
+
+export const UpdateViewConfigInputSchema = z.object({
+  viewId: positiveIntSchema,
+  config: ViewConfigSchema,
 });
 
 export const UpdateCollectionInputSchema = z.object({

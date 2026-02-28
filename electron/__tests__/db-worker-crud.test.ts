@@ -11,6 +11,7 @@ import type {
   UpdateCollectionInput,
   UpdateFieldInput,
   UpdateItemInput,
+  ViewConfig,
 } from "../../src/types/models";
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,17 @@ function getViews(collectionId: number): View[] {
 
 function addView(input: NewViewInput): View {
   return handleOperation({ type: "addView", input }) as View;
+}
+
+function getViewConfig(viewId: number): ViewConfig | null {
+  return handleOperation({ type: "getViewConfig", viewId }) as ViewConfig | null;
+}
+
+function updateViewConfig(viewId: number, config: ViewConfig): boolean {
+  return handleOperation({
+    type: "updateViewConfig",
+    input: { viewId, config },
+  }) as boolean;
 }
 
 function getCollectionItemCounts(): CollectionItemCount[] {
@@ -268,6 +280,35 @@ describe("view CRUD", () => {
       "First",
       "Second",
     ]);
+  });
+
+  it("returns null when a view has no config", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Configless" });
+    const [view] = getViews(col.id);
+
+    expect(view).toBeDefined();
+    expect(getViewConfig(view.id)).toBeNull();
+  });
+
+  it("stores and returns view config", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Configurable" });
+    const [view] = getViews(col.id);
+
+    const config: ViewConfig = {
+      columnWidths: {
+        1: 140,
+        2: 220,
+      },
+      sort: [
+        { field: "data.Title", order: 1 },
+        { field: "data.CreatedAt", order: -1 },
+      ],
+    };
+
+    expect(updateViewConfig(view.id, config)).toBe(true);
+    expect(getViewConfig(view.id)).toEqual(config);
   });
 });
 

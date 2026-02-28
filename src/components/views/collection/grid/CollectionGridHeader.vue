@@ -6,7 +6,7 @@
     <div
       v-for="(header, index) in headers"
       :key="header.id"
-      class="flex h-9 items-center border-r border-[var(--border-color)]"
+      class="relative flex h-9 items-center border-r border-[var(--border-color)]"
       :class="index === headers.length - 1 ? 'border-r-0' : ''"
     >
       <template v-if="headerMeta(header)?.type === 'rowNumber'">
@@ -49,13 +49,18 @@
             </span>
           </span>
         </button>
+        <div
+          v-if="headerMeta(header)?.field"
+          class="absolute right-0 top-0 h-full w-[4px] cursor-col-resize touch-none"
+          @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)"
+        ></div>
       </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 import type { Header, HeaderGroup } from '@tanstack/vue-table'
 import { ChevronDown, ChevronUp, Plus } from 'lucide-vue-next'
 import Button from 'primevue/button'
@@ -72,9 +77,22 @@ const props = defineProps<{
 const emit = defineEmits<{
   sort: [value: MultiSortMeta[]]
   'manage-fields': []
+  'set-column-width': [value: { fieldId: number; width: number }]
+  'persist-column-widths': []
 }>()
 
 const headers = computed(() => props.headerGroups[0]?.headers ?? [])
+const MIN_COLUMN_WIDTH = 60
+
+let activeResize:
+  | { fieldId: number; startX: number; startWidth: number; pointerId: number }
+  | null = null
+
+function stopColumnResize() {
+  document.removeEventListener('pointermove', onColumnResizeMove)
+  document.removeEventListener('pointerup', onColumnResizeEnd)
+  document.removeEventListener('pointercancel', onColumnResizeEnd)
+}
 
 function headerMeta(header: Header<GridRow, unknown>): GridColumnMeta | undefined {
   return header.column.columnDef.meta as GridColumnMeta | undefined
@@ -130,4 +148,51 @@ function toggleSort(field: Field | undefined, event: MouseEvent) {
 
   emit('sort', current.filter(entry => entry.field !== fieldKey))
 }
+
+function startColumnResize(event: PointerEvent, fieldId: number | undefined) {
+  if (!fieldId) return
+
+  const handleElement = event.currentTarget as HTMLElement | null
+  const headerCellElement = handleElement?.parentElement
+  if (!headerCellElement) return
+
+  const startWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(headerCellElement.getBoundingClientRect().width))
+  activeResize = {
+    fieldId,
+    startX: event.clientX,
+    startWidth,
+    pointerId: event.pointerId
+  }
+
+  document.addEventListener('pointermove', onColumnResizeMove)
+  document.addEventListener('pointerup', onColumnResizeEnd)
+  document.addEventListener('pointercancel', onColumnResizeEnd)
+}
+
+function onColumnResizeMove(event: PointerEvent) {
+  if (!activeResize) return
+  if (event.pointerId !== activeResize.pointerId) return
+
+  const deltaX = event.clientX - activeResize.startX
+  const nextWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(activeResize.startWidth + deltaX))
+
+  emit('set-column-width', {
+    fieldId: activeResize.fieldId,
+    width: nextWidth
+  })
+}
+
+function onColumnResizeEnd(event: PointerEvent) {
+  if (!activeResize) return
+  if (event.pointerId !== activeResize.pointerId) return
+
+  activeResize = null
+  stopColumnResize()
+  emit('persist-column-widths')
+}
+
+onBeforeUnmount(() => {
+  activeResize = null
+  stopColumnResize()
+})
 </script>

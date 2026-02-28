@@ -14,6 +14,7 @@ import type {
   NewCollectionInput,
   NewViewInput,
   UpdateViewInput,
+  UpdateViewConfigInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
@@ -38,6 +39,7 @@ import {
   NewCollectionInputSchema,
   NewViewInputSchema,
   UpdateViewInputSchema,
+  UpdateViewConfigInputSchema,
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
@@ -459,6 +461,20 @@ handleIpc("db:updateView", async (_, view: UpdateViewInput) => {
 handleIpc("db:deleteView", async (_, id) => {
   const viewId = parsePositiveInt(id, "db:deleteView");
   return invokeDbWorker({ type: "deleteView", id: viewId });
+});
+
+handleIpc("db:getViewConfig", async (_, viewId: number) => {
+  const parsedViewId = parsePositiveInt(viewId, "db:getViewConfig");
+  return invokeDbWorker({ type: "getViewConfig", viewId: parsedViewId });
+});
+
+handleIpc("db:updateViewConfig", async (_, payload: UpdateViewConfigInput) => {
+  const input = parseOrThrow(
+    UpdateViewConfigInputSchema,
+    payload,
+    "db:updateViewConfig",
+  );
+  return invokeDbWorker({ type: "updateViewConfig", input });
 });
 
 // ==================== FIELDS ====================

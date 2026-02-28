@@ -43,6 +43,16 @@ export type ItemSortSpec = {
   order: 1 | -1;
 };
 
+export type ViewConfig = {
+  columnWidths: Record<number, number>;
+  sort: ItemSortSpec[];
+};
+
+export type UpdateViewConfigInput = {
+  viewId: number;
+  config: ViewConfig;
+};
+
 export type GetItemsInput = {
   collectionId: number;
   limit: number;

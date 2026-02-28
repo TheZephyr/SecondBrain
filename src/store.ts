@@ -23,6 +23,7 @@ import type {
   BulkPatchItemsInput,
   BulkMutationResult,
   PaginatedItemsResult,
+  ViewConfig,
 } from "./types/models";
 import { handleIpc } from "./utils/ipc";
 
@@ -160,6 +161,44 @@ export const useStore = defineStore("main", () => {
       }
     }
     return success;
+  }
+
+  async function loadViewConfig(viewId: number): Promise<ViewConfig | null> {
+    const parsedViewId = Number(viewId);
+    if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
+      return null;
+    }
+
+    const result = await window.electronAPI.getViewConfig(parsedViewId);
+    return handleIpc(result, "db:getViewConfig", null);
+  }
+
+  async function saveViewConfig(viewId: number, config: ViewConfig): Promise<void> {
+    const parsedViewId = Number(viewId);
+    if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
+      return;
+    }
+
+    const normalizedColumnWidths = Object.fromEntries(
+      Object.entries(config.columnWidths).map(([fieldId, width]) => [
+        Number(fieldId),
+        Math.max(60, Math.round(Number(width))),
+      ]),
+    ) as Record<number, number>;
+
+    const normalizedConfig: ViewConfig = {
+      columnWidths: normalizedColumnWidths,
+      sort: config.sort.map((entry) => ({
+        field: String(entry.field),
+        order: entry.order === -1 ? -1 : 1,
+      })),
+    };
+
+    const result = await window.electronAPI.updateViewConfig({
+      viewId: parsedViewId,
+      config: normalizedConfig,
+    });
+    handleIpc(result, "db:updateViewConfig", false);
   }
 
   async function updateCollection(collection: UpdateCollectionInput) {
@@ -457,6 +496,8 @@ export const useStore = defineStore("main", () => {
     addView,
     updateView,
     deleteView,
+    loadViewConfig,
+    saveViewConfig,
     loadCollections,
     loadViews,
     setActiveViewId,
