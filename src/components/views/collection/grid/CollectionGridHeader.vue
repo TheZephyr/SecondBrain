@@ -51,7 +51,11 @@
         </button>
         <div
           v-if="headerMeta(header)?.field"
-          class="absolute right-0 top-0 h-full w-[4px] cursor-col-resize touch-none"
+          class="absolute right-0 top-2 bottom-2 w-px bg-[var(--border-color)] pointer-events-none"
+        />
+        <div
+          v-if="headerMeta(header)?.field"
+          class="absolute right-0 top-0 h-full w-[1px] cursor-col-resize touch-none bg-transparent hover:bg-[var(--accent-primary)] transition-colors duration-100"
           @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)"
         ></div>
       </template>
