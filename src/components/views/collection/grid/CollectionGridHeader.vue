@@ -1,12 +1,12 @@
 <template>
   <div
-    class="grid h-9 items-center border-b border-[var(--border-color)] bg-[var(--bg-secondary)] text-xs"
+    class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)] text-xs"
     :style="{ gridTemplateColumns }"
   >
     <div
       v-for="(header, index) in headers"
       :key="header.id"
-      class="relative flex h-9 items-center border-r border-[var(--border-color)]"
+      class="relative flex h-10 items-center border-r border-[var(--border-color)]"
       :class="index === headers.length - 1 ? 'border-r-0' : ''"
     >
       <template v-if="headerMeta(header)?.type === 'rowNumber'">

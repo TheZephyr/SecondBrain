@@ -5,17 +5,17 @@
     :style="{ gridTemplateColumns }"
     @click="onAddRow"
   >
-    <div class="flex h-9 items-center justify-end border-r border-[var(--border-color)] pr-2">
+    <div class="flex h-10 items-center justify-end border-r border-[var(--border-color)] pr-2">
       <Plus :size="14" />
     </div>
     <div
       v-for="field in orderedFields"
       :key="field.id"
-      class="flex h-9 items-center border-r border-[var(--border-color)]"
+      class="flex h-10 items-center border-r border-[var(--border-color)]"
     >
-      <div class="h-9 w-full"></div>
+      <div class="h-10 w-full"></div>
     </div>
-    <div class="flex h-9 items-center"></div>
+    <div class="flex h-10 items-center"></div>
   </div>
 </template>
 

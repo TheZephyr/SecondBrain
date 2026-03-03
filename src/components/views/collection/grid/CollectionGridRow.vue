@@ -8,11 +8,11 @@
     <div
       v-for="(cell, cellIndex) in cells"
       :key="cell.id"
-      class="flex h-9 items-center border-r border-[var(--border-color)]"
+      class="flex h-10 items-center border-r border-[var(--border-color)]"
       :class="cellIndex === cells.length - 1 ? 'border-r-0' : ''"
     >
       <template v-if="cellMeta(cell)?.type === 'rowNumber'">
-        <div class="relative flex h-9 w-full items-center justify-end pr-2">
+        <div class="relative flex h-10 w-full items-center justify-end pr-2">
           <span class="text-right text-xs text-[var(--text-muted)] transition-opacity group-hover:opacity-0">
             {{ rowIndex + 1 }}
           </span>
@@ -29,7 +29,7 @@
         </div>
       </template>
       <template v-else-if="cellMeta(cell)?.type === 'addField'">
-        <div class="h-9 w-full"></div>
+        <div class="h-10 w-full"></div>
       </template>
       <template v-else>
         <CollectionGridCell

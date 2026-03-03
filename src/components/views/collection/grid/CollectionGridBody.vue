@@ -97,7 +97,7 @@ let scrollRafId: number | null = null
 const virtualizer = useVirtualizer<HTMLElement, HTMLElement>(computed(() => ({
   count: props.rows.length,
   getScrollElement: () => scrollElementRef.value,
-  estimateSize: () => 36,
+  estimateSize: () => 40,
   overscan: 10
 })))
 

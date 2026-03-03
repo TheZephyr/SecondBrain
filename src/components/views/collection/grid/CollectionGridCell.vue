@@ -1,6 +1,6 @@
 <template>
   <div
-    class="cell flex h-9 w-full items-center px-2 text-sm text-[var(--text-primary)]"
+    class="cell flex h-10 w-full items-center px-3 text-sm text-[var(--text-primary)]"
     :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''"
     data-grid-cell
     @click="onSelect"
@@ -10,15 +10,15 @@
       <InputText
         v-if="field.type === 'text' || field.type === 'textarea'"
         v-model="textModel"
-        class="h-8 w-full"
+        class="h-9 w-full"
         @blur="onBlur"
         @keydown="onKeydown"
       />
       <InputNumber
         v-else-if="field.type === 'number'"
         v-model="numberModel"
-        inputClass="h-8 w-full"
-        class="h-8 w-full"
+        inputClass="h-9 w-full"
+        class="h-9 w-full"
         @blur="onBlur"
         @keydown="onKeydown"
       />
@@ -26,8 +26,8 @@
         v-else-if="field.type === 'date'"
         v-model="dateModel"
         dateFormat="yy-mm-dd"
-        inputClass="h-8 w-full"
-        class="h-8 w-full"
+        inputClass="h-9 w-full"
+        class="h-9 w-full"
         @blur="onBlur"
         @keydown="onKeydown"
       />
@@ -35,7 +35,7 @@
         v-else-if="field.type === 'select'"
         v-model="selectModel"
         :options="selectOptions"
-        class="h-8 w-full"
+        class="h-9 w-full"
         @blur="onBlur"
         @keydown="onKeydown"
       />
