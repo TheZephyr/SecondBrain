@@ -37,8 +37,10 @@
             :gridTemplateColumns="gridTemplateColumns"
             :orderedFields="orderedFields"
             :rowIds="rowIds"
+            :isSelected="isRowSelected(rowAt(virtualRow.index).original.id)"
             @edit-item="$emit('edit-item', $event)"
             @row-contextmenu="$emit('row-contextmenu', $event)"
+            @toggle-row-selection="onToggleRowSelection"
           />
         </div>
       </div>
@@ -91,6 +93,7 @@ const props = defineProps<{
 }>()
 
 const rowIds = computed(() => props.rows.map(row => row.original.id))
+const selectedRowIds = ref<Set<number>>(new Set())
 const scrollElementRef = ref<HTMLElement | null>(null)
 let scrollRafId: number | null = null
 
@@ -106,6 +109,22 @@ const totalSize = computed(() => virtualizer.value.getTotalSize())
 
 function rowAt(index: number): Row<Item> {
   return props.rows[index] as Row<Item>
+}
+
+function isRowSelected(rowId: number) {
+  return selectedRowIds.value.has(rowId)
+}
+
+function onToggleRowSelection(payload: { rowId: number; selected: boolean }) {
+  const nextSelectedRowIds = new Set(selectedRowIds.value)
+
+  if (payload.selected) {
+    nextSelectedRowIds.add(payload.rowId)
+  } else {
+    nextSelectedRowIds.delete(payload.rowId)
+  }
+
+  selectedRowIds.value = nextSelectedRowIds
 }
 
 function checkLoadMoreThreshold() {
