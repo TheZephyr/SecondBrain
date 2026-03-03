@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col px-10 py-8">
+  <div class="flex h-full w-full min-h-0 flex-col">
     <CollectionGridToolbar
       v-model:searchQuery="searchModel"
       :multiSortMeta="multiSortMeta"
@@ -7,7 +7,7 @@
 
     <div
       v-if="orderedFields.length === 0"
-      class="flex flex-1 flex-col items-center justify-center border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center"
+      class="flex flex-1 flex-col items-center justify-center px-10 py-16 text-center"
     >
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
@@ -22,7 +22,7 @@
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <div
-        class="flex min-h-0 flex-1 flex-col overflow-hidden border border-[var(--border-color)] bg-[var(--bg-primary)]"
+        class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
       >
         <CollectionGridHeader
           :headerGroups="headerGroups"
