@@ -28,7 +28,13 @@
           class="flex h-full w-full items-center justify-between gap-2 px-3 text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           @click="event => toggleSort(headerMeta(header)?.field, event)"
         >
-          <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
+          <span class="flex min-w-0 items-center gap-1.5">
+            <i
+              class="pi flex-shrink-0 text-[10px] text-[var(--text-muted)]"
+              :class="FIELD_TYPE_ICONS[headerMeta(header)?.field?.type ?? 'text']"
+            />
+            <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
+          </span>
           <span
             v-if="getSortEntry(headerMeta(header)?.field)"
             class="flex items-center gap-1 text-[var(--text-muted)]"
@@ -68,7 +74,7 @@ import { computed, onBeforeUnmount } from 'vue'
 import type { Header, HeaderGroup } from '@tanstack/vue-table'
 import { ChevronDown, ChevronUp, Plus } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import type { Field } from '../../../../types/models'
+import { FIELD_TYPE_ICONS, type Field } from '../../../../types/models'
 import type { MultiSortMeta } from '../types'
 import type { GridRow, GridColumnMeta } from './types'
 

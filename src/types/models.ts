@@ -1,5 +1,13 @@
 export type FieldType = "text" | "textarea" | "number" | "date" | "select";
 
+export const FIELD_TYPE_ICONS: Record<FieldType, string> = {
+  text: "pi-align-left",
+  textarea: "pi-align-justify",
+  number: "pi-hashtag",
+  date: "pi-calendar",
+  select: "pi-list"
+}
+
 export type ItemDataValue = string | number | null;
 export type ItemData = Record<string, ItemDataValue>;
 
