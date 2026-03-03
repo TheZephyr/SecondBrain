@@ -27,7 +27,7 @@
       />
       <InputText
         v-model="searchModel"
-        class="h-8 w-40 pl-8 text-sm md:w-52"
+        class="h-7 w-40 pl-8 text-sm md:w-52"
         type="text"
         placeholder="Search..."
       />

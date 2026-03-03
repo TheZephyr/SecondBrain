@@ -1,6 +1,6 @@
 <template>
   <div
-    class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)] text-xs"
+    class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)]"
     :style="{ gridTemplateColumns }"
   >
     <div
@@ -30,7 +30,7 @@
         >
           <span class="flex min-w-0 items-center gap-1.5">
             <i
-              class="pi flex-shrink-0 text-[10px] text-[var(--text-muted)]"
+              class="pi flex-shrink-0 text-[var(--text-muted)]"
               :class="FIELD_TYPE_ICONS[headerMeta(header)?.field?.type ?? 'text']"
             />
             <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
