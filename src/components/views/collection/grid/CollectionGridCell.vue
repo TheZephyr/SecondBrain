@@ -1,49 +1,27 @@
 <template>
-  <div
-    class="cell flex h-10 w-full items-center px-3 text-sm text-[var(--text-primary)]"
-    :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''"
-    data-grid-cell
-    @click="onSelect"
-    @dblclick="onDoubleClick"
-  >
+  <div class="cell flex h-10 w-full items-center px-3 text-sm text-[var(--text-primary)]"
+    :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''" data-grid-cell @click="onSelect"
+    @dblclick="onDoubleClick">
     <template v-if="isEditing && field">
-      <InputText
-        v-if="field.type === 'text' || field.type === 'textarea'"
-        v-model="textModel"
-        class="h-9 w-full"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-      <InputNumber
-        v-else-if="field.type === 'number'"
-        v-model="numberModel"
-        inputClass="h-9 w-full"
-        class="h-9 w-full"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-      <DatePicker
-        v-else-if="field.type === 'date'"
-        v-model="dateModel"
-        dateFormat="yy-mm-dd"
-        inputClass="h-9 w-full"
-        class="h-9 w-full"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-      <Select
-        v-else-if="field.type === 'select'"
-        v-model="selectModel"
-        :options="selectOptions"
-        class="h-9 w-full"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
+      <InputText v-if="field.type === 'text' || field.type === 'textarea'" v-model="textModel" class="h-9 w-full"
+        @blur="onBlur" @keydown="onKeydown" />
+      <InputNumber v-else-if="field.type === 'number'" v-model="numberModel" inputClass="h-9 w-full" class="h-9 w-full"
+        @blur="onBlur" @keydown="onKeydown" />
+      <DatePicker v-else-if="field.type === 'date'" v-model="dateModel" dateFormat="yy-mm-dd" inputClass="h-9 w-full"
+        class="h-9 w-full" @blur="onBlur" @keydown="onKeydown" />
+      <Select v-else-if="field.type === 'select'" v-model="selectModel" :options="selectOptions" class="h-9 w-full"
+        @blur="onBlur" @keydown="onKeydown" />
     </template>
     <template v-else>
-      <span class="block w-full truncate">
-        {{ displayValue }}
-      </span>
+      <template v-if="field?.type === 'select' && displayValue !== '-'">
+        <Chip :label="String(displayValue)" :style="getChipStyle(String(displayValue), selectOptions)"
+          class="text-xs !py-0 !px-2 h-5 leading-none" :pt="{ root: { class: 'rounded-full' } }" />
+      </template>
+      <template v-else>
+        <span class="block w-full truncate">
+          {{ displayValue }}
+        </span>
+      </template>
     </template>
   </div>
 </template>
@@ -54,8 +32,10 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
+import Chip from 'primevue/chip'
 import type { Field, ItemDataValue } from '../../../../types/models'
 import { formatDateForDisplay, parseDateValue } from '../../../../utils/date'
+import { getChipStyle } from '../../../../utils/selectChip'
 import { gridEditingKey, gridSelectionKey } from './types'
 import { buildGridCellKey } from '../../../../composables/collection/grid/useGridSelection'
 
