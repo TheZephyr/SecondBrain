@@ -1,23 +1,9 @@
 <template>
   <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col px-10 py-8">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-        <span class="uppercase tracking-wide">Sort tip</span>
-        <span>Shift-click column headers to multi-sort</span>
-      </div>
-      <div class="relative">
-        <Search
-          :size="16"
-          class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-        />
-        <InputText
-          v-model="searchModel"
-          class="h-8 w-40 pl-8 text-sm md:w-52"
-          type="text"
-          placeholder="Search..."
-        />
-      </div>
-    </div>
+    <CollectionGridToolbar
+      v-model:searchQuery="searchModel"
+      :multiSortMeta="multiSortMeta"
+    />
 
     <div
       v-if="orderedFields.length === 0"
@@ -71,13 +57,9 @@
 
 <script setup lang="ts">
 import { computed, provide, ref, toRef } from 'vue'
-import {
-  Columns,
-  Search
-} from 'lucide-vue-next'
+import { Columns } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
-import InputText from 'primevue/inputtext'
 import { getCoreRowModel, useVueTable, type HeaderGroup, type Row } from '@tanstack/vue-table'
 import type {
   Field,
@@ -90,6 +72,7 @@ import type { MultiSortMeta } from '../types'
 import CollectionGridHeader from './CollectionGridHeader.vue'
 import CollectionGridBody from './CollectionGridBody.vue'
 import CollectionGridFooter from './CollectionGridFooter.vue'
+import CollectionGridToolbar from './CollectionGridToolbar.vue'
 import { gridEditingKey, gridSelectionKey } from './types'
 import { useGridSelection } from '../../../../composables/collection/grid/useGridSelection'
 import { useGridEditing } from '../../../../composables/collection/grid/useGridEditing'
