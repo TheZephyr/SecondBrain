@@ -1,12 +1,12 @@
 <template>
   <div
-    class="grid h-9 items-center border-b border-[var(--border-color)] bg-[var(--bg-secondary)] text-xs"
+    class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)]"
     :style="{ gridTemplateColumns }"
   >
     <div
       v-for="(header, index) in headers"
       :key="header.id"
-      class="relative flex h-9 items-center border-r border-[var(--border-color)]"
+      class="relative flex h-10 items-center border-r border-[var(--border-color)]"
       :class="index === headers.length - 1 ? 'border-r-0' : ''"
     >
       <template v-if="headerMeta(header)?.type === 'rowNumber'">
@@ -28,7 +28,13 @@
           class="flex h-full w-full items-center justify-between gap-2 px-3 text-left text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           @click="event => toggleSort(headerMeta(header)?.field, event)"
         >
-          <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
+          <span class="flex min-w-0 items-center gap-1.5">
+            <i
+              class="pi flex-shrink-0 text-[var(--text-muted)]"
+              :class="FIELD_TYPE_ICONS[headerMeta(header)?.field?.type ?? 'text']"
+            />
+            <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
+          </span>
           <span
             v-if="getSortEntry(headerMeta(header)?.field)"
             class="flex items-center gap-1 text-[var(--text-muted)]"
@@ -51,7 +57,11 @@
         </button>
         <div
           v-if="headerMeta(header)?.field"
-          class="absolute right-0 top-0 h-full w-[4px] cursor-col-resize touch-none"
+          class="absolute right-0 top-2 bottom-2 w-px bg-[var(--border-color)] pointer-events-none"
+        />
+        <div
+          v-if="headerMeta(header)?.field"
+          class="absolute right-0 top-0 h-full w-[1px] cursor-col-resize touch-none bg-transparent hover:bg-[var(--accent-primary)] transition-colors duration-100"
           @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)"
         ></div>
       </template>
@@ -64,7 +74,7 @@ import { computed, onBeforeUnmount } from 'vue'
 import type { Header, HeaderGroup } from '@tanstack/vue-table'
 import { ChevronDown, ChevronUp, Plus } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import type { Field } from '../../../../types/models'
+import { FIELD_TYPE_ICONS, type Field } from '../../../../types/models'
 import type { MultiSortMeta } from '../types'
 import type { GridRow, GridColumnMeta } from './types'
 

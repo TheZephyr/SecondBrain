@@ -1,27 +1,13 @@
 <template>
-  <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col px-10 py-8">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-        <span class="uppercase tracking-wide">Sort tip</span>
-        <span>Shift-click column headers to multi-sort</span>
-      </div>
-      <div class="relative">
-        <Search
-          :size="16"
-          class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-        />
-        <InputText
-          v-model="searchModel"
-          class="h-8 w-40 pl-8 text-sm md:w-52"
-          type="text"
-          placeholder="Search..."
-        />
-      </div>
-    </div>
+  <div class="flex h-full w-full min-h-0 flex-col">
+    <CollectionGridToolbar
+      v-model:searchQuery="searchModel"
+      :multiSortMeta="multiSortMeta"
+    />
 
     <div
       v-if="orderedFields.length === 0"
-      class="flex flex-1 flex-col items-center justify-center border border-[var(--border-color)] bg-[var(--bg-secondary)] px-10 py-16 text-center"
+      class="flex flex-1 flex-col items-center justify-center px-10 py-16 text-center"
     >
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
@@ -36,7 +22,7 @@
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <div
-        class="flex min-h-0 flex-1 flex-col overflow-hidden border border-[var(--border-color)] bg-[var(--bg-primary)]"
+        class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
       >
         <CollectionGridHeader
           :headerGroups="headerGroups"
@@ -71,13 +57,9 @@
 
 <script setup lang="ts">
 import { computed, provide, ref, toRef } from 'vue'
-import {
-  Columns,
-  Search
-} from 'lucide-vue-next'
+import { Columns } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import ContextMenu from 'primevue/contextmenu'
-import InputText from 'primevue/inputtext'
 import { getCoreRowModel, useVueTable, type HeaderGroup, type Row } from '@tanstack/vue-table'
 import type {
   Field,
@@ -90,6 +72,7 @@ import type { MultiSortMeta } from '../types'
 import CollectionGridHeader from './CollectionGridHeader.vue'
 import CollectionGridBody from './CollectionGridBody.vue'
 import CollectionGridFooter from './CollectionGridFooter.vue'
+import CollectionGridToolbar from './CollectionGridToolbar.vue'
 import { gridEditingKey, gridSelectionKey } from './types'
 import { useGridSelection } from '../../../../composables/collection/grid/useGridSelection'
 import { useGridEditing } from '../../../../composables/collection/grid/useGridEditing'

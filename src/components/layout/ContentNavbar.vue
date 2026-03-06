@@ -12,13 +12,13 @@
       </span>
     </div>
 
-    <div class="flex items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-0.5">
-      <Button text class="h-8 px-3 text-xs font-semibold"
+    <div class="flex items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-1">
+      <Button text class="h-6 px-2 text-xs font-semibold"
         :class="activeCollectionPanel === 'data' ? activeButtonClass : inactiveButtonClass" :aria-pressed="activeCollectionPanel === 'data'"
         @click="setPanel('data')">
         Data
       </Button>
-      <Button text class="h-8 px-3 text-xs font-semibold"
+      <Button text class="h-6 px-2 text-xs font-semibold"
         :class="activeCollectionPanel === 'fields' ? activeButtonClass : inactiveButtonClass" :aria-pressed="activeCollectionPanel === 'fields'"
         @click="setPanel('fields')">
         Fields

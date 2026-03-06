@@ -2,10 +2,19 @@
   <div class="mx-auto max-w-6xl px-10 py-8 space-y-6">
     <DataTable :value="orderedFields" dataKey="id" reorderableRows @row-reorder="onRowReorder">
       <Column rowReorder headerStyle="width: 3rem" />
-      <Column field="name" header="Field" />
+      <Column field="name" header="Field">
+        <template #body="{ data }">
+          <span>{{ data.name }}</span>
+        </template>
+      </Column>
       <Column header="Type">
         <template #body="{ data }">
-          <Tag class="uppercase">{{ data.type }}</Tag>
+          <div class="flex items-center gap-2">
+            <Tag class="uppercase">
+              <i class="pi text-xs text-[var(--text-muted)]" :class="FIELD_TYPE_ICONS[data.type as FieldType]" />
+              <span>{{ data.type }}</span>
+            </Tag>
+          </div>
         </template>
       </Column>
       <Column header="Actions" style="width: 120px">
@@ -20,7 +29,8 @@
     </DataTable>
 
     <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-      <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+      <div
+        class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
         <Plus :size="14" />
         Add New Field
       </div>
@@ -46,7 +56,7 @@ import DataTable from 'primevue/datatable'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
-import type { Field, FieldType } from '../../../types/models'
+import { FIELD_TYPE_ICONS, type Field, type FieldType } from '../../../types/models'
 import type { FieldDraftInput } from './types'
 
 type RowReorderEvent = { value: Field[] }
