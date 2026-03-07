@@ -49,6 +49,7 @@
     "tailwindcss-primeui": "^0.6.1",
     "typescript": "~5.6.2",
     "vite": "^6.0.5",
+    "vitepress": "^2.0.0-alpha.16",
     "vitest": "^4.0.18",
     "vue-tsc": "^3.2.5",
     "wait-on": "^8.0.1"
