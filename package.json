@@ -17,7 +17,10 @@
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "npm version patch && vue-tsc && vite build && node build-electron.js && electron-builder",
     "build:win": "npm run build -- --win",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@primeuix/themes": "^1.2.3",
