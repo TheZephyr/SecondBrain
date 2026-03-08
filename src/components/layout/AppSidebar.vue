@@ -107,7 +107,7 @@
       </Button>
     </nav>
 
-    <div class="border-t border-[var(--border-color)] p-4">
+    <div class="border-t border-[var(--border-color)] px-4 py-2">
       <div class="flex items-center justify-between text-xs text-[var(--text-muted)]">
         <div class="flex items-center gap-2">
           <i class="pi pi-cog text-xs"></i>
