@@ -1,6 +1,6 @@
 import { ref, watch, type Ref } from 'vue'
 import { refDebounced } from '@vueuse/core'
-import type { Field, Item, ItemSortSpec, ViewConfig } from '../../types/models'
+import type { Field, Item, ItemSortSpec, ViewConfig, ViewType } from '../../types/models'
 import type {
   MultiSortMeta,
   RawSortMeta
@@ -17,6 +17,7 @@ type SortStorage = Pick<Storage, 'getItem' | 'removeItem'>
 type UseCollectionItemsQueryParams = {
   collectionId: Ref<number>
   viewId: Ref<number | null>
+  activeViewType: Ref<ViewType | null>
   safeFields: Ref<Field[]>
   items: Ref<Item[]>
   itemsLoading: Ref<boolean>
@@ -124,6 +125,7 @@ export function toItemSort(meta: MultiSortMeta[]): ItemSortSpec[] {
 export function useCollectionItemsQuery({
   collectionId,
   viewId,
+  activeViewType,
   safeFields,
   items,
   itemsLoading,
@@ -143,6 +145,10 @@ export function useCollectionItemsQuery({
   const isSortHydrationPending = ref(false)
   let sortHydrationToken = 0
 
+  function isGridViewActive() {
+    return activeViewType.value === 'grid'
+  }
+
   function canHydrateSortFromCurrentFields() {
     return (
       safeFields.value.length > 0 &&
@@ -157,7 +163,8 @@ export function useCollectionItemsQuery({
       sort: toItemSort(nextSortMeta).map(entry => ({
         field: entry.field,
         order: entry.order
-      }))
+      })),
+      calendarDateField: existing?.calendarDateField
     }
     await saveViewConfig(targetViewId, nextConfig)
   }
@@ -182,7 +189,8 @@ export function useCollectionItemsQuery({
     const migratedSort = sanitizeRawSort(parsedLegacySort)
     const migratedConfig: ViewConfig = {
       columnWidths: normalizeColumnWidths(existingConfig?.columnWidths),
-      sort: migratedSort
+      sort: migratedSort,
+      calendarDateField: existingConfig?.calendarDateField
     }
 
     await saveViewConfig(targetViewId, migratedConfig)
@@ -192,6 +200,12 @@ export function useCollectionItemsQuery({
   }
 
   async function applyPendingSortPreferences(token = sortHydrationToken) {
+    if (!isGridViewActive()) {
+      pendingSortMeta.value = []
+      isSortHydrationPending.value = false
+      multiSortMeta.value = []
+      return
+    }
     if (!isSortHydrationPending.value) return
     if (token !== sortHydrationToken) return
 
@@ -213,6 +227,11 @@ export function useCollectionItemsQuery({
     pendingSortMeta.value = []
     isSortHydrationPending.value = true
     multiSortMeta.value = []
+
+    if (!isGridViewActive()) {
+      isSortHydrationPending.value = false
+      return
+    }
 
     const targetViewId = viewId.value
     if (targetViewId === null) {
@@ -237,6 +256,10 @@ export function useCollectionItemsQuery({
   }
 
   async function onItemsSort(nextMeta: MultiSortMeta[]) {
+    if (!isGridViewActive()) {
+      multiSortMeta.value = []
+      return
+    }
     pendingSortMeta.value = []
     isSortHydrationPending.value = false
     multiSortMeta.value = nextMeta
@@ -259,6 +282,10 @@ export function useCollectionItemsQuery({
   }
 
   watch(debouncedSearchQuery, async query => {
+    if (!isGridViewActive()) {
+      suppressNextEmptySearchLoad.value = false
+      return
+    }
     if (query === '' && suppressNextEmptySearchLoad.value) {
       suppressNextEmptySearchLoad.value = false
       return
@@ -272,6 +299,13 @@ export function useCollectionItemsQuery({
   watch(
     () => safeFields.value,
     () => {
+      if (!isGridViewActive()) {
+        multiSortMeta.value = []
+        pendingSortMeta.value = []
+        isSortHydrationPending.value = false
+        return
+      }
+
       if (!canHydrateSortFromCurrentFields()) {
         return
       }
@@ -297,7 +331,7 @@ export function useCollectionItemsQuery({
   )
 
   watch(
-    [collectionId, viewId],
+    [collectionId, viewId, activeViewType],
     async () => {
       resetSearchQuery()
       await hydrateSortForActiveView()

@@ -59,6 +59,7 @@ export const viewConfigColumnKeySchema = z
 export const ViewConfigSchema = z.object({
   columnWidths: z.record(viewConfigColumnKeySchema, z.number().int().min(60)),
   sort: z.array(ItemSortSpecSchema),
+  calendarDateField: z.string().trim().min(1).max(64).optional(),
 });
 
 export const itemDataValueSchema = z.union([

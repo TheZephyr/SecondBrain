@@ -54,6 +54,7 @@ export type ItemSortSpec = {
 export type ViewConfig = {
   columnWidths: Record<number, number>;
   sort: ItemSortSpec[];
+  calendarDateField?: string;
 };
 
 export type UpdateViewConfigInput = {

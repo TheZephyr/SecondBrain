@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref, type EffectScope } from 'vue'
-import type { Field, Item, ViewConfig } from '../../../types/models'
+import type { Field, Item, ViewConfig, ViewType } from '../../../types/models'
 import type { RawSortMeta } from '../../../components/views/collection/types'
 import {
   getSortStorageKey,
@@ -78,6 +78,7 @@ describe('useCollectionItemsQuery', () => {
   it('restores saved sort preferences from view config for the active view', async () => {
     const collectionId = ref(9)
     const viewId = ref<number | null>(18)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([
       makeField({ id: 1, name: 'Title', collection_id: 9 })
     ])
@@ -99,6 +100,7 @@ describe('useCollectionItemsQuery', () => {
         useCollectionItemsQuery({
           collectionId,
           viewId,
+          activeViewType,
           safeFields,
           items: paging.items,
           itemsLoading: paging.itemsLoading,
@@ -129,6 +131,7 @@ describe('useCollectionItemsQuery', () => {
   it('does not normalize away saved sorts before current fields are loaded', async () => {
     const collectionId = ref(7)
     const viewId = ref<number | null>(17)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([
       makeField({ id: 1, name: 'Legacy', collection_id: 1 })
     ])
@@ -147,6 +150,7 @@ describe('useCollectionItemsQuery', () => {
         useCollectionItemsQuery({
           collectionId,
           viewId,
+          activeViewType,
           safeFields,
           items: paging.items,
           itemsLoading: paging.itemsLoading,
@@ -180,6 +184,7 @@ describe('useCollectionItemsQuery', () => {
   it('persists sort updates to view config', async () => {
     const collectionId = ref(15)
     const viewId = ref<number | null>(30)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([
       makeField({ id: 1, name: 'Title', collection_id: 15 })
     ])
@@ -198,6 +203,7 @@ describe('useCollectionItemsQuery', () => {
         useCollectionItemsQuery({
           collectionId,
           viewId,
+          activeViewType,
           safeFields,
           items: paging.items,
           itemsLoading: paging.itemsLoading,
@@ -218,7 +224,8 @@ describe('useCollectionItemsQuery', () => {
 
       expect(saveViewConfig).toHaveBeenCalledWith(30, {
         columnWidths: { 4: 190 },
-        sort: [{ field: 'data.Title', order: -1 }]
+        sort: [{ field: 'data.Title', order: -1 }],
+        calendarDateField: undefined
       })
     })
   })
@@ -226,6 +233,7 @@ describe('useCollectionItemsQuery', () => {
   it('migrates localStorage sort to view config and removes old key', async () => {
     const collectionId = ref(42)
     const viewId = ref<number | null>(101)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([
       makeField({ id: 1, name: 'Title', collection_id: 42 })
     ])
@@ -245,6 +253,7 @@ describe('useCollectionItemsQuery', () => {
         useCollectionItemsQuery({
           collectionId,
           viewId,
+          activeViewType,
           safeFields,
           items: paging.items,
           itemsLoading: paging.itemsLoading,
@@ -265,7 +274,8 @@ describe('useCollectionItemsQuery', () => {
 
       expect(saveViewConfig).toHaveBeenCalledWith(101, {
         columnWidths: {},
-        sort: [{ field: 'data.Title', order: -1 }, { field: 'data.Unknown', order: 1 }]
+        sort: [{ field: 'data.Title', order: -1 }, { field: 'data.Unknown', order: 1 }],
+        calendarDateField: undefined
       })
       await vi.waitFor(() => {
         expect(storage.getItem(getSortStorageKey(42))).toBeNull()
@@ -282,6 +292,7 @@ describe('useCollectionItemsQuery', () => {
     vi.useFakeTimers()
     const collectionId = ref(81)
     const viewId = ref<number | null>(111)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([makeField({ id: 1, name: 'Title', collection_id: 81 })])
     const loadItems = vi.fn(async () => undefined)
     const paging = createPagingState()
@@ -294,6 +305,7 @@ describe('useCollectionItemsQuery', () => {
           useCollectionItemsQuery({
             collectionId,
             viewId,
+            activeViewType,
             safeFields,
             items: paging.items,
             itemsLoading: paging.itemsLoading,
@@ -322,9 +334,55 @@ describe('useCollectionItemsQuery', () => {
     }
   })
 
+  it('does not hydrate saved sorts for non-grid views', async () => {
+    const collectionId = ref(21)
+    const viewId = ref<number | null>(12)
+    const activeViewType = ref<ViewType | null>('calendar')
+    const safeFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', collection_id: 21 })
+    ])
+    const loadItems = vi.fn(async () => undefined)
+    const paging = createPagingState()
+    const loadViewConfig = vi.fn(
+      async (): Promise<ViewConfig | null> => ({
+        columnWidths: {},
+        sort: [{ field: 'data.Title', order: -1 }]
+      })
+    )
+    const saveViewConfig = vi.fn(async () => undefined)
+
+    await withScope(async scope => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          activeViewType,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig
+        })
+      )
+
+      if (!query) {
+        throw new Error('Query composable failed to initialize')
+      }
+
+      await flushAsyncHydration()
+
+      expect(query.multiSortMeta.value).toEqual([])
+      expect(loadViewConfig).not.toHaveBeenCalled()
+      expect(loadItems).not.toHaveBeenCalled()
+    })
+  })
+
   it('loads the next page when not loading and not fully loaded', async () => {
     const collectionId = ref(11)
     const viewId = ref<number | null>(null)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([])
     const paging = createPagingState(Array.from({ length: 100 }, (_, index) => ({
       id: index + 1,
@@ -341,6 +399,7 @@ describe('useCollectionItemsQuery', () => {
         useCollectionItemsQuery({
           collectionId,
           viewId,
+          activeViewType,
           safeFields,
           items: paging.items,
           itemsLoading: paging.itemsLoading,
@@ -364,6 +423,7 @@ describe('useCollectionItemsQuery', () => {
   it('does not load the next page when already loading or fully loaded', async () => {
     const collectionId = ref(11)
     const viewId = ref<number | null>(null)
+    const activeViewType = ref<ViewType | null>('grid')
     const safeFields = ref<Field[]>([])
     const paging = createPagingState(Array.from({ length: 100 }, (_, index) => ({
       id: index + 1,
@@ -380,6 +440,7 @@ describe('useCollectionItemsQuery', () => {
         useCollectionItemsQuery({
           collectionId,
           viewId,
+          activeViewType,
           safeFields,
           items: paging.items,
           itemsLoading: paging.itemsLoading,

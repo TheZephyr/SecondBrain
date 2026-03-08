@@ -1,63 +1,75 @@
 <template>
-  <CollectionSettingsPanel
-    v-if="collectionSettingsOpen"
-    :collection="collection"
-    :fields="fields"
-    :itemsTotal="itemsTotal"
-    @save-settings="saveSettings"
-    @delete-collection="confirmDeleteCollection"
-  />
-  <CollectionFieldsPanel
-    v-else-if="activeCollectionPanel === 'fields'"
-    :orderedFields="orderedFields"
-    @add-field="addField"
-    @delete-field="confirmDeleteField"
-    @reorder-fields="onFieldsReorder"
-  />
-  <template v-else>
-    <CollectionGrid
-      v-if="activeView?.type === 'grid'"
-      :viewId="activeView.id"
-      :items="items"
-      :itemsTotal="itemsTotal"
-      :itemsLoading="itemsLoading"
-      :itemsFullyLoaded="itemsFullyLoaded"
-      :orderedFields="orderedFields"
-      :searchQuery="searchQuery"
-      :debouncedSearchQuery="debouncedSearchQuery"
-      :multiSortMeta="multiSortMeta"
-      :loadNextPage="loadNextPage"
-      @update:searchQuery="searchQuery = $event"
-      @update:multiSortMeta="multiSortMeta = $event"
-      @sort="onItemsSort"
-      @edit-item="openEditItemDialog"
-      @delete-item="confirmDeleteItem"
-      @update-item="onInlineUpdateItem"
-      @insert-item-at="onInsertItemAt"
-      @duplicate-item="onDuplicateItem"
-      @move-item="onMoveItem"
-      @manage-fields="store.setActiveCollectionPanel('fields')"
-      @open-add-item="openAddItemDialog"
-    />
-    <CollectionKanbanView
-      v-else-if="activeView?.type === 'kanban'"
-      :orderedFields="orderedFields"
-    />
-    <CollectionCalendarView
-      v-else-if="activeView?.type === 'calendar'"
-      :orderedFields="orderedFields"
-    />
-  </template>
+  <div class="flex h-full min-h-0 flex-col">
+    <div class="flex min-h-0 flex-1 flex-col">
+      <CollectionSettingsPanel
+        v-if="collectionSettingsOpen"
+        :collection="collection"
+        :fields="fields"
+        :itemsTotal="itemsTotal"
+        @save-settings="saveSettings"
+        @delete-collection="confirmDeleteCollection"
+      />
+      <CollectionFieldsPanel
+        v-else-if="activeCollectionPanel === 'fields'"
+        :orderedFields="orderedFields"
+        @add-field="addField"
+        @delete-field="confirmDeleteField"
+        @reorder-fields="onFieldsReorder"
+      />
+      <template v-else>
+        <CollectionGrid
+          v-if="activeView?.type === 'grid'"
+          :viewId="activeView.id"
+          :items="items"
+          :itemsTotal="itemsTotal"
+          :itemsLoading="itemsLoading"
+          :itemsFullyLoaded="itemsFullyLoaded"
+          :orderedFields="orderedFields"
+          :searchQuery="searchQuery"
+          :debouncedSearchQuery="debouncedSearchQuery"
+          :multiSortMeta="multiSortMeta"
+          :loadNextPage="loadNextPage"
+          @update:searchQuery="searchQuery = $event"
+          @update:multiSortMeta="multiSortMeta = $event"
+          @sort="onItemsSort"
+          @edit-item="openEditItemDialog"
+          @delete-item="confirmDeleteItem"
+          @update-item="onInlineUpdateItem"
+          @insert-item-at="onInsertItemAt"
+          @duplicate-item="onDuplicateItem"
+          @move-item="onMoveItem"
+          @manage-fields="store.setActiveCollectionPanel('fields')"
+          @open-add-item="openAddItemDialog"
+        />
+        <CollectionKanbanView
+          v-else-if="activeView?.type === 'kanban'"
+          :orderedFields="orderedFields"
+        />
+        <CollectionCalendarView
+          v-else-if="activeView?.type === 'calendar'"
+          :viewId="activeView.id"
+          :items="items"
+          :itemsLoading="itemsLoading"
+          :itemsFullyLoaded="itemsFullyLoaded"
+          :itemsSearch="itemsSearch"
+          :itemsSort="itemsSort"
+          :orderedFields="orderedFields"
+          :loadItems="loadCollectionItems"
+          @edit-item="openEditItemDialog"
+        />
+      </template>
+    </div>
 
-  <CollectionItemEditorDialog
-    :visible="showAddItemForm"
-    :orderedFields="orderedFields"
-    :editingItem="editingItem"
-    @update:visible="onItemDialogVisibilityChange"
-    @save="saveItem"
-  />
+    <CollectionItemEditorDialog
+      :visible="showAddItemForm"
+      :orderedFields="orderedFields"
+      :editingItem="editingItem"
+      @update:visible="onItemDialogVisibilityChange"
+      @save="saveItem"
+    />
 
-  <ConfirmDialog />
+    <ConfirmDialog />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -87,7 +99,7 @@ import type {
 } from '../../types/models'
 import CollectionGrid from './collection/grid/CollectionGrid.vue'
 import CollectionKanbanView from './collection/CollectionKanbanView.vue'
-import CollectionCalendarView from './collection/CollectionCalendarView.vue'
+import CollectionCalendarView from './collection/calendar/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
 import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
 import CollectionSettingsPanel from './collection/CollectionSettingsPanel.vue'
@@ -106,6 +118,8 @@ const {
   itemsTotal,
   itemsLoading,
   itemsFullyLoaded,
+  itemsSearch,
+  itemsSort,
   activeCollectionPanel,
   collectionSettingsOpen,
   currentViews,
@@ -147,6 +161,7 @@ const {
 } = useCollectionItemsQuery({
   collectionId,
   viewId: activeViewId,
+  activeViewType: computed(() => activeView.value?.type ?? null),
   safeFields,
   items,
   itemsLoading,

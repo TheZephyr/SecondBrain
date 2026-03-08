@@ -221,6 +221,11 @@ export const useStore = defineStore("main", () => {
         field: String(entry.field),
         order: entry.order === -1 ? -1 : 1,
       })),
+      calendarDateField:
+        typeof config.calendarDateField === "string" &&
+        config.calendarDateField.trim().length > 0
+          ? config.calendarDateField.trim()
+          : undefined,
     };
 
     const result = await window.electronAPI.updateViewConfig({

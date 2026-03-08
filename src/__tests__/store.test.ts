@@ -604,6 +604,7 @@ describe("view config", () => {
     const config: ViewConfig = {
       columnWidths: { 1: 120 },
       sort: [{ field: "data.Title", order: 1 }],
+      calendarDateField: "Due Date",
     };
     mockApi.getViewConfig.mockResolvedValue(ok(config));
 
@@ -620,14 +621,16 @@ describe("view config", () => {
     await store.saveViewConfig(4, {
       columnWidths: { 7: 59.4 },
       sort: [{ field: "data.Title", order: -1 }],
+      calendarDateField: "Due Date",
     });
 
     expect(mockApi.updateViewConfig).toHaveBeenCalledWith({
       viewId: 4,
-      config: {
-        columnWidths: { 7: 60 },
-        sort: [{ field: "data.Title", order: -1 }],
-      },
-    });
+        config: {
+          columnWidths: { 7: 60 },
+          sort: [{ field: "data.Title", order: -1 }],
+          calendarDateField: "Due Date",
+        },
+      });
   });
 });

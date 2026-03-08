@@ -228,6 +228,7 @@ describe("validation schemas", () => {
         { field: "data.Title", order: 1 },
         { field: "data.Year", order: -1 },
       ],
+      calendarDateField: "Due Date",
     });
 
     expect(result.success).toBe(true);

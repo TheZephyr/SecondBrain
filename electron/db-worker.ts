@@ -886,6 +886,7 @@ function parseStoredViewConfig(config: string | null): ViewConfig | null {
       field: entry.field,
       order: entry.order,
     })),
+    calendarDateField: validated.data.calendarDateField,
   };
 }
 
@@ -1037,6 +1038,7 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
           field: entry.field,
           order: entry.order,
         })),
+        calendarDateField: operation.input.config.calendarDateField,
       };
       const info = database
         .prepare("UPDATE views SET config = ? WHERE id = ?")

@@ -305,6 +305,7 @@ describe("view CRUD", () => {
         { field: "data.Title", order: 1 },
         { field: "data.CreatedAt", order: -1 },
       ],
+      calendarDateField: "Due Date",
     };
 
     expect(updateViewConfig(view.id, config)).toBe(true);
