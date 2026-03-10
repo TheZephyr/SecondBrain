@@ -1,11 +1,27 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
     <ContentNavbar v-if="selectedCollection" />
-    <main class="flex-1 overflow-auto bg-[var(--bg-primary)]">
-      <div class="min-h-full">
-        <Dashboard v-if="!selectedCollection" :collections="collections"
-          @select-collection="handleSelectCollection" />
-        <Collection v-else :collection="selectedCollection" @collection-deleted="handleCollectionDeleted" />
+    <main
+      class="min-h-0 flex-1 bg-[var(--bg-primary)]"
+      :class="selectedCollection ? 'overflow-hidden' : 'overflow-auto'"
+    >
+      <div
+        v-if="!selectedCollection"
+        class="min-h-full"
+      >
+        <Dashboard
+          :collections="collections"
+          @select-collection="handleSelectCollection"
+        />
+      </div>
+      <div
+        v-else
+        class="h-full min-h-0"
+      >
+        <Collection
+          :collection="selectedCollection"
+          @collection-deleted="handleCollectionDeleted"
+        />
       </div>
     </main>
   </div>

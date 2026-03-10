@@ -6,6 +6,7 @@ import type {
   NewCollectionInput,
   NewFieldInput,
   NewItemInput,
+  ReorderViewsInput,
 } from "../../src/types/models";
 
 type ItemRow = {
@@ -28,6 +29,10 @@ function addField(input: NewFieldInput): { id: number } & NewFieldInput {
 
 function addItem(input: NewItemInput): { id: number } {
   return handleOperation({ type: "addItem", input }) as { id: number };
+}
+
+function reorderViews(input: ReorderViewsInput): boolean {
+  return handleOperation({ type: "reorderViews", input }) as boolean;
 }
 
 function getFields(collectionId: number): Field[] {
@@ -168,5 +173,49 @@ describe("db-worker transactional multi-step operations", () => {
       Title: "Second",
       Status: "New",
     });
+  });
+
+  it("rolls back reorderViews when payload contains invalid view IDs", () => {
+    setupInMemoryDb();
+    const collection = addCollection({ name: "Views" });
+    const viewA = handleOperation({
+      type: "addView",
+      input: {
+        collectionId: collection.id,
+        name: "A",
+        type: "grid",
+        isDefault: 0,
+        order: 1,
+      },
+    }) as { id: number };
+    const viewB = handleOperation({
+      type: "addView",
+      input: {
+        collectionId: collection.id,
+        name: "B",
+        type: "grid",
+        isDefault: 0,
+        order: 2,
+      },
+    }) as { id: number };
+
+    expect(() =>
+      reorderViews({
+        collectionId: collection.id,
+        viewOrders: [
+          { id: viewA.id, order: 1 },
+          { id: 999_999, order: 2 },
+        ],
+      }),
+    ).toThrow();
+
+    const viewsAfterFailure = handleOperation({
+      type: "getViews",
+      collectionId: collection.id,
+    }) as Array<{ id: number; order: number }>;
+    const orders = new Map(viewsAfterFailure.map((view) => [view.id, view.order]));
+
+    expect(orders.get(viewA.id)).toBe(1);
+    expect(orders.get(viewB.id)).toBe(2);
   });
 });

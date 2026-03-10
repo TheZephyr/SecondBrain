@@ -6,6 +6,7 @@ import {
   ImportCollectionInputSchema,
   NewFieldInputSchema,
   ReorderFieldsInputSchema,
+  ReorderViewsInputSchema,
   UpdateViewConfigInputSchema,
   ViewConfigSchema,
   itemDataSchema,
@@ -228,6 +229,8 @@ describe("validation schemas", () => {
         { field: "data.Title", order: 1 },
         { field: "data.Year", order: -1 },
       ],
+      calendarDateFieldId: 7,
+      selectedFieldIds: [1, 3, 5],
     });
 
     expect(result.success).toBe(true);
@@ -256,5 +259,17 @@ describe("validation schemas", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts valid reorder views payload", () => {
+    const result = ReorderViewsInputSchema.safeParse({
+      collectionId: 3,
+      viewOrders: [
+        { id: 10, order: 1 },
+        { id: 11, order: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
   });
 });

@@ -54,6 +54,9 @@ export type ItemSortSpec = {
 export type ViewConfig = {
   columnWidths: Record<number, number>;
   sort: ItemSortSpec[];
+  calendarDateField?: string;
+  calendarDateFieldId?: number;
+  selectedFieldIds?: number[];
 };
 
 export type UpdateViewConfigInput = {
@@ -97,6 +100,16 @@ export type NewViewInput = {
 export type UpdateViewInput = {
   id: number;
   name: string;
+};
+
+export type ViewOrderUpdate = {
+  id: number;
+  order: number;
+};
+
+export type ReorderViewsInput = {
+  collectionId: number;
+  viewOrders: ViewOrderUpdate[];
 };
 
 export type UpdateCollectionInput = {

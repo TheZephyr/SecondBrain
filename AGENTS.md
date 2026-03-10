@@ -23,6 +23,7 @@
 ## 3. Database Patterns
 
 ### 3.1 Key constraint
+
 - The `items.data` column is a JSON string. Core CRUD still treats it as a whole object, but list/search/sort performance logic may query JSON inside SQL in the Worker (e.g., `json_extract`, `json_each`, FTS index content generation). Keep this logic in the Worker, never in Renderer.
 
 ### 3.2 Transactions
