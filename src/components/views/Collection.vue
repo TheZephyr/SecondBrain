@@ -393,7 +393,10 @@ async function persistChildViewConfig(
   viewId: number,
   nextSelectedIds: number[]
 ) {
-  const existing = childViewConfig.value
+  let existing = childViewConfig.value
+  if (!existing) {
+    existing = await store.loadViewConfig(viewId)
+  }
   const config: ViewConfig = {
     columnWidths: existing?.columnWidths ?? {},
     sort: existing?.sort ?? [],
@@ -403,7 +406,9 @@ async function persistChildViewConfig(
   }
 
   await store.saveViewConfig(viewId, config)
-  childViewConfig.value = config
+  if (activeView.value?.id === viewId) {
+    childViewConfig.value = config
+  }
 }
 
 async function onToggleSelectedField(payload: { id: number; selected: boolean }) {
