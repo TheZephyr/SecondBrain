@@ -28,13 +28,13 @@
       </label>
       <Select
         inputId="calendar-date-field"
-        :modelValue="selectedDateFieldName"
+        :modelValue="selectedDateFieldId"
         :options="dateFieldOptions"
         optionLabel="label"
         optionValue="value"
         placeholder="Choose date field"
         class="min-w-52"
-        @update:modelValue="emit('update:selectedDateFieldName', $event)"
+        @update:modelValue="emit('update:selectedDateFieldId', $event)"
       />
     </div>
 
@@ -56,20 +56,20 @@ import type { Field } from '../../../../types/models'
 const props = defineProps<{
   monthLabel: string
   dateFields: Field[]
-  selectedDateFieldName: string | null
+  selectedDateFieldId: number | null
   isLoadingAll: boolean
 }>()
 
 const emit = defineEmits<{
   'previous-month': []
   'next-month': []
-  'update:selectedDateFieldName': [value: string | null]
+  'update:selectedDateFieldId': [value: number | null]
 }>()
 
 const dateFieldOptions = computed(() => {
   return props.dateFields.map(field => ({
     label: field.name,
-    value: field.name
+    value: field.id
   }))
 })
 

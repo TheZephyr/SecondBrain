@@ -12,6 +12,7 @@ import type {
   UpdateFieldInput,
   UpdateItemInput,
   ViewConfig,
+  ReorderViewsInput,
 } from "../../src/types/models";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,10 @@ function updateViewConfig(viewId: number, config: ViewConfig): boolean {
     type: "updateViewConfig",
     input: { viewId, config },
   }) as boolean;
+}
+
+function reorderViews(input: ReorderViewsInput): boolean {
+  return handleOperation({ type: "reorderViews", input }) as boolean;
 }
 
 function getCollectionItemCounts(): CollectionItemCount[] {
@@ -229,7 +234,7 @@ describe("view CRUD", () => {
 
     const views = getViews(created.id);
     expect(views).toHaveLength(1);
-    expect(views[0].name).toBe("Grid");
+    expect(views[0].name).toBe("Source");
     expect(views[0].type).toBe("grid");
     expect(views[0].is_default).toBe(1);
     expect(views[0].order).toBe(0);
@@ -276,7 +281,7 @@ describe("view CRUD", () => {
 
     const views = getViews(col.id);
     expect(views.map((view) => view.name)).toEqual([
-      "Grid",
+      "Source",
       "First",
       "Second",
     ]);
@@ -306,10 +311,76 @@ describe("view CRUD", () => {
         { field: "data.CreatedAt", order: -1 },
       ],
       calendarDateField: "Due Date",
+      calendarDateFieldId: 2,
+      selectedFieldIds: [1, 2],
     };
 
     expect(updateViewConfig(view.id, config)).toBe(true);
     expect(getViewConfig(view.id)).toEqual(config);
+  });
+
+  it("rejects renaming the source view", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Protected" });
+    const [view] = getViews(col.id);
+
+    expect(() =>
+      handleOperation({
+        type: "updateView",
+        input: { id: view.id, name: "New Name" },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects deleting the source view", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Protected" });
+    const [view] = getViews(col.id);
+
+    expect(() =>
+      handleOperation({
+        type: "deleteView",
+        id: view.id,
+      }),
+    ).toThrow();
+  });
+
+  it("reorders non-source views and keeps source at order 0", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Ordered Views" });
+    const a = addView({
+      collectionId: col.id,
+      name: "Alpha",
+      type: "grid",
+      isDefault: 0,
+      order: 1,
+    });
+    const b = addView({
+      collectionId: col.id,
+      name: "Beta",
+      type: "grid",
+      isDefault: 0,
+      order: 2,
+    });
+
+    expect(
+      reorderViews({
+        collectionId: col.id,
+        viewOrders: [
+          { id: b.id, order: 1 },
+          { id: a.id, order: 2 },
+        ],
+      }),
+    ).toBe(true);
+
+    const views = getViews(col.id);
+    const source = views.find((view) => view.is_default === 1);
+    expect(source?.order).toBe(0);
+    expect(views.map((view) => view.name)).toEqual([
+      "Source",
+      "Beta",
+      "Alpha",
+    ]);
   });
 });
 

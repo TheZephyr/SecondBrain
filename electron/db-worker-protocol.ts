@@ -5,6 +5,7 @@ import type {
   NewViewInput,
   UpdateViewInput,
   UpdateViewConfigInput,
+  ReorderViewsInput,
   NewFieldInput,
   NewItemInput,
   UpdateCollectionInput,
@@ -31,6 +32,7 @@ export type DbWorkerOperation =
   | { type: "deleteView"; id: number }
   | { type: "getViewConfig"; viewId: number }
   | { type: "updateViewConfig"; input: UpdateViewConfigInput }
+  | { type: "reorderViews"; input: ReorderViewsInput }
   | { type: "getFields"; collectionId: number }
   | { type: "addField"; input: NewFieldInput }
   | { type: "updateField"; input: UpdateFieldInput }

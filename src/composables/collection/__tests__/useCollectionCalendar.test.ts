@@ -83,11 +83,13 @@ describe('useCollectionCalendar', () => {
 
         await flushAsyncWork()
 
-        expect(calendar.selectedDateFieldName.value).toBe('Due Date')
+        expect(calendar.selectedDateFieldId.value).toBe(2)
         expect(saveViewConfig).toHaveBeenCalledWith(5, {
           columnWidths: {},
           sort: [],
-          calendarDateField: 'Due Date'
+          calendarDateField: undefined,
+          calendarDateFieldId: 2,
+          selectedFieldIds: []
         })
       })
     } finally {
@@ -110,7 +112,7 @@ describe('useCollectionCalendar', () => {
     const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
       columnWidths: { 1: 140 },
       sort: [{ field: 'data.Title', order: 1 }],
-      calendarDateField: 'Missing'
+      calendarDateFieldId: 999
     }))
     const saveViewConfig = vi.fn(async () => undefined)
 
@@ -136,11 +138,13 @@ describe('useCollectionCalendar', () => {
 
       await flushAsyncWork()
 
-      expect(calendar.selectedDateFieldName.value).toBeNull()
+      expect(calendar.selectedDateFieldId.value).toBeNull()
       expect(saveViewConfig).toHaveBeenCalledWith(7, {
         columnWidths: { 1: 140 },
         sort: [{ field: 'data.Title', order: 1 }],
-        calendarDateField: undefined
+        calendarDateField: undefined,
+        calendarDateFieldId: undefined,
+        selectedFieldIds: []
       })
     })
   })
@@ -167,7 +171,7 @@ describe('useCollectionCalendar', () => {
     const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
       columnWidths: {},
       sort: [],
-      calendarDateField: 'Due Date'
+      calendarDateFieldId: 2
     }))
     const saveViewConfig = vi.fn(async () => undefined)
 
@@ -239,7 +243,7 @@ describe('useCollectionCalendar', () => {
     const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
       columnWidths: {},
       sort: [],
-      calendarDateField: 'Due Date'
+      calendarDateFieldId: 2
     }))
     const saveViewConfig = vi.fn(async () => undefined)
 

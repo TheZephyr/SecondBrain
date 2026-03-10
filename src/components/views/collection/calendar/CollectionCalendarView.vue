@@ -3,11 +3,11 @@
     <CollectionCalendarToolbar
       :monthLabel="monthLabel"
       :dateFields="dateFields"
-      :selectedDateFieldName="selectedDateFieldName"
+      :selectedDateFieldId="selectedDateFieldId"
       :isLoadingAll="isEnsuringAllItems"
       @previous-month="goToPreviousMonth"
       @next-month="goToNextMonth"
-      @update:selectedDateFieldName="value => void setSelectedDateFieldName(value)"
+      @update:selectedDateFieldId="value => void setSelectedDateFieldId(value)"
     />
 
     <div
@@ -22,7 +22,7 @@
     </div>
 
     <div
-      v-else-if="dateFields.length > 1 && !selectedDateFieldName"
+      v-else-if="dateFields.length > 1 && !selectedDateFieldId"
       class="flex flex-1 flex-col items-center justify-center px-8 text-center"
     >
       <i class="pi pi-calendar-clock mb-4 text-4xl text-[var(--text-muted)]"></i>
@@ -71,11 +71,11 @@ const emit = defineEmits<{
 const {
   dateFields,
   weekdayLabels,
-  selectedDateFieldName,
+  selectedDateFieldId,
   monthLabel,
   monthCells,
   isEnsuringAllItems,
-  setSelectedDateFieldName,
+  setSelectedDateFieldId,
   goToPreviousMonth,
   goToNextMonth
 } = useCollectionCalendar({

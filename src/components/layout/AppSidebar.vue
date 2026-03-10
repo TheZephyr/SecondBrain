@@ -38,12 +38,34 @@
 
         <div v-if="isExpanded(collection.id)" class="ml-4 space-y-1">
           <template v-if="selectedCollection?.id === collection.id">
-            <div v-for="view in currentViews" :key="view.id" class="relative">
-              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-sm" :class="isActiveView(view.id)
+            <div v-if="sourceView" class="relative">
+              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-sm" :class="isActiveView(sourceView.id)
                 ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
-                @click="handleViewClick(view.id)">
+                @click="handleViewClick(sourceView.id)">
                 <div class="flex w-full items-center gap-2">
+                  <LockKeyhole class="text-[var(--accent-primary)] size-4" />
+                  <span class="flex-1 truncate text-left">{{ sourceView.name }}</span>
+                </div>
+              </Button>
+            </div>
+
+            <div v-for="view in childViews" :key="view.id" class="relative" @dragover="event => onViewDragOver(view.id, event)"
+              @drop="event => onViewDrop(collection.id, view.id, event)">
+              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-sm" :class="[
+                isActiveView(view.id)
+                  ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+                dragOverViewId === view.id ? 'bg-[var(--bg-hover)]' : ''
+              ]" @click="handleViewClick(view.id)">
+                <div class="flex w-full items-center gap-2">
+                  <span class="flex size-5 items-center justify-center text-[var(--text-muted)]"
+                    title="Drag to reorder" draggable="true"
+                    @dragstart="event => onViewDragStart(view.id, event)"
+                    @dragend="onViewDragEnd"
+                    @mousedown.stop @click.stop>
+                    <GripVertical :size="14" />
+                  </span>
                   <i class="pi text-xs"
                     :class="[getViewTypeMeta(view.type).icon, getViewTypeMeta(view.type).iconClass]"></i>
                   <span class="flex-1 truncate text-left">{{ view.name }}</span>
@@ -139,6 +161,11 @@
         <label class="text-xs font-medium text-[var(--text-secondary)]">View Name</label>
         <InputText v-model="viewModalName" type="text" autofocus />
       </div>
+      <div v-if="viewModalMode === 'create' && viewModalType === 'calendar'" class="space-y-2">
+        <label class="text-xs font-medium text-[var(--text-secondary)]">Date field</label>
+        <Select v-model="viewModalCalendarFieldId" :options="calendarFieldOptions" optionLabel="label"
+          optionValue="value" placeholder="Choose date field" class="w-full" />
+      </div>
     </div>
 
     <template #footer>
@@ -159,13 +186,23 @@ import { useNotificationsStore } from "../../stores/notifications";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
+import Select from "primevue/select";
 import { collectionNameSchema, viewNameSchema } from "../../validation/schemas";
 import type { Collection, View, ViewType } from "../../types/models";
-import { Brain } from "lucide-vue-next";
+import { Brain, GripVertical, LockKeyhole } from "lucide-vue-next";
 import ViewTypePicker from "./ViewTypePicker.vue";
 
+type ViewTypeOption = {
+  type: ViewType;
+  label: string;
+  icon: string;
+  iconClass: string;
+  disabled?: boolean;
+  tooltip?: string;
+};
+
 const store = useStore();
-const { collections, selectedCollection, currentView, currentViews, activeViewId } =
+const { collections, selectedCollection, currentView, currentViews, activeViewId, fields } =
   storeToRefs(store);
 const notifications = useNotificationsStore();
 
@@ -186,13 +223,39 @@ const viewModalType = ref<ViewType>("grid");
 const viewModalName = ref("");
 const viewModalCollectionId = ref<number | null>(null);
 const viewModalViewId = ref<number | null>(null);
+const viewModalCalendarFieldId = ref<number | null>(null);
+const draggedViewId = ref<number | null>(null);
+const dragOverViewId = ref<number | null>(null);
 
-const viewTypeOptions: Array<{
-  type: ViewType;
-  label: string;
-  icon: string;
-  iconClass: string;
-}> = [
+const sourceView = computed(
+  () => currentViews.value.find((view) => view.is_default === 1) ?? null,
+);
+
+const childViews = computed(() => {
+  return [...currentViews.value]
+    .filter((view) => view.is_default === 0)
+    .sort((a, b) => {
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      return a.id - b.id;
+    });
+});
+
+const sourceDateFields = computed(() =>
+  fields.value.filter((field) => field.type === "date"),
+);
+
+const calendarFieldOptions = computed(() =>
+  sourceDateFields.value.map((field) => ({
+    label: field.name,
+    value: field.id,
+  })),
+);
+
+const viewTypeOptions = computed<ViewTypeOption[]>(() => {
+  const calendarDisabled = sourceDateFields.value.length === 0;
+  return [
     {
       type: "grid",
       label: "Grid",
@@ -210,8 +273,13 @@ const viewTypeOptions: Array<{
       label: "Calendar",
       icon: "pi-calendar",
       iconClass: "text-[#a78bfa]",
+      disabled: calendarDisabled,
+      tooltip: calendarDisabled
+        ? "Add a date field to the source view first."
+        : undefined,
     },
   ];
+});
 
 const isViewPickerOpen = computed(
   () => viewPickerOpenFor.value !== null && viewPickerOpenFor.value === selectedCollection.value?.id,
@@ -257,7 +325,10 @@ function isActiveView(viewId: number) {
 }
 
 function getViewTypeMeta(type: ViewType) {
-  return viewTypeOptions.find((option) => option.type === type) ?? viewTypeOptions[0];
+  return (
+    viewTypeOptions.value.find((option) => option.type === type) ??
+    viewTypeOptions.value[0]
+  );
 }
 
 function toggleViewPicker(event: MouseEvent, collectionId: number) {
@@ -288,7 +359,7 @@ function updateViewPickerPlacement() {
     return;
   }
   const rect = trigger.getBoundingClientRect();
-  const estimatedHeight = viewTypeOptions.length * 40 + 16;
+  const estimatedHeight = viewTypeOptions.value.length * 40 + 16;
   const spaceBelow = window.innerHeight - rect.bottom;
   const spaceAbove = rect.top;
   viewPickerPlacement.value =
@@ -319,6 +390,8 @@ function openCreateViewModal(collectionId: number, type: ViewType) {
   viewModalCollectionId.value = collectionId;
   viewModalViewId.value = null;
   viewModalName.value = buildViewName(type);
+  viewModalCalendarFieldId.value =
+    type === "calendar" ? (calendarFieldOptions.value[0]?.value ?? null) : null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -329,6 +402,7 @@ function openEditViewModal(view: View) {
   viewModalCollectionId.value = view.collection_id;
   viewModalViewId.value = view.id;
   viewModalName.value = view.name;
+  viewModalCalendarFieldId.value = null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -338,6 +412,7 @@ function closeViewModal() {
   viewModalName.value = "";
   viewModalViewId.value = null;
   viewModalCollectionId.value = null;
+  viewModalCalendarFieldId.value = null;
 }
 
 async function saveViewModal() {
@@ -360,15 +435,104 @@ async function saveViewModal() {
     });
   } else {
     if (!viewModalCollectionId.value) return;
-    await store.addView({
+    const calendarFieldId =
+      viewModalType.value === "calendar"
+        ? viewModalCalendarFieldId.value
+        : null;
+    if (viewModalType.value === "calendar" && !calendarFieldId) {
+      notifications.push({
+        severity: "warn",
+        summary: "Missing date field",
+        detail: "Choose a date field for the calendar view.",
+        life: 5000,
+      });
+      return;
+    }
+
+    const created = await store.addView({
       collectionId: viewModalCollectionId.value,
       name: nameResult.data,
       type: viewModalType.value,
       isDefault: 0,
     });
+
+    if (created) {
+      const selectedFieldIds = [...fields.value]
+        .filter((field) => field.collection_id === created.collection_id)
+        .sort((a, b) => {
+          if (a.order_index !== b.order_index) {
+            return a.order_index - b.order_index;
+          }
+          return a.id - b.id;
+        })
+        .map((field) => field.id);
+
+      await store.saveViewConfig(created.id, {
+        columnWidths: {},
+        sort: [],
+        calendarDateFieldId: calendarFieldId ?? undefined,
+        selectedFieldIds,
+      });
+    }
   }
 
   closeViewModal();
+}
+
+function onViewDragStart(viewId: number, event: DragEvent) {
+  draggedViewId.value = viewId;
+  dragOverViewId.value = null;
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('text/plain', String(viewId))
+    event.dataTransfer.setDragImage?.(event.currentTarget as Element, 0, 0)
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+function onViewDragEnd() {
+  draggedViewId.value = null;
+  dragOverViewId.value = null;
+}
+
+function onViewDragOver(viewId: number, event: DragEvent) {
+  if (draggedViewId.value === null || draggedViewId.value === viewId) {
+    return;
+  }
+  dragOverViewId.value = viewId;
+  event.preventDefault();
+}
+
+async function onViewDrop(collectionId: number, viewId: number, event: DragEvent) {
+  event.preventDefault();
+  const draggedId = draggedViewId.value;
+  if (!draggedId || draggedId === viewId) {
+    onViewDragEnd();
+    return;
+  }
+
+  const ids = childViews.value.map((view) => view.id);
+  if (!ids.includes(draggedId) || !ids.includes(viewId)) {
+    onViewDragEnd();
+    return;
+  }
+
+  const nextIds = ids.filter((id) => id !== draggedId);
+  const targetIndex = nextIds.indexOf(viewId);
+  if (targetIndex < 0) {
+    onViewDragEnd();
+    return;
+  }
+
+  nextIds.splice(targetIndex, 0, draggedId);
+  await store.reorderViews({
+    collectionId,
+    viewOrders: nextIds.map((id, index) => ({
+      id,
+      order: index + 1,
+    })),
+  });
+
+  onViewDragEnd();
 }
 
 function toggleDeleteConfirm(viewId: number) {

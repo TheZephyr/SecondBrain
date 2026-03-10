@@ -14,6 +14,7 @@ import type {
   NewFieldInput,
   UpdateFieldInput,
   ReorderFieldsInput,
+  ReorderViewsInput,
   NewItemInput,
   UpdateItemInput,
   InsertItemAtInput,
@@ -97,6 +98,82 @@ export const useStore = defineStore("main", () => {
     viewsRequestToken += 1;
     currentViews.value = [];
     activeViewId.value = null;
+  }
+
+  function getOrderedFieldIds(collectionId: number): number[] {
+    return [...fields.value]
+      .filter((field) => field.collection_id === collectionId)
+      .sort((a, b) => {
+        if (a.order_index !== b.order_index) {
+          return a.order_index - b.order_index;
+        }
+        return a.id - b.id;
+      })
+      .map((field) => field.id);
+  }
+
+  function normalizeSelectedFieldIds(value: unknown): number[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const seen = new Set<number>();
+    const normalized: number[] = [];
+    for (const entry of value) {
+      const parsed = Number(entry);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        continue;
+      }
+      if (seen.has(parsed)) {
+        continue;
+      }
+      seen.add(parsed);
+      normalized.push(parsed);
+    }
+    return normalized;
+  }
+
+  function normalizeCalendarDateFieldId(value: unknown): number | undefined {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+  }
+
+  async function updateChildViewFieldSelections(
+    collectionId: number,
+    updater: (currentIds: number[], allFieldIds: number[]) => number[],
+  ) {
+    const childViews = currentViews.value.filter(
+      (view) => view.collection_id === collectionId && view.is_default === 0,
+    );
+    if (childViews.length === 0) {
+      return;
+    }
+
+    const allFieldIds = getOrderedFieldIds(collectionId);
+    for (const view of childViews) {
+      const existing = await loadViewConfig(view.id);
+      const existingSelected = normalizeSelectedFieldIds(
+        existing?.selectedFieldIds,
+      );
+      const baseSelected =
+        existingSelected.length > 0 ? existingSelected : allFieldIds;
+      const nextSelected = updater(baseSelected, allFieldIds);
+      const unchanged =
+        nextSelected.length === baseSelected.length &&
+        nextSelected.every((id, index) => id === baseSelected[index]);
+
+      if (unchanged) {
+        continue;
+      }
+
+      await saveViewConfig(view.id, {
+        columnWidths: existing?.columnWidths ?? {},
+        sort: existing?.sort ?? [],
+        calendarDateField: existing?.calendarDateField,
+        calendarDateFieldId: existing?.calendarDateFieldId,
+        selectedFieldIds: nextSelected,
+      });
+    }
   }
 
   // Actions
@@ -226,6 +303,10 @@ export const useStore = defineStore("main", () => {
         config.calendarDateField.trim().length > 0
           ? config.calendarDateField.trim()
           : undefined,
+      calendarDateFieldId: normalizeCalendarDateFieldId(
+        config.calendarDateFieldId,
+      ),
+      selectedFieldIds: normalizeSelectedFieldIds(config.selectedFieldIds),
     };
 
     const result = await window.electronAPI.updateViewConfig({
@@ -265,6 +346,19 @@ export const useStore = defineStore("main", () => {
     const created = handleIpc(result, "db:addField", null);
     if (created) {
       await loadFields(field.collectionId);
+      await updateChildViewFieldSelections(
+        field.collectionId,
+        (currentIds, allFieldIds) => {
+          const next = [...currentIds];
+          if (!next.includes(created.id)) {
+            next.push(created.id);
+          }
+          if (next.length === 0) {
+            return allFieldIds;
+          }
+          return next;
+        },
+      );
     }
   }
 
@@ -300,8 +394,36 @@ export const useStore = defineStore("main", () => {
     const result = await window.electronAPI.deleteField(fieldId);
     const success = handleIpc(result, "db:deleteField", false);
     if (success) {
-      await loadFields(selectedCollection.value.id);
+      const collectionId = selectedCollection.value.id;
+      await loadFields(collectionId);
+      await updateChildViewFieldSelections(
+        collectionId,
+        (currentIds, allFieldIds) => {
+          const next = currentIds.filter((id) => id !== fieldId);
+          if (next.length === 0 && allFieldIds.length > 0) {
+            return allFieldIds;
+          }
+          return next;
+        },
+      );
     }
+  }
+
+  async function reorderViews(input: ReorderViewsInput) {
+    const payload: ReorderViewsInput = {
+      collectionId: input.collectionId,
+      viewOrders: input.viewOrders.map((entry) => ({
+        id: entry.id,
+        order: entry.order,
+      })),
+    };
+
+    const result = await window.electronAPI.reorderViews(payload);
+    const success = handleIpc(result, "db:reorderViews", false);
+    if (success) {
+      await loadViews(payload.collectionId, { preserveActive: true });
+    }
+    return success;
   }
 
   async function loadItems(collectionId: number, options: LoadItemsOptions = {}) {
@@ -556,6 +678,7 @@ export const useStore = defineStore("main", () => {
     updateField,
     reorderFields,
     deleteField,
+    reorderViews,
     loadItems,
     appendItems,
     addItem,

@@ -120,7 +120,9 @@ export function useGridColumns({ orderedFields, viewId }: UseGridColumnsParams) 
         field: entry.field,
         order: entry.order
       })),
-      calendarDateField: existingConfig?.calendarDateField
+      calendarDateField: existingConfig?.calendarDateField,
+      calendarDateFieldId: existingConfig?.calendarDateFieldId,
+      selectedFieldIds: existingConfig?.selectedFieldIds ?? []
     }
     await store.saveViewConfig(targetViewId, nextConfig)
   }

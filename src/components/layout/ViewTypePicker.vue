@@ -20,9 +20,14 @@
           v-for="viewType in viewTypes"
           :key="viewType.type"
           type="button"
-          class="group flex h-10 w-full items-center gap-3 px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+          class="group flex h-10 w-full items-center gap-3 px-3 text-sm text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+          :class="viewType.disabled
+            ? 'cursor-not-allowed opacity-60'
+            : 'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+          :disabled="viewType.disabled"
+          :title="viewType.tooltip"
           role="menuitem"
-          @click="emit('select', viewType.type)"
+          @click="viewType.disabled ? undefined : emit('select', viewType.type)"
         >
           <i class="pi text-sm" :class="[viewType.icon, viewType.iconClass]"></i>
           <span class="flex-1 text-left">{{ viewType.label }}</span>
@@ -48,6 +53,8 @@ const props = defineProps<{
     label: string;
     icon: string;
     iconClass: string;
+    disabled?: boolean;
+    tooltip?: string;
   }>;
 }>();
 

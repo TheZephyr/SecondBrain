@@ -60,6 +60,8 @@ export const ViewConfigSchema = z.object({
   columnWidths: z.record(viewConfigColumnKeySchema, z.number().int().min(60)),
   sort: z.array(ItemSortSpecSchema),
   calendarDateField: z.string().trim().min(1).max(64).optional(),
+  calendarDateFieldId: positiveIntSchema.optional(),
+  selectedFieldIds: z.array(positiveIntSchema).default([]),
 });
 
 export const itemDataValueSchema = z.union([
@@ -189,6 +191,52 @@ export const ReorderFieldsInputSchema = z
           message:
             "Field order indices must be contiguous and start at 0 (0..n-1).",
           path: ["fieldOrders"],
+        });
+        break;
+      }
+    }
+  });
+
+export const ViewOrderUpdateSchema = z.object({
+  id: positiveIntSchema,
+  order: z.number().int().min(1),
+});
+
+export const ReorderViewsInputSchema = z
+  .object({
+    collectionId: positiveIntSchema,
+    viewOrders: z.array(ViewOrderUpdateSchema).min(1),
+  })
+  .superRefine((value, ctx) => {
+    const ids = value.viewOrders.map((entry) => entry.id);
+    const uniqueIds = new Set(ids);
+    if (uniqueIds.size !== ids.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "View order updates must contain unique view IDs.",
+        path: ["viewOrders"],
+      });
+    }
+
+    const orders = value.viewOrders.map((entry) => entry.order);
+    const uniqueOrders = new Set(orders);
+    if (uniqueOrders.size !== orders.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "View order updates must contain unique order indices.",
+        path: ["viewOrders"],
+      });
+      return;
+    }
+
+    const sorted = [...orders].sort((a, b) => a - b);
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i] !== i + 1) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "View order indices must be contiguous and start at 1 (1..n).",
+          path: ["viewOrders"],
         });
         break;
       }

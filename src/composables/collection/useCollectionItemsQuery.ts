@@ -164,7 +164,9 @@ export function useCollectionItemsQuery({
         field: entry.field,
         order: entry.order
       })),
-      calendarDateField: existing?.calendarDateField
+      calendarDateField: existing?.calendarDateField,
+      calendarDateFieldId: existing?.calendarDateFieldId,
+      selectedFieldIds: existing?.selectedFieldIds ?? []
     }
     await saveViewConfig(targetViewId, nextConfig)
   }
@@ -190,7 +192,9 @@ export function useCollectionItemsQuery({
     const migratedConfig: ViewConfig = {
       columnWidths: normalizeColumnWidths(existingConfig?.columnWidths),
       sort: migratedSort,
-      calendarDateField: existingConfig?.calendarDateField
+      calendarDateField: existingConfig?.calendarDateField,
+      calendarDateFieldId: existingConfig?.calendarDateFieldId,
+      selectedFieldIds: existingConfig?.selectedFieldIds ?? []
     }
 
     await saveViewConfig(targetViewId, migratedConfig)

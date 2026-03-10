@@ -52,6 +52,11 @@ function normalizeFieldName(value: string | null | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
+function normalizeFieldId(value: unknown): number | null {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
 function normalizeViewConfig(config: ViewConfig | null): ViewConfig {
   return {
     columnWidths: { ...(config?.columnWidths ?? {}) },
@@ -59,7 +64,9 @@ function normalizeViewConfig(config: ViewConfig | null): ViewConfig {
       field: entry.field,
       order: entry.order
     })),
-    calendarDateField: normalizeFieldName(config?.calendarDateField) ?? undefined
+    calendarDateField: normalizeFieldName(config?.calendarDateField) ?? undefined,
+    calendarDateFieldId: normalizeFieldId(config?.calendarDateFieldId) ?? undefined,
+    selectedFieldIds: config?.selectedFieldIds ?? []
   }
 }
 
@@ -97,7 +104,8 @@ export function useCollectionCalendar({
 }: UseCollectionCalendarParams) {
   const today = new Date()
   const displayedMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
-  const storedCalendarDateField = ref<string | null>(null)
+  const storedCalendarDateFieldId = ref<number | null>(null)
+  const storedCalendarDateFieldName = ref<string | null>(null)
   const weekdayLabels = buildWeekdayLabels()
   const configLoaded = ref(false)
   const isEnsuringAllItems = ref(false)
@@ -112,33 +120,41 @@ export function useCollectionCalendar({
     return orderedFields.value.find(field => field.type === 'text' || field.type === 'textarea') ?? null
   })
 
-  const selectedDateFieldName = computed(() => {
+  const selectedDateFieldId = computed(() => {
     if (dateFields.value.length === 0) {
       return null
     }
 
-    const normalizedStoredField = normalizeFieldName(storedCalendarDateField.value)
-    if (normalizedStoredField) {
-      const exists = dateFields.value.some(field => field.name === normalizedStoredField)
+    const storedId = normalizeFieldId(storedCalendarDateFieldId.value)
+    if (storedId !== null) {
+      const exists = dateFields.value.some(field => field.id === storedId)
       if (exists) {
-        return normalizedStoredField
+        return storedId
+      }
+    }
+
+    const normalizedStoredName = normalizeFieldName(storedCalendarDateFieldName.value)
+    if (normalizedStoredName) {
+      const match = dateFields.value.find(field => field.name === normalizedStoredName)
+      if (match) {
+        return match.id
       }
     }
 
     if (dateFields.value.length === 1) {
-      return dateFields.value[0]?.name ?? null
+      return dateFields.value[0]?.id ?? null
     }
 
     return null
   })
 
   const selectedDateField = computed(() => {
-    const selectedName = selectedDateFieldName.value
-    if (!selectedName) {
+    const selectedId = selectedDateFieldId.value
+    if (!selectedId) {
       return null
     }
 
-    return dateFields.value.find(field => field.name === selectedName) ?? null
+    return dateFields.value.find(field => field.id === selectedId) ?? null
   })
 
   const monthLabel = computed(() => {
@@ -198,30 +214,31 @@ export function useCollectionCalendar({
     }))
   })
 
-  async function persistCalendarDateField(nextFieldName: string | null) {
+  async function persistCalendarDateField(nextFieldId: number | null) {
     const parsedViewId = Number(viewId.value)
     if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
       return
     }
 
     const existingConfig = normalizeViewConfig(await loadViewConfig(parsedViewId))
-    const normalizedFieldName = normalizeFieldName(nextFieldName) ?? undefined
+    const normalizedFieldId = normalizeFieldId(nextFieldId) ?? undefined
 
     await saveViewConfig(parsedViewId, {
       ...existingConfig,
-      calendarDateField: normalizedFieldName
+      calendarDateField: undefined,
+      calendarDateFieldId: normalizedFieldId
     })
   }
 
-  async function setSelectedDateFieldName(nextFieldName: string | null) {
-    const normalizedFieldName = normalizeFieldName(nextFieldName)
-    storedCalendarDateField.value = normalizedFieldName
+  async function setSelectedDateFieldId(nextFieldId: number | null) {
+    const normalizedFieldId = normalizeFieldId(nextFieldId)
+    storedCalendarDateFieldId.value = normalizedFieldId
 
     if (!configLoaded.value) {
       return
     }
 
-    await persistCalendarDateField(normalizedFieldName)
+    await persistCalendarDateField(normalizedFieldId)
   }
 
   function goToPreviousMonth() {
@@ -298,7 +315,8 @@ export function useCollectionCalendar({
     async nextViewId => {
       const parsedViewId = Number(nextViewId)
       configLoaded.value = false
-      storedCalendarDateField.value = null
+      storedCalendarDateFieldId.value = null
+      storedCalendarDateFieldName.value = null
 
       if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
         configLoaded.value = true
@@ -311,24 +329,26 @@ export function useCollectionCalendar({
         return
       }
 
-      storedCalendarDateField.value = normalizeFieldName(config?.calendarDateField)
+      const normalized = normalizeViewConfig(config)
+      storedCalendarDateFieldId.value = normalizeFieldId(normalized.calendarDateFieldId)
+      storedCalendarDateFieldName.value = normalizeFieldName(normalized.calendarDateField)
       configLoaded.value = true
     },
     { immediate: true }
   )
 
   watch(
-    [selectedDateFieldName, configLoaded],
-    ([resolvedFieldName, loaded]) => {
+    [selectedDateFieldId, configLoaded],
+    ([resolvedFieldId, loaded]) => {
       if (!loaded) {
         return
       }
 
-      if (normalizeFieldName(storedCalendarDateField.value) === resolvedFieldName) {
+      if (normalizeFieldId(storedCalendarDateFieldId.value) === resolvedFieldId) {
         return
       }
 
-      void setSelectedDateFieldName(resolvedFieldName)
+      void setSelectedDateFieldId(resolvedFieldId)
     },
     { immediate: true }
   )
@@ -362,11 +382,11 @@ export function useCollectionCalendar({
     dateFields,
     weekdayLabels,
     selectedDateField,
-    selectedDateFieldName,
+    selectedDateFieldId,
     monthLabel,
     monthCells,
     isEnsuringAllItems,
-    setSelectedDateFieldName,
+    setSelectedDateFieldId,
     goToPreviousMonth,
     goToNextMonth
   }

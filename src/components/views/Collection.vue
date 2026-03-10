@@ -10,11 +10,18 @@
         @delete-collection="confirmDeleteCollection"
       />
       <CollectionFieldsPanel
-        v-else-if="activeCollectionPanel === 'fields'"
-        :orderedFields="orderedFields"
+        v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
+        :orderedFields="sourceOrderedFields"
         @add-field="addField"
         @delete-field="confirmDeleteField"
         @reorder-fields="onFieldsReorder"
+      />
+      <CollectionChildFieldsPanel
+        v-else-if="activeCollectionPanel === 'fields' && activeView"
+        :orderedFields="sourceOrderedFields"
+        :selectedFieldIds="selectedFieldIds"
+        @toggle-field="onToggleSelectedField"
+        @reorder-selected="onReorderSelectedFields"
       />
       <template v-else>
         <CollectionGrid
@@ -24,7 +31,7 @@
           :itemsTotal="itemsTotal"
           :itemsLoading="itemsLoading"
           :itemsFullyLoaded="itemsFullyLoaded"
-          :orderedFields="orderedFields"
+          :orderedFields="viewOrderedFields"
           :searchQuery="searchQuery"
           :debouncedSearchQuery="debouncedSearchQuery"
           :multiSortMeta="multiSortMeta"
@@ -43,7 +50,7 @@
         />
         <CollectionKanbanView
           v-else-if="activeView?.type === 'kanban'"
-          :orderedFields="orderedFields"
+          :orderedFields="viewOrderedFields"
         />
         <CollectionCalendarView
           v-else-if="activeView?.type === 'calendar'"
@@ -53,7 +60,7 @@
           :itemsFullyLoaded="itemsFullyLoaded"
           :itemsSearch="itemsSearch"
           :itemsSort="itemsSort"
-          :orderedFields="orderedFields"
+          :orderedFields="viewOrderedFields"
           :loadItems="loadCollectionItems"
           @edit-item="openEditItemDialog"
         />
@@ -62,7 +69,7 @@
 
     <CollectionItemEditorDialog
       :visible="showAddItemForm"
-      :orderedFields="orderedFields"
+      :orderedFields="viewOrderedFields"
       :editingItem="editingItem"
       @update:visible="onItemDialogVisibilityChange"
       @save="saveItem"
@@ -95,13 +102,15 @@ import type {
   InsertItemAtInput,
   DuplicateItemInput,
   MoveItemInput,
-  UpdateItemInput
+  UpdateItemInput,
+  ViewConfig
 } from '../../types/models'
 import CollectionGrid from './collection/grid/CollectionGrid.vue'
 import CollectionKanbanView from './collection/CollectionKanbanView.vue'
 import CollectionCalendarView from './collection/calendar/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
 import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
+import CollectionChildFieldsPanel from './collection/CollectionChildFieldsPanel.vue'
 import CollectionSettingsPanel from './collection/CollectionSettingsPanel.vue'
 import type {
   CollectionSettingsSavePayload,
@@ -137,7 +146,7 @@ const emit = defineEmits<{
 const showAddItemForm = ref(false)
 const editingItem = ref<Item | null>(null)
 
-const { safeFields, orderedFields } = useSafeFields({
+const { safeFields, orderedFields: sourceOrderedFields } = useSafeFields({
   fields,
   notifications
 })
@@ -146,6 +155,37 @@ const collectionId = computed(() => props.collection.id)
 
 const activeView = computed(() => {
   return currentViews.value.find(view => view.id === activeViewId.value) ?? null
+})
+
+const isSourceViewActive = computed(() => activeView.value?.is_default === 1)
+
+const childViewConfig = ref<ViewConfig | null>(null)
+let childConfigToken = 0
+
+const selectedFieldIds = computed(() => {
+  if (!activeView.value || activeView.value.is_default === 1) {
+    return []
+  }
+
+  const configured = childViewConfig.value?.selectedFieldIds ?? []
+  if (configured.length > 0) {
+    return configured
+  }
+
+  return sourceOrderedFields.value.map(field => field.id)
+})
+
+const viewOrderedFields = computed(() => {
+  if (!activeView.value || activeView.value.is_default === 1) {
+    return sourceOrderedFields.value
+  }
+
+  const fieldMap = new Map(sourceOrderedFields.value.map(field => [field.id, field]))
+  const ordered = selectedFieldIds.value
+    .map(id => fieldMap.get(id))
+    .filter((field): field is Field => Boolean(field))
+
+  return ordered
 })
 
 async function loadCollectionItems(options: LoadItemsOptions = {}) {
@@ -170,6 +210,27 @@ const {
   loadViewConfig: store.loadViewConfig,
   saveViewConfig: store.saveViewConfig
 })
+
+watch(
+  [activeViewId, currentViews],
+  async () => {
+    childViewConfig.value = null
+
+    const view = currentViews.value.find(view => view.id === activeViewId.value) ?? null
+    if (!view || view.is_default === 1) {
+      return
+    }
+
+    const token = ++childConfigToken
+    const config = await store.loadViewConfig(view.id)
+    if (token !== childConfigToken) {
+      return
+    }
+
+    childViewConfig.value = config
+  },
+  { immediate: true }
+)
 
 watch(
   () => props.collection.id,
@@ -272,7 +333,7 @@ async function confirmDeleteField(field: Field) {
 async function onFieldsReorder(reorderedFields: Field[]) {
   if (!reorderedFields) return
 
-  const visibleFieldIds = orderedFields.value.map(field => field.id)
+  const visibleFieldIds = sourceOrderedFields.value.map(field => field.id)
   const visibleFieldIdSet = new Set(visibleFieldIds)
   const reorderedFieldIds = reorderedFields.map(field => field.id)
   const reorderedFieldIdSet = new Set(reorderedFieldIds)
@@ -326,6 +387,72 @@ async function onFieldsReorder(reorderedFields: Field[]) {
       orderIndex: index
     }))
   })
+}
+
+async function persistChildViewConfig(
+  viewId: number,
+  nextSelectedIds: number[]
+) {
+  const existing = childViewConfig.value
+  const config: ViewConfig = {
+    columnWidths: existing?.columnWidths ?? {},
+    sort: existing?.sort ?? [],
+    calendarDateField: existing?.calendarDateField,
+    calendarDateFieldId: existing?.calendarDateFieldId,
+    selectedFieldIds: nextSelectedIds
+  }
+
+  await store.saveViewConfig(viewId, config)
+  childViewConfig.value = config
+}
+
+async function onToggleSelectedField(payload: { id: number; selected: boolean }) {
+  const viewId = activeView.value?.id
+  if (!viewId || activeView.value?.is_default === 1) {
+    return
+  }
+
+  const baseIds = selectedFieldIds.value
+  let nextIds = baseIds
+
+  if (payload.selected) {
+    if (!baseIds.includes(payload.id)) {
+      nextIds = [...baseIds, payload.id]
+    }
+  } else {
+    nextIds = baseIds.filter(id => id !== payload.id)
+  }
+
+  if (nextIds === baseIds) {
+    return
+  }
+
+  if (nextIds.length === 0) {
+    nextIds = sourceOrderedFields.value.map(field => field.id)
+  }
+
+  await persistChildViewConfig(viewId, nextIds)
+}
+
+async function onReorderSelectedFields(payload: { draggedId: number; targetId: number }) {
+  const viewId = activeView.value?.id
+  if (!viewId || activeView.value?.is_default === 1) {
+    return
+  }
+
+  const baseIds = selectedFieldIds.value
+  if (!baseIds.includes(payload.draggedId) || !baseIds.includes(payload.targetId)) {
+    return
+  }
+
+  const nextIds = baseIds.filter(id => id !== payload.draggedId)
+  const targetIndex = nextIds.indexOf(payload.targetId)
+  if (targetIndex < 0) {
+    return
+  }
+  nextIds.splice(targetIndex, 0, payload.draggedId)
+
+  await persistChildViewConfig(viewId, nextIds)
 }
 
 async function confirmDeleteItem(item: Item) {

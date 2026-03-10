@@ -15,6 +15,7 @@ import type {
   NewViewInput,
   UpdateViewInput,
   UpdateViewConfigInput,
+  ReorderViewsInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
@@ -40,6 +41,7 @@ import {
   NewViewInputSchema,
   UpdateViewInputSchema,
   UpdateViewConfigInputSchema,
+  ReorderViewsInputSchema,
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
@@ -475,6 +477,15 @@ handleIpc("db:updateViewConfig", async (_, payload: UpdateViewConfigInput) => {
     "db:updateViewConfig",
   );
   return invokeDbWorker({ type: "updateViewConfig", input });
+});
+
+handleIpc("db:reorderViews", async (_, payload: ReorderViewsInput) => {
+  const input = parseOrThrow(
+    ReorderViewsInputSchema,
+    payload,
+    "db:reorderViews",
+  );
+  return invokeDbWorker({ type: "reorderViews", input });
 });
 
 // ==================== FIELDS ====================

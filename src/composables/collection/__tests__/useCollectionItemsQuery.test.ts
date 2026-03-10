@@ -225,7 +225,9 @@ describe('useCollectionItemsQuery', () => {
       expect(saveViewConfig).toHaveBeenCalledWith(30, {
         columnWidths: { 4: 190 },
         sort: [{ field: 'data.Title', order: -1 }],
-        calendarDateField: undefined
+        calendarDateField: undefined,
+        calendarDateFieldId: undefined,
+        selectedFieldIds: []
       })
     })
   })
@@ -275,7 +277,9 @@ describe('useCollectionItemsQuery', () => {
       expect(saveViewConfig).toHaveBeenCalledWith(101, {
         columnWidths: {},
         sort: [{ field: 'data.Title', order: -1 }, { field: 'data.Unknown', order: 1 }],
-        calendarDateField: undefined
+        calendarDateField: undefined,
+        calendarDateFieldId: undefined,
+        selectedFieldIds: []
       })
       await vi.waitFor(() => {
         expect(storage.getItem(getSortStorageKey(42))).toBeNull()

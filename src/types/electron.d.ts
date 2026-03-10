@@ -8,6 +8,7 @@ import type {
   NewViewInput,
   UpdateViewInput,
   UpdateViewConfigInput,
+  ReorderViewsInput,
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
@@ -60,6 +61,7 @@ export interface IElectronAPI {
   updateViewConfig: (
     input: UpdateViewConfigInput,
   ) => Promise<IpcResult<boolean>>;
+  reorderViews: (input: ReorderViewsInput) => Promise<IpcResult<boolean>>;
 
   // Fields
   getFields: (collectionId: number) => Promise<IpcResult<Field[]>>;

@@ -31,6 +31,7 @@ function makeElectronAPIMock() {
     deleteView: vi.fn(),
     getViewConfig: vi.fn(),
     updateViewConfig: vi.fn(),
+    reorderViews: vi.fn(),
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
@@ -292,7 +293,7 @@ describe("selectCollection", () => {
         {
           id: 10,
           collection_id: 5,
-          name: "Grid",
+          name: "Source",
           type: "grid",
           is_default: 1,
           order: 0,
@@ -331,7 +332,7 @@ describe("selectCollection", () => {
         {
           id: 22,
           collection_id: 7,
-          name: "Grid",
+          name: "Source",
           type: "grid",
           is_default: 1,
           order: 0,
@@ -381,7 +382,7 @@ describe("selectCollection", () => {
       {
         id: 1,
         collection_id: 1,
-        name: "Grid",
+        name: "Source",
         type: "grid",
         is_default: 1,
         order: 0,
@@ -630,6 +631,8 @@ describe("view config", () => {
           columnWidths: { 7: 60 },
           sort: [{ field: "data.Title", order: -1 }],
           calendarDateField: "Due Date",
+          calendarDateFieldId: undefined,
+          selectedFieldIds: [],
         },
       });
   });
