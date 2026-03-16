@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-6xl px-10 py-8 space-y-6">
+  <div class="mx-auto px-4 py-4 space-y-4 max-h-100vh overflow-y-auto text-sm">
     <DataTable
       :value="orderedFields"
       dataKey="id"
@@ -16,11 +16,11 @@
       <Column header="Type">
         <template #body="{ data }">
           <div class="flex items-center gap-2">
-            <Tag class="uppercase">
+            <Tag>
               <component
                 :is="iconMap[FIELD_TYPE_META[data.type as FieldType].icon]"
                 :size="12"
-                class="text-[var(--text-muted)]"
+                class="text-[var(--text-primary)]"
               />
               <span>{{ FIELD_TYPE_META[data.type as FieldType].displayName }}</span>
             </Tag>
@@ -32,11 +32,11 @@
           <div class="flex items-center gap-2">
             <Button
               text
-              class="h-8 w-8 p-0 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+              class="h-8 w-8 p-0 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
               title="Edit field"
               @click="toggleEdit(data)"
             >
-              <Pencil :size="16" />
+              <Pencil :size="18" />
             </Button>
             <Button
               text
@@ -44,7 +44,7 @@
               title="Delete field"
               @click="$emit('delete-field', data)"
             >
-              <Trash2 />
+              <Trash2 :size="18" />
             </Button>
           </div>
         </template>
@@ -53,14 +53,14 @@
       <template #expansion="{ data }">
         <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
           <div
-            class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]"
+            class="mb-3 flex items-center gap-2 text-xs tracking-wide text-[var(--text-secondary)]"
           >
             <Pencil :size="14" />
             Edit Field
           </div>
           <div class="flex flex-col gap-3 md:flex-row md:items-center">
             <InputText v-model="editDraft.name" type="text" placeholder="Field name" class="flex-1" />
-            <Tag class="uppercase">
+            <Tag>
               <component
                 :is="iconMap[FIELD_TYPE_META[data.type as FieldType].icon]"
                 :size="12"
@@ -86,7 +86,7 @@
 
     <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
       <div
-        class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]"
+        class="mb-3 flex items-center gap-2 text-xs tracking-wide text-[var(--text-secondary)]"
       >
         <Plus :size="14" />
         Add New Field
@@ -168,7 +168,7 @@ const newField = ref<FieldDraftInput>(createEmptyFieldDraft())
 const addFieldSectionRef = ref<HTMLElement | null>(null)
 const addFieldNameRef = ref<unknown>(null)
 
-const expandedRows = ref<Field[]>([])
+const expandedRows = ref<Record<string, boolean>>({})
 const editingFieldId = ref<number | null>(null)
 const editingOriginalChoices = ref<string[]>([])
 const editDraft = ref<EditDraft>({
@@ -200,7 +200,7 @@ function toggleEdit(field: Field) {
   }
 
   editingFieldId.value = field.id
-  expandedRows.value = [field]
+  expandedRows.value = { [String(field.id)]: true }
   editDraft.value = {
     name: field.name,
     options: parseFieldOptions(field.type, field.options)
@@ -216,7 +216,7 @@ function toggleEdit(field: Field) {
 
 function cancelEdit() {
   editingFieldId.value = null
-  expandedRows.value = []
+  expandedRows.value = {}
   editDraft.value = {
     name: '',
     options: getDefaultOptions('text')
