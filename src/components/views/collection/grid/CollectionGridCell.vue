@@ -27,7 +27,7 @@
         <button type="button" class="flex items-center" @click.stop="toggleBoolean">
           <component :is="booleanIconComponent" :size="18" :fill="booleanValue ? 'currentColor' : 'transparent'"
             :stroke-width="booleanValue ? 0 : 1.5"
-            :class="booleanValue ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'" />
+            :class="booleanValue ? 'text-[var(--p-primary-color)]' : 'text-[var(--text-muted)]'" />
         </button>
       </template>
       <template v-else-if="field?.type === 'url' && displayText !== '-'">
@@ -236,7 +236,9 @@ const displayStyle = computed(() => {
   return {}
 })
 
-const ratingFilledClass = computed(() => (isDuplicate.value ? 'text-[var(--danger)]' : 'text-[var(--text-primary)]'))
+const ratingFilledClass = computed(() =>
+  (isDuplicate.value ? 'text-[var(--danger)]' : 'text-[var(--p-primary-color)]')
+)
 
 const chipStyle = computed(() => {
   const base = getChipStyle(String(displayText.value), selectOptions.value)
