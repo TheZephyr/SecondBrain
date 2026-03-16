@@ -2,44 +2,44 @@
   <aside class="flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]">
     <div class="border-b border-[var(--border-color)] p-4">
       <div class="flex items-center gap-3">
-        <Brain class="text-[var(--accent-primary)] size-9" />
+        <Brain class="text-[var(--accent-primary)] size-10 pt-1" />
         <div>
-          <h1 class="text-base font-semibold text-[var(--text-primary)]">Second Brain</h1>
+          <h1 class="text-lg font-semibold text-[var(--text-primary)]">Second Brain</h1>
           <p class="text-xs text-[var(--text-muted)]">v {{ appVersion }}</p>
         </div>
       </div>
     </div>
 
     <nav class="flex-1 space-y-2 overflow-y-auto px-2 py-3">
-      <Button text class="w-full justify-start gap-3 rounded-md px-3 py-2 text-sm" :class="currentView === 'dashboard'
+      <Button text class="w-full justify-start gap-3 rounded-md px-3 py-2 text-base" :class="currentView === 'dashboard'
         ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
         @click="showDashboard">
-        <i class="pi pi-chart-bar text-sm"></i>
+        <i class="pi pi-chart-bar text-base"></i>
         <span>Dashboard</span>
       </Button>
 
-      <div class="h-px bg-[var(--border-color)]/70"></div>
-      <div class="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+      <div class="h-px bg-[var(--border-color)]"></div>
+      <div class="px-3 pt-2 text-base font-semibold uppercase tracking-wide text-[var(--text-muted)]">
         Collections
       </div>
 
       <div v-for="collection in collections" :key="collection.id" class="space-y-1">
         <Button text
-          class="w-full justify-start rounded-md px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          class="w-full justify-start rounded-md px-3 py-2 text-base text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
           @click="handleCollectionClick(collection)">
           <div class="flex items-center gap-2">
             <span class="flex items-center" @click.stop="toggleExpanded(collection.id)">
-              <i class="pi text-xs" :class="isExpanded(collection.id) ? 'pi-angle-down' : 'pi-angle-right'"></i>
+              <i class="pi text-base" :class="isExpanded(collection.id) ? 'pi-angle-down' : 'pi-angle-right'"></i>
             </span>
-            <span class="min-w-0 flex-1 truncate">{{ collection.name }}</span>
+            <span class="text-base min-w-0 flex-1 truncate">{{ collection.name }}</span>
           </div>
         </Button>
 
-        <div v-if="isExpanded(collection.id)" class="ml-4 space-y-1">
+        <div v-if="isExpanded(collection.id)" class="space-y-1">
           <template v-if="selectedCollection?.id === collection.id">
             <div v-if="sourceView" class="relative">
-              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-sm" :class="isActiveView(sourceView.id)
+              <Button text class="pl-10 group w-full justify-start rounded-md px-3 py-2 text-base" :class="isActiveView(sourceView.id)
                 ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
                 @click="handleViewClick(sourceView.id)">
@@ -50,42 +50,41 @@
               </Button>
             </div>
 
-            <div v-for="view in childViews" :key="view.id" class="relative" @dragover="event => onViewDragOver(view.id, event)"
+            <div v-for="view in childViews" :key="view.id" class="relative"
+              @dragover="event => onViewDragOver(view.id, event)"
               @drop="event => onViewDrop(collection.id, view.id, event)">
-              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-sm" :class="[
+              <Button text class="group w-full justify-start rounded-md px-3 py-2 text-base" :class="[
                 isActiveView(view.id)
                   ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
                 dragOverViewId === view.id ? 'bg-[var(--bg-hover)]' : ''
               ]" @click="handleViewClick(view.id)">
                 <div class="flex w-full items-center gap-2">
-                  <span class="flex size-5 items-center justify-center text-[var(--text-muted)]"
-                    title="Drag to reorder" draggable="true"
-                    @dragstart="event => onViewDragStart(view.id, event)"
-                    @dragend="onViewDragEnd"
+                  <span class="flex size-5 items-center justify-center text-[var(--text-muted)]" title="Drag to reorder"
+                    draggable="true" @dragstart="event => onViewDragStart(view.id, event)" @dragend="onViewDragEnd"
                     @mousedown.stop @click.stop>
                     <GripVertical :size="14" />
                   </span>
-                  <i class="pi text-xs"
+                  <i class="pi text-base"
                     :class="[getViewTypeMeta(view.type).icon, getViewTypeMeta(view.type).iconClass]"></i>
                   <span class="flex-1 truncate text-left">{{ view.name }}</span>
                   <div class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <span
                       class="flex size-5 items-center justify-center rounded text-[var(--accent-primary)] hover:bg-[var(--bg-hover)]"
                       title="Rename view" @mousedown.stop @click.stop="openEditViewModal(view)">
-                      <i class="pi pi-pencil text-xs"></i>
+                      <i class="pi pi-pencil text-base"></i>
                     </span>
                     <span
-                      class="flex size-5 items-center justify-center rounded text-[#f87171] hover:bg-[var(--bg-hover)]"
+                      class="flex size-5 items-center justify-center rounded text-[var(--danger)] hover:bg-[var(--bg-hover)]"
                       title="Delete view" @mousedown.stop @click.stop="toggleDeleteConfirm(view.id)">
-                      <i class="pi pi-trash text-xs"></i>
+                      <i class="pi pi-trash text-base"></i>
                     </span>
                   </div>
                 </div>
               </Button>
 
               <div v-if="confirmDeleteViewId === view.id" :ref="setDeleteConfirmContainer"
-                class="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-2 text-xs text-[var(--text-secondary)] shadow-lg"
+                class="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-2 text-base text-[var(--text-secondary)] shadow-lg"
                 @mousedown.stop>
                 <div>Are you sure?</div>
                 <div class="mt-2 flex items-center justify-end gap-2">
@@ -104,12 +103,12 @@
 
             <div :ref="setViewPickerContainer" class="relative">
               <Button text
-                class="w-full justify-start rounded-md px-3 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                class="w-full justify-start rounded-md px-3 py-2 text-base text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                 :aria-expanded="isViewPickerOpen" aria-controls="view-type-picker"
                 @click="event => toggleViewPicker(event, collection.id)">
-                <div class="flex w-full items-center gap-2">
-                  <i class="pi pi-plus text-xs"></i>
-                  <span class="truncate">Add view</span>
+                <div class="flex w-full items-center gap-2 pl-1">
+                  <i class="pi pi-plus text-sm"></i>
+                  <span class="text-sm">Add view</span>
                 </div>
               </Button>
 
@@ -122,17 +121,17 @@
       </div>
 
       <Button outlined
-        class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-sm text-[var(--text-muted)] border-[var(--border-color)]"
+        class="w-full justify-start gap-3 rounded-md border-dashed px-3 py-2 text-base text-[var(--text-muted)] border-[var(--border-color)]"
         @click="showNewCollectionModal = true">
-        <i class="pi pi-plus text-sm"></i>
+        <i class="pi pi-plus text-base"></i>
         <span>New Collection</span>
       </Button>
     </nav>
 
     <div class="border-t border-[var(--border-color)] px-4 py-2">
-      <div class="flex items-center justify-between text-xs text-[var(--text-muted)]">
+      <div class="flex items-center justify-between text-base text-[var(--text-muted)]">
         <div class="flex items-center gap-2">
-          <i class="pi pi-cog text-xs"></i>
+          <i class="pi pi-cog text-base"></i>
           <span>Settings</span>
         </div>
       </div>
@@ -143,7 +142,7 @@
     class="max-w-xl" @hide="cancelNewCollection">
     <div class="space-y-4">
       <div class="space-y-2">
-        <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name </label>
+        <label class="text-base font-medium text-[var(--text-secondary)]">Collection Name </label>
         <InputText v-model="newCollection.name" type="text" autofocus />
       </div>
     </div>
@@ -158,11 +157,11 @@
     @hide="closeViewModal">
     <div class="space-y-4">
       <div class="space-y-2">
-        <label class="text-xs font-medium text-[var(--text-secondary)]">View Name</label>
+        <label class="text-base font-medium text-[var(--text-secondary)]">View Name</label>
         <InputText v-model="viewModalName" type="text" autofocus />
       </div>
       <div v-if="viewModalMode === 'create' && viewModalType === 'calendar'" class="space-y-2">
-        <label class="text-xs font-medium text-[var(--text-secondary)]">Date field</label>
+        <label class="text-base font-medium text-[var(--text-secondary)]">Date field</label>
         <Select v-model="viewModalCalendarFieldId" :options="calendarFieldOptions" optionLabel="label"
           optionValue="value" placeholder="Choose date field" class="w-full" />
       </div>
@@ -266,13 +265,13 @@ const viewTypeOptions = computed<ViewTypeOption[]>(() => {
       type: "kanban",
       label: "Kanban",
       icon: "pi-bars",
-      iconClass: "text-[#c084fc]",
+      iconClass: "text-[var(--accent-primary)]",
     },
     {
       type: "calendar",
       label: "Calendar",
       icon: "pi-calendar",
-      iconClass: "text-[#a78bfa]",
+      iconClass: "text-[var(--accent-primary)]",
       disabled: calendarDisabled,
       tooltip: calendarDisabled
         ? "Add a date field to the source view first."

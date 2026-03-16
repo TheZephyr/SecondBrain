@@ -1,7 +1,14 @@
 import { ref, type Ref } from 'vue'
 import type { Field, Item, ItemData, ItemDataValue } from '../../../types/models'
 import { useStore } from '../../../store'
-import { formatDateForStorage } from '../../../utils/date'
+import { formatDateForStorage, parseDateInput } from '../../../utils/date'
+import { parseFieldOptions } from '../../../utils/fieldOptions'
+import {
+  serializeMultiselectValue,
+  serializeBooleanValue,
+  parseRatingValue,
+  serializeRatingValue
+} from '../../../utils/fieldValues'
 import type { GridCellKey, GridSelectionContext } from '../../../components/views/collection/grid/types'
 import { buildGridCellKey, parseGridCellKey } from './useGridSelection'
 
@@ -13,7 +20,9 @@ type UseGridEditingParams = {
 
 function normalizeValue(field: Field, value: ItemDataValue | Date | null | undefined): ItemDataValue {
   if (field.type === 'date') {
-    return formatDateForStorage(value ?? '')
+    const options = parseFieldOptions(field.type, field.options) as { format?: string } | null
+    const parsed = parseDateInput(value ?? '', options?.format)
+    return formatDateForStorage(parsed ?? '')
   }
 
   if (field.type === 'number') {
@@ -24,6 +33,27 @@ function normalizeValue(field: Field, value: ItemDataValue | Date | null | undef
       return Number.isFinite(parsed) ? parsed : ''
     }
     return ''
+  }
+
+  if (field.type === 'rating') {
+    return serializeRatingValue(parseRatingValue(value as ItemDataValue))
+  }
+
+  if (field.type === 'multiselect') {
+    if (Array.isArray(value)) {
+      return serializeMultiselectValue(value) ?? null
+    }
+    if (typeof value === 'string') return value
+    return null
+  }
+
+  if (field.type === 'boolean') {
+    return serializeBooleanValue(value as ItemDataValue)
+  }
+
+  if (field.type === 'select') {
+    if (value === null || value === undefined || value === '') return null
+    return String(value)
   }
 
   if (value === null || value === undefined) return ''

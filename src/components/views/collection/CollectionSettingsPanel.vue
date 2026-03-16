@@ -11,7 +11,7 @@
         <AccordionContent>
           <div class="space-y-4">
             <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Collection Name </label>
+              <label class="text-base font-medium text-[var(--text-secondary)]">Collection Name </label>
               <InputText v-model="collectionName" type="text" placeholder="Collection name" />
             </div>
           </div>
@@ -28,10 +28,11 @@
         <AccordionContent>
           <div class="space-y-4">
             <div class="space-y-2">
-              <label class="text-xs font-medium text-[var(--text-secondary)]">Export Format</label>
+              <label class="text-base font-medium text-[var(--text-secondary)]">Export Format</label>
               <Select v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
             </div>
-            <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs text-[var(--text-secondary)]">
+            <div
+              class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
               <p v-if="exportFormat === 'csv'">
                 Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
               </p>
@@ -60,27 +61,28 @@
           <div class="space-y-4">
             <div v-if="!importPreview" class="space-y-4">
               <div class="space-y-2">
-                <label class="text-xs font-medium text-[var(--text-secondary)]">Import Format</label>
+                <label class="text-base font-medium text-[var(--text-secondary)]">Import Format</label>
                 <Select v-model="importFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
               </div>
 
               <div class="space-y-2">
-                <label class="text-xs font-medium text-[var(--text-secondary)]">Import Mode</label>
+                <label class="text-base font-medium text-[var(--text-secondary)]">Import Mode</label>
                 <div class="flex gap-2">
                   <label
-                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
                     <RadioButton v-model="importMode" value="append" />
                     <div>
                       <div class="font-medium text-[var(--text-primary)]">Append</div>
-                      <div class="text-xs text-[var(--text-muted)]">Add imported items to existing data</div>
+                      <div class="text-base text-[var(--text-muted)]">Add imported items to existing data</div>
                     </div>
                   </label>
                   <label
-                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
                     <RadioButton v-model="importMode" value="replace" />
                     <div>
                       <div class="font-medium text-[var(--text-primary)]">Replace</div>
-                      <div class="text-xs text-[var(--text-muted)]">Delete all existing items and import new data</div>
+                      <div class="text-base text-[var(--text-muted)]">Delete all existing items and import new data
+                      </div>
                     </div>
                   </label>
                 </div>
@@ -103,25 +105,26 @@
                 </Button>
               </div>
 
-              <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
+              <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base">
                 <div class="flex justify-between text-[var(--text-secondary)]">
                   <span>Items to import:</span>
                   <span class="font-semibold text-[var(--text-primary)]">{{ importPreview.itemCount }}</span>
                 </div>
                 <div class="mt-2 flex justify-between text-[var(--text-secondary)]">
                   <span>Import mode:</span>
-                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' : 'Replace' }}</span>
+                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' :
+                    'Replace' }}</span>
                 </div>
               </div>
 
               <div v-if="safeFields.length === 0"
-                class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-xs text-[var(--text-secondary)]">
+                class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-base text-[var(--text-secondary)]">
                 <AlertTriangle :size="16" />
                 This collection has no fields. Fields will be automatically created from the import file.
               </div>
 
               <div v-if="importPreview.matchedFields.length > 0" class="space-y-2">
-                <div class="text-xs font-semibold text-[var(--text-primary)]">
+                <div class="text-base font-semibold text-[var(--text-primary)]">
                   Matched Fields ({{ importPreview.matchedFields.length }})
                 </div>
                 <div class="flex flex-wrap gap-2">
@@ -133,11 +136,11 @@
               </div>
 
               <div v-if="importPreview.newFields.length > 0" class="space-y-2">
-                <div class="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                <div class="flex items-center gap-2 text-base font-semibold text-[var(--text-primary)]">
                   <AlertTriangle :size="14" />
                   New Fields ({{ importPreview.newFields.length }})
                 </div>
-                <p class="text-xs text-[var(--text-muted)]">These fields will be added to your collection:</p>
+                <p class="text-base text-[var(--text-muted)]">These fields will be added to your collection:</p>
                 <div class="flex flex-wrap gap-2">
                   <Tag v-for="field in importPreview.newFields" :key="field"
                     class="bg-[color-mix(in_srgb,var(--warning)_20%,transparent)] text-[var(--warning)]">
@@ -146,14 +149,14 @@
                 </div>
               </div>
 
-              <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-xs">
-                <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+              <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base">
+                <div class="mb-2 text-base font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                   Sample Data (first 3 items)
                 </div>
                 <div class="flex gap-2">
                   <div v-for="(item, index) in importPreview.sample" :key="index"
                     class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
-                    <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    <div class="mb-1 text-base font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       Item {{ index + 1 }}
                     </div>
                     <div class="space-y-1">
@@ -188,7 +191,7 @@
         </AccordionHeader>
         <AccordionContent>
           <div class="space-y-3">
-            <p class="text-xs text-[var(--text-muted)]">
+            <p class="text-base text-[var(--text-muted)]">
               Once you delete a collection, there is no going back.
             </p>
             <Button severity="danger" class="gap-2 min-w-[180px]" @click="$emit('delete-collection')">

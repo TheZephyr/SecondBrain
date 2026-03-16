@@ -1,12 +1,114 @@
-export type FieldType = "text" | "textarea" | "number" | "date" | "select";
+export type FieldType =
+  | "text"
+  | "longtext"
+  | "number"
+  | "date"
+  | "select"
+  | "multiselect"
+  | "boolean"
+  | "url"
+  | "rating";
 
-export const FIELD_TYPE_ICONS: Record<FieldType, string> = {
-  text: "pi-align-left",
-  textarea: "pi-align-justify",
-  number: "pi-hashtag",
-  date: "pi-calendar",
-  select: "pi-list"
-}
+export const FIELD_TYPE_META: Record<
+  FieldType,
+  { displayName: string; icon: string }
+> = {
+  text: { displayName: "Single Line Text", icon: "Type" },
+  longtext: { displayName: "Long Text", icon: "TextInitial" },
+  number: { displayName: "Number", icon: "Hash" },
+  date: { displayName: "Date", icon: "Calendar" },
+  select: { displayName: "Select", icon: "BadgeCheck" },
+  multiselect: { displayName: "Multiselect", icon: "List" },
+  boolean: { displayName: "Checkbox", icon: "Check" },
+  url: { displayName: "URL", icon: "Link" },
+  rating: { displayName: "Rating", icon: "Star" },
+};
+
+export type BooleanIcon =
+  | "square"
+  | "circle"
+  | "heart"
+  | "star"
+  | "flame"
+  | "thumbs-up"
+  | "thumbs-down"
+  | "flag";
+
+export type DateFormat =
+  | "YYYY-MM-DD"
+  | "YYYY.MM.DD"
+  | "DD-MM-YYYY"
+  | "DD.MM.YYYY";
+
+export type DateHighlightRule = {
+  type: "<" | ">";
+  date: string;
+  color: string;
+};
+
+export type TextFieldOptions = {
+  defaultValue?: string | null;
+  uniqueCheck?: boolean;
+};
+
+export type LongTextFieldOptions = {
+  richText?: boolean;
+  defaultValue?: string | null;
+  uniqueCheck?: boolean;
+};
+
+export type NumberFieldOptions = {
+  defaultValue?: number | null;
+  uniqueCheck?: boolean;
+};
+
+export type DateFieldOptions = {
+  format?: DateFormat;
+  highlight?: DateHighlightRule | null;
+  defaultValue?: string | null;
+  uniqueCheck?: boolean;
+};
+
+export type SelectFieldOptions = {
+  choices: string[];
+  defaultValue?: string | null;
+  uniqueCheck?: boolean;
+};
+
+export type MultiselectFieldOptions = {
+  choices: string[];
+  defaultValue?: string[] | null;
+  uniqueCheck?: boolean;
+};
+
+export type BooleanFieldOptions = {
+  icon?: BooleanIcon;
+};
+
+export type UrlFieldOptions = {
+  defaultValue?: string | null;
+  uniqueCheck?: boolean;
+};
+
+export type RatingFieldOptions = {
+  icon?: BooleanIcon;
+  color?: string;
+  min?: number;
+  max?: number;
+  defaultValue?: number | null;
+  uniqueCheck?: boolean;
+};
+
+export type FieldOptions =
+  | TextFieldOptions
+  | LongTextFieldOptions
+  | NumberFieldOptions
+  | DateFieldOptions
+  | SelectFieldOptions
+  | MultiselectFieldOptions
+  | BooleanFieldOptions
+  | UrlFieldOptions
+  | RatingFieldOptions;
 
 export type ItemDataValue = string | number | null;
 export type ItemData = Record<string, ItemDataValue>;

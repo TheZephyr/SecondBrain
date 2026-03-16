@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import type { Field, Item } from "../../../types/models";
 import {
@@ -39,6 +39,46 @@ describe("createDefaultItemFormData", () => {
     expect(form.Title).toBe("");
     expect(form.Published).toBeNull();
     expect(form.Rating).toBe("");
+  });
+
+  it("applies default values from field options", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 16));
+
+    const fields: Field[] = [
+      makeField({
+        id: 1,
+        name: "Title",
+        type: "text",
+        options: JSON.stringify({ defaultValue: "Hello" }),
+      }),
+      makeField({
+        id: 2,
+        name: "Due",
+        type: "date",
+        options: JSON.stringify({ defaultValue: "current" }),
+      }),
+      makeField({
+        id: 3,
+        name: "Status",
+        type: "select",
+        options: JSON.stringify({
+          choices: ["Open", "Done"],
+          defaultValue: "Done",
+        }),
+      }),
+    ];
+
+    const form = createDefaultItemFormData(fields);
+    expect(form.Title).toBe("Hello");
+    const due = form.Due as Date;
+    expect(due instanceof Date).toBe(true);
+    expect(due.getFullYear()).toBe(2026);
+    expect(due.getMonth()).toBe(2);
+    expect(due.getDate()).toBe(16);
+    expect(form.Status).toBe("Done");
+
+    vi.useRealTimers();
   });
 });
 
@@ -205,6 +245,50 @@ describe("useCollectionItemForm", () => {
     expect(form.getDateValue("Due")).toBeNull();
   });
 
+  it("resetFormData pre-fills text defaults", () => {
+    const fields = ref([
+      makeField({
+        id: 1,
+        name: "Title",
+        options: JSON.stringify({ defaultValue: "Preset" }),
+      }),
+    ]);
+    const form = useCollectionItemForm(fields);
+    form.formData.value.Title = "dirty";
+
+    form.resetFormData();
+
+    expect(form.getTextValue("Title")).toBe("Preset");
+  });
+
+  it("resetFormData applies current date defaults", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 16));
+
+    const fields = ref([
+      makeField({
+        id: 1,
+        name: "Due",
+        type: "date",
+        options: JSON.stringify({ defaultValue: "current" }),
+      }),
+    ]);
+    const form = useCollectionItemForm(fields);
+    form.formData.value.Due = new Date(2025, 0, 1);
+
+    form.resetFormData();
+
+    const due = form.getDateValue("Due");
+    expect(due instanceof Date).toBe(true);
+    if (due) {
+      expect(due.getFullYear()).toBe(2026);
+      expect(due.getMonth()).toBe(2);
+      expect(due.getDate()).toBe(16);
+    }
+
+    vi.useRealTimers();
+  });
+
   it("toItemData serialises current form data using the fields list", () => {
     const fields = ref([
       makeField({ id: 1, name: "Title" }),
@@ -279,13 +363,13 @@ describe("useCollectionItemForm", () => {
     expect(form.getSelectOptions(fields.value[0])).toEqual([]);
   });
 
-  it("getSelectOptions splits comma-separated string and trims whitespace", () => {
+  it("getSelectOptions reads choices from JSON options", () => {
     const fields = ref([
       makeField({
         id: 1,
         name: "Status",
         type: "select",
-        options: "Active, Inactive , Done",
+        options: JSON.stringify({ choices: ["Active", "Inactive", "Done"] }),
       }),
     ]);
     const form = useCollectionItemForm(fields);
@@ -386,5 +470,26 @@ describe("useCollectionItemForm", () => {
     expect(form.formData.value.Due).toBeNull();
     form.setDateValue("Due", undefined);
     expect(form.formData.value.Due).toBeNull();
+  });
+
+  it("getMultiselectValue/setMultiselectValue round-trip through JSON", () => {
+    const fields = ref([
+      makeField({ id: 1, name: "Tags", type: "multiselect" }),
+    ]);
+    const form = useCollectionItemForm(fields);
+    form.setMultiselectValue("Tags", ["A", "B"]);
+    expect(form.formData.value.Tags).toBe('["A","B"]');
+    expect(form.getMultiselectValue("Tags")).toEqual(["A", "B"]);
+  });
+
+  it("getBooleanValue/setBooleanValue map to 1/0 strings", () => {
+    const fields = ref([makeField({ id: 1, name: "Done", type: "boolean" })]);
+    const form = useCollectionItemForm(fields);
+    form.setBooleanValue("Done", true);
+    expect(form.formData.value.Done).toBe("1");
+    expect(form.getBooleanValue("Done")).toBe(true);
+    form.setBooleanValue("Done", false);
+    expect(form.formData.value.Done).toBe("0");
+    expect(form.getBooleanValue("Done")).toBe(false);
   });
 });

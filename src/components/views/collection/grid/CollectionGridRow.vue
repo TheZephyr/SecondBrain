@@ -1,42 +1,25 @@
 <template>
   <div
-    class="grid items-center border-b border-[var(--border-color)] text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)] group"
-    :class="isSelected ? 'bg-[var(--bg-hover)]' : ''"
-    :style="{ gridTemplateColumns }"
-    :aria-rowindex="virtualIndex + 1"
-    @contextmenu.prevent="event => emitRowContextMenu(event)"
-  >
-    <div
-      v-for="(cell, cellIndex) in cells"
-      :key="cell.id"
+    class="grid items-center border-b border-[var(--border-color)] text-base text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)] group"
+    :class="isSelected ? 'bg-[var(--bg-hover)]' : ''" :style="{ gridTemplateColumns }" :aria-rowindex="virtualIndex + 1"
+    @contextmenu.prevent="event => emitRowContextMenu(event)">
+    <div v-for="(cell, cellIndex) in cells" :key="cell.id"
       class="flex h-10 items-center border-r border-[var(--border-color)]"
-      :class="cellIndex === cells.length - 1 ? 'border-r-0' : ''"
-    >
+      :class="cellIndex === cells.length - 1 ? 'border-r-0' : ''">
       <template v-if="cellMeta(cell)?.type === 'rowNumber'">
         <div class="relative flex h-10 w-full items-center justify-end pr-2">
-          <span
-            class="text-right text-xs text-[var(--text-muted)] transition-opacity"
-            :class="isSelected ? 'opacity-0' : 'group-hover:opacity-0'"
-          >
+          <span class="text-right text-base text-[var(--text-muted)] transition-opacity"
+            :class="isSelected ? 'opacity-0' : 'group-hover:opacity-0'">
             {{ rowIndex + 1 }}
           </span>
-          <div
-            class="absolute right-1 flex items-center gap-1 transition-opacity"
-            :class="isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
-          >
-            <input
-              type="checkbox"
+          <div class="absolute right-1 flex items-center gap-1 transition-opacity"
+            :class="isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'">
+            <input type="checkbox"
               class="h-3.5 w-3.5 cursor-pointer rounded border border-[var(--border-color)] accent-[var(--accent-primary)]"
-              :checked="isSelected"
-              @click.stop
-              @change="event => emitRowSelectionToggle(event)"
-            />
-            <Button
-              text
+              :checked="isSelected" @click.stop @change="event => emitRowSelectionToggle(event)" />
+            <Button text
               class="h-6 w-6 p-0 text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
-              title="Expand"
-              @click.stop="emitEditItem"
-            >
+              title="Expand" @click.stop="emitEditItem">
               <ChevronRight :size="14" />
             </Button>
           </div>
@@ -46,14 +29,8 @@
         <div class="h-10 w-full"></div>
       </template>
       <template v-else>
-        <CollectionGridCell
-          :value="getCellValue(cell)"
-          :field="cellMeta(cell)?.field"
-          :rowId="row.original.id"
-          :rowIndex="rowIndex"
-          :rowIds="rowIds"
-          :orderedFields="orderedFields"
-        />
+        <CollectionGridCell :value="getCellValue(cell)" :field="cellMeta(cell)?.field" :rowId="row.original.id"
+          :rowIndex="rowIndex" :rowIds="rowIds" :orderedFields="orderedFields" :duplicateMap="duplicateMap" />
       </template>
     </div>
   </div>
@@ -80,6 +57,7 @@ const props = defineProps<{
   gridTemplateColumns: string
   orderedFields: Field[]
   rowIds: number[]
+  duplicateMap: Map<string, Set<string>>
   isSelected: boolean
 }>()
 

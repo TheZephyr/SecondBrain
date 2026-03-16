@@ -1,79 +1,33 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <div class="flex min-h-0 flex-1 flex-col">
-      <CollectionSettingsPanel
-        v-if="collectionSettingsOpen"
-        :collection="collection"
-        :fields="fields"
-        :itemsTotal="itemsTotal"
-        @save-settings="saveSettings"
-        @delete-collection="confirmDeleteCollection"
-      />
-      <CollectionFieldsPanel
-        v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
-        :orderedFields="sourceOrderedFields"
-        @add-field="addField"
-        @delete-field="confirmDeleteField"
-        @reorder-fields="onFieldsReorder"
-      />
-      <CollectionChildFieldsPanel
-        v-else-if="activeCollectionPanel === 'fields' && activeView"
-        :orderedFields="sourceOrderedFields"
-        :selectedFieldIds="selectedFieldIds"
-        @toggle-field="onToggleSelectedField"
-        @reorder-selected="onReorderSelectedFields"
-      />
+      <CollectionSettingsPanel v-if="collectionSettingsOpen" :collection="collection" :fields="fields"
+        :itemsTotal="itemsTotal" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
+      <CollectionFieldsPanel v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
+        :orderedFields="sourceOrderedFields" :items="items" @add-field="addField" @update-field="updateField"
+        @delete-field="confirmDeleteField" @reorder-fields="onFieldsReorder" />
+      <CollectionChildFieldsPanel v-else-if="activeCollectionPanel === 'fields' && activeView"
+        :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" @toggle-field="onToggleSelectedField"
+        @reorder-selected="onReorderSelectedFields" />
       <template v-else>
-        <CollectionGrid
-          v-if="activeView?.type === 'grid'"
-          :viewId="activeView.id"
-          :items="items"
-          :itemsTotal="itemsTotal"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :orderedFields="viewOrderedFields"
-          :searchQuery="searchQuery"
-          :debouncedSearchQuery="debouncedSearchQuery"
-          :multiSortMeta="multiSortMeta"
-          :loadNextPage="loadNextPage"
-          @update:searchQuery="searchQuery = $event"
-          @update:multiSortMeta="multiSortMeta = $event"
-          @sort="onItemsSort"
-          @edit-item="openEditItemDialog"
-          @delete-item="confirmDeleteItem"
-          @update-item="onInlineUpdateItem"
-          @insert-item-at="onInsertItemAt"
-          @duplicate-item="onDuplicateItem"
-          @move-item="onMoveItem"
-          @manage-fields="store.setActiveCollectionPanel('fields')"
-          @open-add-item="openAddItemDialog"
-        />
-        <CollectionKanbanView
-          v-else-if="activeView?.type === 'kanban'"
-          :orderedFields="viewOrderedFields"
-        />
-        <CollectionCalendarView
-          v-else-if="activeView?.type === 'calendar'"
-          :viewId="activeView.id"
-          :items="items"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :itemsSearch="itemsSearch"
-          :itemsSort="itemsSort"
-          :orderedFields="viewOrderedFields"
-          :loadItems="loadCollectionItems"
-          @edit-item="openEditItemDialog"
-        />
+        <CollectionGrid v-if="activeView?.type === 'grid'" :viewId="activeView.id" :items="items"
+          :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :orderedFields="viewOrderedFields" :searchQuery="searchQuery" :debouncedSearchQuery="debouncedSearchQuery"
+          :multiSortMeta="multiSortMeta" :loadNextPage="loadNextPage" @update:searchQuery="searchQuery = $event"
+          @update:multiSortMeta="multiSortMeta = $event" @sort="onItemsSort" @edit-item="openEditItemDialog"
+          @delete-item="confirmDeleteItem" @update-item="onInlineUpdateItem" @insert-item-at="onInsertItemAt"
+          @duplicate-item="onDuplicateItem" @move-item="onMoveItem"
+          @manage-fields="store.setActiveCollectionPanel('fields')" @open-add-item="openAddItemDialog" />
+        <CollectionKanbanView v-else-if="activeView?.type === 'kanban'" :orderedFields="viewOrderedFields" />
+        <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :viewId="activeView.id" :items="items"
+          :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
+          :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
+          @edit-item="openEditItemDialog" />
       </template>
     </div>
 
-    <CollectionItemEditorDialog
-      :visible="showAddItemForm"
-      :orderedFields="viewOrderedFields"
-      :editingItem="editingItem"
-      @update:visible="onItemDialogVisibilityChange"
-      @save="saveItem"
-    />
+    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="viewOrderedFields" :editingItem="editingItem"
+      :items="items" @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
 
     <ConfirmDialog />
   </div>
@@ -98,6 +52,8 @@ import {
 import type {
   Collection,
   Field,
+  FieldOptions,
+  FieldType,
   Item,
   InsertItemAtInput,
   DuplicateItemInput,
@@ -112,6 +68,8 @@ import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.
 import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
 import CollectionChildFieldsPanel from './collection/CollectionChildFieldsPanel.vue'
 import CollectionSettingsPanel from './collection/CollectionSettingsPanel.vue'
+import { serializeFieldOptions } from '../../utils/fieldOptions'
+import { parseMultiselectValue } from '../../utils/fieldValues'
 import type {
   CollectionSettingsSavePayload,
   FieldDraftInput,
@@ -303,6 +261,10 @@ async function addField(newField: FieldDraftInput) {
     return
   }
 
+  if (!validateFieldOptions(newField.type, newField.options)) {
+    return
+  }
+
   const nextOrderIndex = fields.value.reduce(
     (maxOrder, field) => Math.max(maxOrder, field.order_index),
     -1
@@ -312,9 +274,36 @@ async function addField(newField: FieldDraftInput) {
     collectionId: props.collection.id,
     name: nameResult.data,
     type: newField.type,
-    options: newField.type === 'select' ? newField.options : null,
+    options: serializeFieldOptions(newField.options),
     orderIndex: nextOrderIndex
   })
+}
+
+async function updateField(payload: { field: Field; name: string; options: FieldOptions; removedOptions: string[] }) {
+  const nameResult = fieldNameSchema.safeParse(payload.name)
+  if (!nameResult.success) {
+    notifications.push({
+      severity: 'warn',
+      summary: 'Invalid field name',
+      detail: nameResult.error.issues[0]?.message || 'Please enter a valid field name.',
+      life: 5000
+    })
+    return
+  }
+
+  if (!validateFieldOptions(payload.field.type, payload.options)) {
+    return
+  }
+
+  await store.updateField({
+    id: payload.field.id,
+    name: nameResult.data,
+    type: payload.field.type,
+    options: serializeFieldOptions(payload.options),
+    orderIndex: payload.field.order_index
+  })
+
+  await clearRemovedOptions(payload.field, payload.removedOptions)
 }
 
 async function confirmDeleteField(field: Field) {
@@ -327,6 +316,63 @@ async function confirmDeleteField(field: Field) {
     accept: async () => {
       await store.deleteField(field.id)
     }
+  })
+}
+
+function validateFieldOptions(type: FieldType, options: FieldOptions) {
+  if (type !== 'date') return true
+  const dateOptions = options as { highlight?: { type?: string; date?: string; color?: string } | null }
+  const highlight = dateOptions.highlight
+  if (!highlight) return true
+
+  const hasType = Boolean(highlight.type)
+  const hasDate = Boolean(highlight.date)
+  const hasColor = Boolean(highlight.color)
+  const complete = hasType && hasDate && hasColor
+
+  if (!complete) {
+    notifications.push({
+      severity: 'warn',
+      summary: 'Incomplete highlight rule',
+      detail: 'Highlight rules require type, date, and color before saving.',
+      life: 5000
+    })
+  }
+
+  return complete
+}
+
+async function clearRemovedOptions(field: Field, removedOptions: string[]) {
+  if (!removedOptions.length) return
+  if (!['select', 'multiselect'].includes(field.type)) return
+
+  const updates = items.value.reduce((acc, item) => {
+    const currentValue = item.data[field.name]
+    if (field.type === 'select') {
+      if (typeof currentValue === 'string' && removedOptions.includes(currentValue)) {
+        acc.push({ id: item.id, patch: { [field.name]: null } })
+      }
+      return acc
+    }
+
+    const parsed = parseMultiselectValue(currentValue)
+    if (parsed.length === 0) return acc
+
+    const next = parsed.filter(value => !removedOptions.includes(value))
+    if (next.length === parsed.length) return acc
+
+    acc.push({
+      id: item.id,
+      patch: { [field.name]: next.length > 0 ? JSON.stringify(next) : null }
+    })
+    return acc
+  }, [] as { id: number; patch: Record<string, string | number | null> }[])
+
+  if (updates.length === 0) return
+
+  await store.bulkPatchItems({
+    collectionId: props.collection.id,
+    updates
   })
 }
 

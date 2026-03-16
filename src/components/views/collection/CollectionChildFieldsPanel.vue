@@ -1,6 +1,6 @@
 <template>
   <div class="mx-auto max-w-6xl px-10 py-8 space-y-4">
-    <div class="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+    <div class="text-base font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
       Visible Fields
     </div>
     <div class="space-y-2">
@@ -10,7 +10,7 @@
         @dragover="event => onDragOver(field.id, event)" @drop="event => onDrop(field.id, event)">
         <Checkbox :binary="true" :modelValue="isSelected(field.id)"
           @update:modelValue="value => emit('toggle-field', { id: field.id, selected: value })" />
-        <span class="flex-1 truncate text-sm text-[var(--text-primary)]">
+        <span class="flex-1 truncate text-base text-[var(--text-primary)]">
           {{ field.name }}
         </span>
         <span v-if="isSelected(field.id)" class="flex size-6 items-center justify-center text-[var(--text-muted)]"

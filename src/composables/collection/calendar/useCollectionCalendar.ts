@@ -117,7 +117,7 @@ export function useCollectionCalendar({
   })
 
   const titleField = computed(() => {
-    return orderedFields.value.find(field => field.type === 'text' || field.type === 'textarea') ?? null
+    return orderedFields.value.find(field => field.type === 'text' || field.type === 'longtext') ?? null
   })
 
   const selectedDateFieldId = computed(() => {

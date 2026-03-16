@@ -354,6 +354,45 @@ function migrateSourceViewAndCalendarConfig(database: Database.Database): void {
   migrate();
 }
 
+function migrateFieldOptionsFormat(database: Database.Database): void {
+  const row = database.prepare("PRAGMA user_version").get() as
+    | UserVersionRow
+    | undefined;
+  const userVersion = row ? toNumber(row.user_version) : 0;
+
+  if (userVersion >= 5) {
+    return;
+  }
+
+  const migrate = database.transaction(() => {
+    database
+      .prepare("UPDATE fields SET type = 'longtext' WHERE type = 'textarea'")
+      .run();
+
+    const selectRows = database
+      .prepare(
+        "SELECT id, options FROM fields WHERE type = 'select' AND options IS NOT NULL AND options NOT LIKE '{%'",
+      )
+      .all() as { id: number; options: string }[];
+
+    const updateOptions = database.prepare(
+      "UPDATE fields SET options = ? WHERE id = ?",
+    );
+
+    for (const row of selectRows) {
+      const choices = row.options
+        .split(",")
+        .map((option) => option.trim())
+        .filter((option) => option.length > 0);
+      updateOptions.run(JSON.stringify({ choices }), row.id);
+    }
+
+    database.exec("PRAGMA user_version = 5");
+  });
+
+  migrate();
+}
+
 function ensureReorderPayloadMatchesCollection(
   database: Database.Database,
   input: ReorderFieldsInput,
@@ -628,7 +667,20 @@ function extractSortableFieldName(path: string): string | null {
   return fieldName;
 }
 
-function getItemSortClause(sort: ItemSortSpec[] | undefined): string[] {
+function getFieldTypeMap(
+  database: Database.Database,
+  collectionId: number,
+): Map<string, string> {
+  const rows = database
+    .prepare("SELECT name, type FROM fields WHERE collection_id = ?")
+    .all(collectionId) as { name: string; type: string }[];
+  return new Map(rows.map((row) => [row.name, row.type]));
+}
+
+function getItemSortClause(
+  sort: ItemSortSpec[] | undefined,
+  fieldTypeMap: Map<string, string>,
+): string[] {
   if (!sort || sort.length === 0) {
     return [];
   }
@@ -643,6 +695,32 @@ function getItemSortClause(sort: ItemSortSpec[] | undefined): string[] {
 
     const direction = spec.order === -1 ? "DESC" : "ASC";
     const jsonPath = `$."${fieldName.replace(/"/g, '""')}"`;
+    const fieldType = fieldTypeMap.get(fieldName);
+
+    if (fieldType === "multiselect") {
+      clauses.push(
+        `json_extract(json_extract(i.data, '${jsonPath}'), '$[0]') COLLATE NOCASE ${direction}`,
+      );
+      continue;
+    }
+
+    if (fieldType === "boolean") {
+      clauses.push(
+        `CASE WHEN json_extract(i.data, '${jsonPath}') IN ('1', 1, true) THEN 1 ELSE 0 END ${direction}`,
+      );
+      continue;
+    }
+
+    if (fieldType === "rating") {
+      clauses.push(
+        `CASE WHEN json_extract(i.data, '${jsonPath}') IS NULL OR json_extract(i.data, '${jsonPath}') = '' THEN 1 ELSE 0 END ASC`,
+      );
+      clauses.push(
+        `CAST(json_extract(i.data, '${jsonPath}') AS REAL) ${direction}`,
+      );
+      continue;
+    }
+
     clauses.push(
       `json_extract(i.data, '${jsonPath}') COLLATE NOCASE ${direction}`,
     );
@@ -751,7 +829,10 @@ function tryEnableFts(database: Database.Database): boolean {
   }
 }
 
-function buildSearchQueryContext(input: GetItemsInput): {
+function buildSearchQueryContext(
+  input: GetItemsInput,
+  fieldTypeMap: Map<string, string>,
+): {
   joinClause: string;
   whereClause: string;
   params: unknown[];
@@ -762,6 +843,9 @@ function buildSearchQueryContext(input: GetItemsInput): {
   let joinClause = "";
   let defaultOrderClause = 'i."order" ASC, i.id ASC';
   const searchTokens = tokenizeSearch(input.search);
+  const multiselectFields = [...fieldTypeMap.entries()]
+    .filter(([, type]) => type === "multiselect")
+    .map(([name]) => name);
 
   if (searchTokens.length === 0) {
     return {
@@ -786,15 +870,36 @@ function buildSearchQueryContext(input: GetItemsInput): {
   }
 
   for (const token of searchTokens) {
+    const likeToken = `%${escapeLikePattern(token.toLowerCase())}%`;
+    const multiselectToken = `%\"${escapeLikePattern(token.toLowerCase())}%`;
+
+    const multiselectClause =
+      multiselectFields.length > 0
+        ? ` OR (${multiselectFields
+            .map((fieldName) => {
+              const jsonPath = `$."${fieldName.replace(/"/g, '""')}"`;
+              return `LOWER(json_extract(i.data, '${jsonPath}')) LIKE ? ESCAPE '\\'`;
+            })
+            .join(" OR ")})`
+        : "";
+
     whereParts.push(`
-      EXISTS (
-        SELECT 1
-        FROM json_each(i.data) je
-        WHERE je.type IN ('text', 'integer', 'real')
-          AND LOWER(CAST(je.value AS TEXT)) LIKE ? ESCAPE '\\'
+      (
+        EXISTS (
+          SELECT 1
+          FROM json_each(i.data) je
+          WHERE je.type IN ('text', 'integer', 'real')
+            AND LOWER(CAST(je.value AS TEXT)) LIKE ? ESCAPE '\\'
+        )
+        ${multiselectClause}
       )
     `);
-    params.push(`%${escapeLikePattern(token.toLowerCase())}%`);
+    params.push(likeToken);
+    if (multiselectFields.length > 0) {
+      for (let i = 0; i < multiselectFields.length; i += 1) {
+        params.push(multiselectToken);
+      }
+    }
   }
 
   return {
@@ -806,9 +911,10 @@ function buildSearchQueryContext(input: GetItemsInput): {
 }
 
 function getItems(database: Database.Database, input: GetItemsInput) {
+  const fieldTypeMap = getFieldTypeMap(database, input.collectionId);
   const { joinClause, whereClause, params, defaultOrderClause } =
-    buildSearchQueryContext(input);
-  const sortClauses = getItemSortClause(input.sort);
+    buildSearchQueryContext(input, fieldTypeMap);
+  const sortClauses = getItemSortClause(input.sort, fieldTypeMap);
   const orderByClause =
     sortClauses.length > 0
       ? `${sortClauses.join(', ')}, i."order" ASC, i.id ASC`
@@ -889,6 +995,7 @@ export function initDatabase(dbPath: string): boolean {
   migrateItemsOrderColumn(db);
   migrateViewConfigColumn(db);
   migrateSourceViewAndCalendarConfig(db);
+  migrateFieldOptionsFormat(db);
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_items_collection_created_at_id

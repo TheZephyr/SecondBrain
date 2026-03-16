@@ -3,24 +3,28 @@
 
 @layer base {
   :root {
-    --bg-primary: #0f0f0f;
-    --bg-secondary: #1a1a1a;
-    --bg-tertiary: #242424;
-    --bg-hover: #2a2a2a;
-    --border-color: #333;
-    --text-primary: #e4e4e7;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
-    --accent-primary: #8b5cf6;
-    --accent-hover: #7c3aed;
-    --accent-light: rgba(139, 92, 246, 0.1);
-    --success: #10b981;
-    --danger: #ef4444;
-    --warning: #f59e0b;
+    --bg-primary: var(--p-zinc-950);
+    --bg-secondary: var(--p-zinc-900);
+    --bg-tertiary: var(--p-zinc-800);
+    --bg-hover: var(--p-zinc-700);
+    --border-color: var(--p-zinc-700);
+    --text-primary: var(--p-zinc-100);
+    --text-secondary: var(--p-zinc-200);
+    --text-muted: var(--p-zinc-400);
+    --accent-primary: var(--p-indigo-400);
+    --accent-hover: var(--p-indigo-500);
+    --accent-light: rgba(79, 70, 229, 0.1);
+    --success: var(--p-emerald-400);
+    --danger: var(--p-red-400);
+    --warning: var(--p-yellow-400);
   }
 
   * {
     box-sizing: border-box;
+  }
+
+  html {
+    font-size: 14px;
   }
 
   body {
@@ -59,20 +63,20 @@
 
 @layer app {
   :root[data-theme="dark"] {
-    --p-primary-50: #f5f3ff;
-    --p-primary-100: #ede9fe;
-    --p-primary-200: #ddd6fe;
-    --p-primary-300: #c4b5fd;
-    --p-primary-400: #a78bfa;
-    --p-primary-500: #8b5cf6;
-    --p-primary-600: #7c3aed;
-    --p-primary-700: #6d28d9;
-    --p-primary-800: #5b21b6;
-    --p-primary-900: #4c1d95;
-    --p-primary-950: #2e1065;
+    --p-primary-50: var(--p-indigo-50);
+    --p-primary-100: var(--p-indigo-100);
+    --p-primary-200: var(--p-indigo-200);
+    --p-primary-300: var(--p-indigo-300);
+    --p-primary-400: var(--p-indigo-400);
+    --p-primary-500: var(--p-indigo-500);
+    --p-primary-600: var(--p-indigo-600);
+    --p-primary-700: var(--p-indigo-700);
+    --p-primary-800: var(--p-indigo-800);
+    --p-primary-900: var(--p-indigo-900);
+    --p-primary-950: var(--p-indigo-950);
     --p-primary-color: var(--p-primary-500);
     --p-primary-hover-color: var(--p-primary-600);
     --p-primary-active-color: var(--p-primary-700);
-    --p-primary-contrast-color: #0f0f0f;
+    --p-primary-contrast-color: #var(--p-amber-500);
   }
 }

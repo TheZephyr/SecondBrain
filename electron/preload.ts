@@ -73,6 +73,9 @@ const electronAPI: IElectronAPI = {
   // Import
   showOpenDialog: (options) => invoke("import:showOpenDialog", options),
   readFile: (filePath: string) => invoke("import:readFile", filePath),
+
+  // External
+  openExternal: (url: string) => invoke("openExternal", url),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);

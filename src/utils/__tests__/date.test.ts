@@ -4,6 +4,7 @@ import {
   parseDateValue,
   formatDateForStorage,
   formatDateForDisplay,
+  formatDateWithFieldOptions,
   formatMonthYear,
 } from "../date";
 
@@ -50,5 +51,21 @@ describe("date utils", () => {
 
   it("formats localized month and year labels", () => {
     expect(formatMonthYear(2026, 2, "en-US")).toBe("March 2026");
+  });
+
+  it("formats dates using field options", () => {
+    const value = "2025-03-16";
+    expect(formatDateWithFieldOptions(value, { format: "YYYY-MM-DD" })).toBe(
+      "2025-03-16",
+    );
+    expect(formatDateWithFieldOptions(value, { format: "YYYY.MM.DD" })).toBe(
+      "2025.03.16",
+    );
+    expect(formatDateWithFieldOptions(value, { format: "DD-MM-YYYY" })).toBe(
+      "16-03-2025",
+    );
+    expect(formatDateWithFieldOptions(value, { format: "DD.MM.YYYY" })).toBe(
+      "16.03.2025",
+    );
   });
 });
