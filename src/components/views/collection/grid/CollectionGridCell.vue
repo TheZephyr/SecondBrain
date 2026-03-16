@@ -1,88 +1,31 @@
 <template>
   <div
+    ref="cellRef"
     class="cell flex h-10 w-full items-center px-3 text-sm text-[var(--text-primary)]"
     :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''"
     data-grid-cell
     @click="onSelect"
     @dblclick="onDoubleClick"
   >
-    <template v-if="isEditing && field && field.type !== 'boolean'">
-      <InputText
+    <template v-if="isEditing && field && field.type !== 'boolean' && field.type !== 'select' && field.type !== 'rating' && field.type !== 'multiselect'">
+      <input
         v-if="field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'date'"
+        ref="inputRef"
         v-model="textModel"
-        class="h-9 w-full"
+        type="text"
+        class="w-full bg-transparent border-none outline-none text-sm text-[var(--text-primary)] p-0"
         @blur="onBlur"
         @keydown="onKeydown"
       />
-      <InputNumber
+      <input
         v-else-if="field.type === 'number'"
+        ref="inputRef"
         v-model="numberModel"
-        inputClass="h-9 w-full"
-        class="h-9 w-full"
+        type="number"
+        class="w-full bg-transparent border-none outline-none text-sm text-[var(--text-primary)] p-0 text-right"
         @blur="onBlur"
         @keydown="onKeydown"
       />
-      <Select
-        v-else-if="field.type === 'select'"
-        v-model="selectModel"
-        :options="selectOptions"
-        class="h-9 w-full"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-      <MultiSelect
-        v-else-if="field.type === 'multiselect'"
-        v-model="multiselectModel"
-        :options="selectOptions"
-        class="h-9 w-full"
-        display="chip"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-      <Select
-        v-else-if="field.type === 'rating'"
-        v-model="ratingModel"
-        :options="ratingSelectOptions"
-        optionLabel="label"
-        optionValue="value"
-        class="h-9 w-full"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      >
-        <template #value="{ value }">
-          <div class="flex items-center gap-1">
-            <span v-if="value === null" class="text-[var(--text-muted)]">None</span>
-            <div v-else class="flex items-center">
-              <component
-                v-for="index in ratingMax"
-                :key="index"
-                :is="ratingIconComponent"
-                :size="16"
-                :fill="index <= (value ?? 0) ? ratingColor : 'transparent'"
-                :stroke-width="index <= (value ?? 0) ? 0 : 1.5"
-                :class="index <= (value ?? 0) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-              />
-            </div>
-          </div>
-        </template>
-        <template #option="{ option }">
-          <div class="flex items-center gap-2">
-            <span v-if="option.value === null" class="text-[var(--text-muted)]">None</span>
-            <div v-else class="flex items-center">
-              <component
-                v-for="index in ratingMax"
-                :key="index"
-                :is="ratingIconComponent"
-                :size="16"
-                :fill="index <= option.value ? ratingColor : 'transparent'"
-                :stroke-width="index <= option.value ? 0 : 1.5"
-                :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-              />
-            </div>
-            <span class="text-xs text-[var(--text-muted)]">{{ option.label }}</span>
-          </div>
-        </template>
-      </Select>
     </template>
     <template v-else>
       <template v-if="field?.type === 'select' && displayText !== '-'">
@@ -159,14 +102,83 @@
       </template>
     </template>
   </div>
+  <Teleport to="body">
+    <div
+      v-if="isDropdownEditing"
+      ref="dropdownRef"
+      :style="[dropdownStyle, dropdownSurfaceStyle]"
+      class="z-50 rounded-md border border-[var(--border-subtle)] shadow-lg"
+      tabindex="0"
+      @keydown="onKeydown"
+      @focusout="onDropdownFocusOut"
+      @mousedown.stop
+    >
+      <ul v-if="field?.type === 'select'" class="max-h-60 overflow-auto py-1">
+        <li v-if="selectOptions.length === 0" class="px-3 py-2 text-xs text-[var(--text-muted)]">
+          No options
+        </li>
+        <li v-for="option in selectOptions" v-else :key="option">
+          <button
+            type="button"
+            class="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+            :class="option === selectModel ? 'bg-[var(--surface-2)] font-medium' : ''"
+            @click="commitSelect(option)"
+          >
+            <span class="truncate">{{ option }}</span>
+          </button>
+        </li>
+      </ul>
+      <ul v-else-if="field?.type === 'multiselect'" class="max-h-60 overflow-auto py-1">
+        <li v-if="selectOptions.length === 0" class="px-3 py-2 text-xs text-[var(--text-muted)]">
+          No options
+        </li>
+        <li v-for="option in selectOptions" v-else :key="option">
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+            :class="isMultiSelected(option) ? 'bg-[var(--surface-2)] font-medium' : ''"
+            @click="toggleMulti(option)"
+          >
+            <span
+              class="flex h-4 w-4 items-center justify-center rounded border border-[var(--border-subtle)]"
+              :class="isMultiSelected(option) ? 'bg-[var(--accent-primary)] text-white' : 'text-transparent'"
+              aria-hidden="true"
+            >
+              ✓
+            </span>
+            <span class="truncate">{{ option }}</span>
+          </button>
+        </li>
+      </ul>
+      <ul v-else-if="field?.type === 'rating'" class="max-h-60 overflow-auto py-1">
+        <li v-for="option in ratingSelectOptions" :key="String(option.value)">
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+            :class="option.value === ratingModel ? 'bg-[var(--surface-2)] font-medium' : ''"
+            @click="commitRating(option.value)"
+          >
+            <span v-if="option.value === null" class="text-[var(--text-muted)]">None</span>
+            <div v-else class="flex items-center">
+              <component
+                v-for="index in ratingMax"
+                :key="index"
+                :is="ratingIconComponent"
+                :size="16"
+                :fill="index <= option.value ? ratingColor : 'transparent'"
+                :stroke-width="index <= option.value ? 0 : 1.5"
+                :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
+              />
+            </div>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
-import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
-import Select from 'primevue/select'
-import MultiSelect from 'primevue/multiselect'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import Chip from 'primevue/chip'
 import type { BooleanIcon, DateFieldOptions, Field, ItemDataValue, RatingFieldOptions } from '../../../../types/models'
 import {
@@ -327,8 +339,20 @@ const isEditing = computed(
     editingContext.editingCellKey.value === cellKey.value
 )
 
+const isDropdownEditing = computed(() =>
+  isEditing.value && (props.field?.type === 'select' || props.field?.type === 'rating' || props.field?.type === 'multiselect')
+)
+
 type EditValue = ItemDataValue | Date | string[] | null
 const editValue = ref<EditValue>('')
+const inputRef = ref<HTMLInputElement | null>(null)
+const cellRef = ref<HTMLElement | null>(null)
+const dropdownRef = ref<HTMLElement | null>(null)
+const dropdownStyle = ref<Record<string, string>>({})
+const dropdownSurfaceStyle = computed(() => ({
+  backgroundColor: 'var(--bg-secondary, #ffffff)',
+  color: 'var(--text-primary, #111111)'
+}))
 
 const textModel = computed<string>({
   get: () => (editValue.value ?? '') as string,
@@ -400,6 +424,21 @@ watch(
   next => {
     if (!next) return
     editValue.value = resolveEditValue(props.value, props.field)
+    if (!props.field) return
+    const fieldType = props.field.type
+    if (fieldType === 'select' || fieldType === 'rating' || fieldType === 'multiselect') {
+      nextTick(() => {
+        updateDropdownPosition()
+        dropdownRef.value?.focus()
+      })
+      return
+    }
+    if (fieldType === 'text' || fieldType === 'longtext' || fieldType === 'url' || fieldType === 'date' || fieldType === 'number') {
+      nextTick(() => {
+        inputRef.value?.focus()
+        inputRef.value?.select()
+      })
+    }
   },
   { flush: 'sync' }
 )
@@ -458,6 +497,16 @@ function onBlur() {
   editingContext.commitEdit(editValue.value as ItemDataValue)
 }
 
+function onDropdownFocusOut(event: FocusEvent) {
+  if (!dropdownRef.value) {
+    onBlur()
+    return
+  }
+  const nextTarget = event.relatedTarget
+  if (nextTarget instanceof Node && dropdownRef.value.contains(nextTarget)) return
+  onBlur()
+}
+
 function onKeydown(event: Event) {
   if (!(event instanceof KeyboardEvent)) return
   if (!isEditing.value) return
@@ -508,6 +557,38 @@ function getNextCell() {
   }
 
   return null
+}
+
+function updateDropdownPosition() {
+  if (!cellRef.value) return
+  const rect = cellRef.value.getBoundingClientRect()
+  dropdownStyle.value = {
+    position: 'fixed',
+    top: `${rect.bottom}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`
+  }
+}
+
+function commitSelect(option: string) {
+  editingContext.commitEdit(option)
+}
+
+function commitRating(value: number | null) {
+  editingContext.commitEdit(value)
+}
+
+function isMultiSelected(option: string) {
+  return multiselectModel.value.includes(option)
+}
+
+function toggleMulti(option: string) {
+  const current = multiselectModel.value
+  if (current.includes(option)) {
+    multiselectModel.value = current.filter(entry => entry !== option)
+    return
+  }
+  multiselectModel.value = [...current, option]
 }
 
 async function openExternal(url: string) {
