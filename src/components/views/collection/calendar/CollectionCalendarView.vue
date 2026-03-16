@@ -1,44 +1,28 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <CollectionCalendarToolbar
-      :monthLabel="monthLabel"
-      :dateFields="dateFields"
-      :selectedDateFieldId="selectedDateFieldId"
-      :isLoadingAll="isEnsuringAllItems"
-      @previous-month="goToPreviousMonth"
-      @next-month="goToNextMonth"
-      @update:selectedDateFieldId="value => void setSelectedDateFieldId(value)"
-    />
+    <CollectionCalendarToolbar :monthLabel="monthLabel" :dateFields="dateFields"
+      :selectedDateFieldId="selectedDateFieldId" :isLoadingAll="isEnsuringAllItems" @previous-month="goToPreviousMonth"
+      @next-month="goToNextMonth" @update:selectedDateFieldId="value => void setSelectedDateFieldId(value)" />
 
-    <div
-      v-if="dateFields.length === 0"
-      class="flex flex-1 flex-col items-center justify-center px-8 text-center"
-    >
+    <div v-if="dateFields.length === 0" class="flex flex-1 flex-col items-center justify-center px-8 text-center">
       <i class="pi pi-calendar mb-4 text-4xl text-[var(--text-muted)]"></i>
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Date Fields</h3>
-      <p class="mt-2 max-w-md text-sm text-[var(--text-muted)]">
+      <p class="mt-2 max-w-md text-base text-[var(--text-muted)]">
         Calendar view requires at least one date field in this collection.
       </p>
     </div>
 
-    <div
-      v-else-if="dateFields.length > 1 && !selectedDateFieldId"
-      class="flex flex-1 flex-col items-center justify-center px-8 text-center"
-    >
+    <div v-else-if="dateFields.length > 1 && !selectedDateFieldId"
+      class="flex flex-1 flex-col items-center justify-center px-8 text-center">
       <i class="pi pi-calendar-clock mb-4 text-4xl text-[var(--text-muted)]"></i>
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">Choose a Date Field</h3>
-      <p class="mt-2 max-w-md text-sm text-[var(--text-muted)]">
+      <p class="mt-2 max-w-md text-base text-[var(--text-muted)]">
         Select the date field that should place items on the calendar.
       </p>
     </div>
 
-    <CollectionCalendarGrid
-      v-else
-      class="min-h-0 flex-1"
-      :weekdayLabels="weekdayLabels"
-      :cells="monthCells"
-      @edit-item="emit('edit-item', $event)"
-    />
+    <CollectionCalendarGrid v-else class="min-h-0 flex-1" :weekdayLabels="weekdayLabels" :cells="monthCells"
+      @edit-item="emit('edit-item', $event)" />
   </div>
 </template>
 

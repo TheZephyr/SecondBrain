@@ -1,12 +1,7 @@
 <template>
-  <div class="mx-auto px-4 py-4 space-y-4 max-h-100vh overflow-y-auto text-sm">
-    <DataTable
-      :value="orderedFields"
-      dataKey="id"
-      reorderableRows
-      v-model:expandedRows="expandedRows"
-      @row-reorder="onRowReorder"
-    >
+  <div class="mx-auto px-4 py-4 space-y-4 max-h-100vh overflow-y-auto text-base">
+    <DataTable :value="orderedFields" dataKey="id" reorderableRows v-model:expandedRows="expandedRows"
+      @row-reorder="onRowReorder">
       <Column rowReorder headerStyle="width: 3rem" />
       <Column field="name" header="Field">
         <template #body="{ data }">
@@ -17,11 +12,8 @@
         <template #body="{ data }">
           <div class="flex items-center gap-2">
             <Tag>
-              <component
-                :is="iconMap[FIELD_TYPE_META[data.type as FieldType].icon]"
-                :size="12"
-                class="text-[var(--text-primary)]"
-              />
+              <component :is="iconMap[FIELD_TYPE_META[data.type as FieldType].icon]" :size="12"
+                class="text-[var(--text-primary)]" />
               <span>{{ FIELD_TYPE_META[data.type as FieldType].displayName }}</span>
             </Tag>
           </div>
@@ -30,20 +22,13 @@
       <Column header="Actions" style="width: 140px">
         <template #body="{ data }">
           <div class="flex items-center gap-2">
-            <Button
-              text
-              class="h-8 w-8 p-0 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
-              title="Edit field"
-              @click="toggleEdit(data)"
-            >
+            <Button text class="h-8 w-8 p-0 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]" title="Edit field"
+              @click="toggleEdit(data)">
               <Pencil :size="18" />
             </Button>
-            <Button
-              text
+            <Button text
               class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
-              title="Delete field"
-              @click="$emit('delete-field', data)"
-            >
+              title="Delete field" @click="$emit('delete-field', data)">
               <Trash2 :size="18" />
             </Button>
           </div>
@@ -52,30 +37,20 @@
 
       <template #expansion="{ data }">
         <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-          <div
-            class="mb-3 flex items-center gap-2 text-xs tracking-wide text-[var(--text-secondary)]"
-          >
+          <div class="mb-3 flex items-center gap-2 text-base tracking-wide text-[var(--text-secondary)]">
             <Pencil :size="14" />
             Edit Field
           </div>
           <div class="flex flex-col gap-3 md:flex-row md:items-center">
             <InputText v-model="editDraft.name" type="text" placeholder="Field name" class="flex-1" />
             <Tag>
-              <component
-                :is="iconMap[FIELD_TYPE_META[data.type as FieldType].icon]"
-                :size="12"
-                class="text-[var(--text-muted)]"
-              />
+              <component :is="iconMap[FIELD_TYPE_META[data.type as FieldType].icon]" :size="12"
+                class="text-[var(--text-muted)]" />
               <span>{{ FIELD_TYPE_META[data.type as FieldType].displayName }}</span>
             </Tag>
           </div>
-          <FieldOptionsForm
-            v-model="editDraft.options"
-            :type="data.type"
-            :items="items"
-            :fieldName="data.name"
-            class="mt-4"
-          />
+          <FieldOptionsForm v-model="editDraft.options" :type="data.type" :items="items" :fieldName="data.name"
+            class="mt-4" />
           <div class="mt-4 flex justify-end gap-2">
             <Button severity="secondary" text @click="cancelEdit">Cancel</Button>
             <Button @click="submitEditField(data)">Save</Button>
@@ -85,21 +60,14 @@
     </DataTable>
 
     <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-      <div
-        class="mb-3 flex items-center gap-2 text-xs tracking-wide text-[var(--text-secondary)]"
-      >
-        <Plus :size="14" />
+      <div class="mb-3 flex items-center gap-2 text-base tracking-wide text-[var(--text-secondary)]">
+        <i class="pi pi-plus text-sm"></i>
         Add New Field
       </div>
       <div class="flex flex-col gap-3 md:flex-row md:items-center">
         <InputText ref="addFieldNameRef" v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
-        <Select
-          v-model="newField.type"
-          :options="fieldTypeOptions"
-          optionLabel="label"
-          optionValue="value"
-          class="w-full md:w-56"
-        />
+        <Select v-model="newField.type" :options="fieldTypeOptions" optionLabel="label" optionValue="value"
+          class="w-full md:w-56" />
         <Button class="md:self-stretch" @click="submitAddField">Add</Button>
       </div>
       <FieldOptionsForm v-model="newField.options" :type="newField.type" class="mt-4" />
@@ -110,7 +78,7 @@
 <script setup lang="ts">
 import { ref, watch, type Component } from 'vue'
 import * as icons from 'lucide-vue-next'
-import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { Pencil, Trash2 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'

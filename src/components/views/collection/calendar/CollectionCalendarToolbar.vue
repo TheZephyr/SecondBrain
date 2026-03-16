@@ -1,47 +1,34 @@
 <template>
-  <div class="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 py-2">
+  <div
+    class="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 py-2">
     <div class="flex items-center gap-2">
-      <Button
-        text
+      <Button text
         class="h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-        @click="emit('previous-month')"
-      >
-        <i class="pi pi-chevron-left text-xs"></i>
+        @click="emit('previous-month')">
+        <i class="pi pi-chevron-left text-base"></i>
       </Button>
-      <div class="min-w-40 text-sm font-semibold text-[var(--text-primary)]">
+      <div class="min-w-40 text-base font-semibold text-[var(--text-primary)]">
         {{ monthLabel }}
       </div>
-      <Button
-        text
+      <Button text
         class="h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-        @click="emit('next-month')"
-      >
-        <i class="pi pi-chevron-right text-xs"></i>
+        @click="emit('next-month')">
+        <i class="pi pi-chevron-right text-base"></i>
       </Button>
     </div>
 
     <div class="flex-1"></div>
 
     <div v-if="dateFields.length > 1" class="flex items-center gap-2">
-      <label class="text-xs font-medium text-[var(--text-muted)]" for="calendar-date-field">
+      <label class="text-base font-medium text-[var(--text-muted)]" for="calendar-date-field">
         Date field
       </label>
-      <Select
-        inputId="calendar-date-field"
-        :modelValue="selectedDateFieldId"
-        :options="dateFieldOptions"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Choose date field"
-        class="min-w-52"
-        @update:modelValue="emit('update:selectedDateFieldId', $event)"
-      />
+      <Select inputId="calendar-date-field" :modelValue="selectedDateFieldId" :options="dateFieldOptions"
+        optionLabel="label" optionValue="value" placeholder="Choose date field" class="min-w-52"
+        @update:modelValue="emit('update:selectedDateFieldId', $event)" />
     </div>
 
-    <div
-      v-if="showLoadingState"
-      class="text-xs text-[var(--text-muted)]"
-    >
+    <div v-if="showLoadingState" class="text-base text-[var(--text-muted)]">
       Loading all items...
     </div>
   </div>

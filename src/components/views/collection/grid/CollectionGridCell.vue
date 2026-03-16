@@ -1,76 +1,39 @@
 <template>
-  <div
-    ref="cellRef"
-    class="cell flex h-10 w-full items-center px-3 text-sm text-[var(--text-primary)]"
-    :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''"
-    data-grid-cell
-    @click="onSelect"
-    @dblclick="onDoubleClick"
-  >
-    <template v-if="isEditing && field && field.type !== 'boolean' && field.type !== 'select' && field.type !== 'rating' && field.type !== 'multiselect'">
-      <input
-        v-if="field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'date'"
-        ref="inputRef"
-        v-model="textModel"
-        type="text"
-        class="w-full bg-transparent border-none outline-none text-sm text-[var(--text-primary)] p-0"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
-      <input
-        v-else-if="field.type === 'number'"
-        ref="inputRef"
-        v-model="numberModel"
-        type="number"
-        class="w-full bg-transparent border-none outline-none text-sm text-[var(--text-primary)] p-0 text-right"
-        @blur="onBlur"
-        @keydown="onKeydown"
-      />
+  <div ref="cellRef" class="cell flex h-10 w-full items-center px-3 text-base text-[var(--text-primary)]"
+    :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''" data-grid-cell @click="onSelect"
+    @dblclick="onDoubleClick">
+    <template
+      v-if="isEditing && field && field.type !== 'boolean' && field.type !== 'select' && field.type !== 'rating' && field.type !== 'multiselect'">
+      <input v-if="field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'date'"
+        ref="inputRef" v-model="textModel" type="text"
+        class="w-full bg-transparent border-none outline-none text-base text-[var(--text-primary)] p-0" @blur="onBlur"
+        @keydown="onKeydown" />
+      <input v-else-if="field.type === 'number'" ref="inputRef" v-model="numberModel" type="number"
+        class="w-full bg-transparent border-none outline-none text-base text-[var(--text-primary)] p-0 text-right"
+        @blur="onBlur" @keydown="onKeydown" />
     </template>
     <template v-else>
       <template v-if="field?.type === 'select' && displayText !== '-'">
-        <Chip
-          :label="String(displayText)"
-          :style="chipStyle"
-          class="text-xs !py-0 !px-2 h-5 leading-none"
-          :pt="{ root: { class: 'rounded-full' } }"
-        />
+        <Chip :label="String(displayText)" :style="chipStyle" class="text-base py-3 px-2 h-5 leading-none"
+          :pt="{ root: { class: 'rounded-full' } }" />
       </template>
       <template v-else-if="field?.type === 'multiselect' && multiselectDisplay.length > 0">
         <div class="flex items-center gap-1 overflow-hidden">
-          <Chip
-            v-for="option in multiselectDisplay"
-            :key="option"
-            :label="option"
-            :style="getMultiChipStyle(option)"
-            class="text-xs !py-0 !px-2 h-5 leading-none"
-            :pt="{ root: { class: 'rounded-full' } }"
-          />
+          <Chip v-for="option in multiselectDisplay" :key="option" :label="option" :style="getMultiChipStyle(option)"
+            class="text-base py-3 px-2 h-5 leading-none" :pt="{ root: { class: 'rounded-full' } }" />
         </div>
       </template>
       <template v-else-if="field?.type === 'boolean'">
-        <button
-          type="button"
-          class="flex items-center"
-          @click.stop="toggleBoolean"
-        >
-          <component
-            :is="booleanIconComponent"
-            :size="18"
-            :fill="booleanValue ? 'currentColor' : 'transparent'"
+        <button type="button" class="flex items-center" @click.stop="toggleBoolean">
+          <component :is="booleanIconComponent" :size="18" :fill="booleanValue ? 'currentColor' : 'transparent'"
             :stroke-width="booleanValue ? 0 : 1.5"
-            :class="booleanValue ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-          />
+            :class="booleanValue ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'" />
         </button>
       </template>
       <template v-else-if="field?.type === 'url' && displayText !== '-'">
         <div class="flex items-center gap-1">
-          <button
-            type="button"
-            :class="isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]'"
-            @click.stop="openExternal(displayText as string)"
-            title="Open link"
-          >
+          <button type="button" :class="isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]'"
+            @click.stop="openExternal(displayText as string)" title="Open link">
             <Link :size="12" />
           </button>
           <span :class="['truncate', isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]']">
@@ -80,70 +43,45 @@
       </template>
       <template v-else-if="field?.type === 'rating' && ratingMax > 0">
         <div class="flex items-center">
-          <component
-            v-for="index in ratingMax"
-            :key="index"
-            :is="ratingIconComponent"
-            :size="16"
-            :fill="index <= ratingValue ? ratingColor : 'transparent'"
-            :stroke-width="index <= ratingValue ? 0 : 1.5"
-            :class="index <= ratingValue ? ratingFilledClass : 'text-[var(--text-muted)]'"
-          />
+          <component v-for="index in ratingMax" :key="index" :is="ratingIconComponent" :size="16"
+            :fill="index <= ratingValue ? ratingColor : 'transparent'" :stroke-width="index <= ratingValue ? 0 : 1.5"
+            :class="index <= ratingValue ? ratingFilledClass : 'text-[var(--text-muted)]'" />
         </div>
       </template>
       <template v-else>
-        <span
-          class="block w-full truncate"
-          :class="field?.type === 'number' ? 'text-right' : ''"
-          :style="displayStyle"
-        >
+        <span class="block w-full truncate" :class="field?.type === 'number' ? 'text-right' : ''" :style="displayStyle">
           {{ displayText }}
         </span>
       </template>
     </template>
   </div>
   <Teleport to="body">
-    <div
-      v-if="isDropdownEditing"
-      ref="dropdownRef"
-      :style="[dropdownStyle, dropdownSurfaceStyle]"
-      class="z-50 rounded-md border border-[var(--border-subtle)] shadow-lg"
-      tabindex="0"
-      @keydown="onKeydown"
-      @focusout="onDropdownFocusOut"
-      @mousedown.stop
-    >
+    <div v-if="isDropdownEditing" ref="dropdownRef" :style="[dropdownStyle, dropdownSurfaceStyle]"
+      class="z-50 rounded-md border border-[var(--border-subtle)] shadow-lg" tabindex="0" @keydown="onKeydown"
+      @focusout="onDropdownFocusOut" @mousedown.stop>
       <ul v-if="field?.type === 'select'" class="max-h-60 overflow-auto py-1">
-        <li v-if="selectOptions.length === 0" class="px-3 py-2 text-xs text-[var(--text-muted)]">
+        <li v-if="selectOptions.length === 0" class="px-3 py-2 text-base text-[var(--text-muted)]">
           No options
         </li>
         <li v-for="option in selectOptions" v-else :key="option">
-          <button
-            type="button"
-            class="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
-            :class="option === selectModel ? 'bg-[var(--surface-2)] font-medium' : ''"
-            @click="commitSelect(option)"
-          >
+          <button type="button"
+            class="flex w-full items-center px-3 py-2 text-left text-base hover:bg-[var(--surface-2)]"
+            :class="option === selectModel ? 'bg-[var(--surface-2)] font-medium' : ''" @click="commitSelect(option)">
             <span class="truncate">{{ option }}</span>
           </button>
         </li>
       </ul>
       <ul v-else-if="field?.type === 'multiselect'" class="max-h-60 overflow-auto py-1">
-        <li v-if="selectOptions.length === 0" class="px-3 py-2 text-xs text-[var(--text-muted)]">
+        <li v-if="selectOptions.length === 0" class="px-3 py-2 text-base text-[var(--text-muted)]">
           No options
         </li>
         <li v-for="option in selectOptions" v-else :key="option">
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
-            :class="isMultiSelected(option) ? 'bg-[var(--surface-2)] font-medium' : ''"
-            @click="toggleMulti(option)"
-          >
-            <span
-              class="flex h-4 w-4 items-center justify-center rounded border border-[var(--border-subtle)]"
+          <button type="button"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-base hover:bg-[var(--surface-2)]"
+            :class="isMultiSelected(option) ? 'bg-[var(--surface-2)] font-medium' : ''" @click="toggleMulti(option)">
+            <span class="flex h-4 w-4 items-center justify-center rounded border border-[var(--border-subtle)]"
               :class="isMultiSelected(option) ? 'bg-[var(--accent-primary)] text-white' : 'text-transparent'"
-              aria-hidden="true"
-            >
+              aria-hidden="true">
               ✓
             </span>
             <span class="truncate">{{ option }}</span>
@@ -152,23 +90,16 @@
       </ul>
       <ul v-else-if="field?.type === 'rating'" class="max-h-60 overflow-auto py-1">
         <li v-for="option in ratingSelectOptions" :key="String(option.value)">
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+          <button type="button"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-base hover:bg-[var(--surface-2)]"
             :class="option.value === ratingModel ? 'bg-[var(--surface-2)] font-medium' : ''"
-            @click="commitRating(option.value)"
-          >
+            @click="commitRating(option.value)">
             <span v-if="option.value === null" class="text-[var(--text-muted)]">None</span>
             <div v-else class="flex items-center">
-              <component
-                v-for="index in ratingMax"
-                :key="index"
-                :is="ratingIconComponent"
-                :size="16"
+              <component v-for="index in ratingMax" :key="index" :is="ratingIconComponent" :size="16"
                 :fill="index <= option.value ? ratingColor : 'transparent'"
                 :stroke-width="index <= option.value ? 0 : 1.5"
-                :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-              />
+                :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'" />
             </div>
           </button>
         </li>

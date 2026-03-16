@@ -1,18 +1,10 @@
 <template>
-  <div
-    class="grid items-center text-sm text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)]"
-    :class="isAdding ? 'cursor-wait opacity-60' : 'cursor-pointer'"
-    :style="{ gridTemplateColumns }"
-    @click="onAddRow"
-  >
+  <div class="grid items-center text-base text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)]"
+    :class="isAdding ? 'cursor-wait opacity-60' : 'cursor-pointer'" :style="{ gridTemplateColumns }" @click="onAddRow">
     <div class="flex h-10 items-center justify-end border-b border-r border-[var(--border-color)] pr-2">
-      <Plus :size="14" />
+      <i class="pi pi-plus text-sm"></i>
     </div>
-    <div
-      v-for="field in orderedFields"
-      :key="field.id"
-      class="flex h-10 items-center"
-    >
+    <div v-for="field in orderedFields" :key="field.id" class="flex h-10 items-center">
       <div class="h-10 w-full"></div>
     </div>
     <div class="flex h-10 items-center"></div>
@@ -21,7 +13,6 @@
 
 <script setup lang="ts">
 import { inject, ref } from 'vue'
-import { Plus } from 'lucide-vue-next'
 import type { Field } from '../../../../types/models'
 import { useStore } from '../../../../store'
 import {

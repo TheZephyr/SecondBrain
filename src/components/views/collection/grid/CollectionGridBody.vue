@@ -1,17 +1,11 @@
 <template>
-  <div
-    ref="scrollElementRef"
+  <div ref="scrollElementRef"
     class="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[var(--bg-primary)]"
-    @scroll.passive="onScroll"
-  >
+    @scroll.passive="onScroll">
     <div v-if="rows.length === 0 && !itemsLoading" class="flex flex-1 items-center justify-center">
       <div class="flex flex-col items-center gap-3 py-10 text-[var(--text-muted)]">
-        <component
-          :is="itemsTotal === 0 && !debouncedSearchQuery ? FileText : Search"
-          :size="40"
-          :stroke-width="1.5"
-        />
-        <p class="text-sm text-center">
+        <component :is="itemsTotal === 0 && !debouncedSearchQuery ? FileText : Search" :size="40" :stroke-width="1.5" />
+        <p class="text-base text-center">
           {{
             itemsTotal === 0 && !debouncedSearchQuery
               ? 'No items yet. Click the + row below to get started!'
@@ -23,44 +17,24 @@
 
     <div class="min-w-full">
       <div class="relative min-w-full" :style="{ height: `${totalSize}px` }">
-        <div
-          v-for="virtualRow in virtualRows"
-          :key="rowAt(virtualRow.index).original.id"
-          class="absolute left-0 top-0 w-full"
-          :style="{ transform: `translateY(${virtualRow.start}px)` }"
-        >
-          <CollectionGridRow
-            :row="rowAt(virtualRow.index)"
-            :virtualIndex="virtualRow.index"
-            :rowIndex="virtualRow.index"
-            :totalRows="rows.length"
-            :gridTemplateColumns="gridTemplateColumns"
-            :orderedFields="orderedFields"
-            :rowIds="rowIds"
-            :duplicateMap="duplicateMap"
-            :isSelected="isRowSelected(rowAt(virtualRow.index).original.id)"
-            @edit-item="$emit('edit-item', $event)"
-            @row-contextmenu="$emit('row-contextmenu', $event)"
-            @toggle-row-selection="onToggleRowSelection"
-          />
+        <div v-for="virtualRow in virtualRows" :key="rowAt(virtualRow.index).original.id"
+          class="absolute left-0 top-0 w-full" :style="{ transform: `translateY(${virtualRow.start}px)` }">
+          <CollectionGridRow :row="rowAt(virtualRow.index)" :virtualIndex="virtualRow.index"
+            :rowIndex="virtualRow.index" :totalRows="rows.length" :gridTemplateColumns="gridTemplateColumns"
+            :orderedFields="orderedFields" :rowIds="rowIds" :duplicateMap="duplicateMap"
+            :isSelected="isRowSelected(rowAt(virtualRow.index).original.id)" @edit-item="$emit('edit-item', $event)"
+            @row-contextmenu="$emit('row-contextmenu', $event)" @toggle-row-selection="onToggleRowSelection" />
         </div>
       </div>
-      <CollectionGridAddRow
-        :gridTemplateColumns="gridTemplateColumns"
-        :orderedFields="orderedFields"
-      />
-      <div
-        v-if="itemsLoading && rows.length > 0"
-        class="flex h-9 items-center justify-center border-b border-[var(--border-color)] text-xs text-[var(--text-muted)]"
-      >
+      <CollectionGridAddRow :gridTemplateColumns="gridTemplateColumns" :orderedFields="orderedFields" />
+      <div v-if="itemsLoading && rows.length > 0"
+        class="flex h-9 items-center justify-center border-b border-[var(--border-color)] text-base text-[var(--text-muted)]">
         Loading more...
       </div>
     </div>
 
-    <div
-      v-if="itemsLoading && rows.length === 0"
-      class="absolute inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--bg-primary)_70%,transparent)] text-xs text-[var(--text-muted)]"
-    >
+    <div v-if="itemsLoading && rows.length === 0"
+      class="absolute inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--bg-primary)_70%,transparent)] text-base text-[var(--text-muted)]">
       Loading...
     </div>
   </div>

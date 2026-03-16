@@ -1,6 +1,7 @@
 <template>
-  <div class="flex h-12 items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-4">
-    <div class="flex min-w-0 items-center gap-2 text-sm">
+  <div
+    class="flex h-12 items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-4">
+    <div class="flex min-w-0 items-center gap-2 text-base">
       <span class="text-[var(--text-muted)]">Collections</span>
       <span class="text-[var(--text-muted)]">/</span>
       <span class="min-w-0 truncate text-[var(--text-primary)]">
@@ -13,19 +14,19 @@
     </div>
 
     <div class="flex items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-1">
-      <Button text class="h-6 px-2 text-xs font-semibold"
-        :class="activeCollectionPanel === 'data' ? activeButtonClass : inactiveButtonClass" :aria-pressed="activeCollectionPanel === 'data'"
-        @click="setPanel('data')">
+      <Button text class="h-6 px-2 text-base font-semibold"
+        :class="activeCollectionPanel === 'data' ? activeButtonClass : inactiveButtonClass"
+        :aria-pressed="activeCollectionPanel === 'data'" @click="setPanel('data')">
         Data
       </Button>
-      <Button text class="h-6 px-2 text-xs font-semibold"
-        :class="activeCollectionPanel === 'fields' ? activeButtonClass : inactiveButtonClass" :aria-pressed="activeCollectionPanel === 'fields'"
-        @click="setPanel('fields')">
+      <Button text class="h-6 px-2 text-base font-semibold"
+        :class="activeCollectionPanel === 'fields' ? activeButtonClass : inactiveButtonClass"
+        :aria-pressed="activeCollectionPanel === 'fields'" @click="setPanel('fields')">
         Fields
       </Button>
     </div>
 
-    <Button text class="h-8 gap-2 px-3 text-xs font-semibold"
+    <Button text class="h-8 gap-2 px-3 text-base font-semibold"
       :class="collectionSettingsOpen ? activeButtonClass : inactiveButtonClass" :aria-pressed="collectionSettingsOpen"
       @click="toggleSettings">
       <Settings2 :size="14" />

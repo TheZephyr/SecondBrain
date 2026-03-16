@@ -1,135 +1,61 @@
 <template>
-  <Dialog
-    :visible="visible"
-    :header="editingItem ? 'Edit Item' : 'Add New Item'"
-    modal
-    :draggable="false"
-    class="max-w-2xl"
-    @update:visible="onVisibilityChange"
-    @hide="cancelDialog"
-  >
+  <Dialog :visible="visible" :header="editingItem ? 'Edit Item' : 'Add New Item'" modal :draggable="false"
+    class="max-w-2xl" @update:visible="onVisibilityChange" @hide="cancelDialog">
     <form @submit.prevent="saveDialog">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div
-          v-for="field in orderedFields"
-          :key="field.id"
-          :class="field.type === 'longtext' ? 'md:col-span-2' : ''"
-        >
+        <div v-for="field in orderedFields" :key="field.id" :class="field.type === 'longtext' ? 'md:col-span-2' : ''">
           <FloatLabel class="w-full" variant="in">
-            <InputText
-              v-if="field.type === 'text'"
-              :id="getFieldInputId(field)"
-              :modelValue="getTextValue(field.name)"
-              @update:modelValue="value => setTextValue(field.name, value)"
-              type="text"
-              class="w-full"
-            />
-            <Textarea
-              v-else-if="field.type === 'longtext'"
-              :id="getFieldInputId(field)"
-              :modelValue="getTextValue(field.name)"
-              @update:modelValue="value => setTextValue(field.name, value)"
-              rows="3"
-              class="w-full"
-            />
-            <InputNumber
-              v-else-if="field.type === 'number'"
-              :inputId="getFieldInputId(field)"
-              :modelValue="getNumberValue(field.name)"
-              @update:modelValue="value => setNumberValue(field.name, value)"
-              inputClass="w-full"
-              class="w-full"
-            />
-            <DatePicker
-              v-else-if="field.type === 'date'"
-              :inputId="getFieldInputId(field)"
-              :modelValue="getDateValue(field.name)"
-              @update:modelValue="value => setDateValue(field.name, value)"
-              :dateFormat="getDateFormat(field)"
-              inputClass="w-full"
-              class="w-full"
-            />
-            <Select
-              v-else-if="field.type === 'select'"
-              :inputId="getFieldInputId(field)"
-              :modelValue="getSelectValue(field.name)"
-              @update:modelValue="value => setSelectValue(field.name, value)"
-              :options="getSelectChoices(field)"
-              class="w-full"
-            >
+            <InputText v-if="field.type === 'text'" :id="getFieldInputId(field)" :modelValue="getTextValue(field.name)"
+              @update:modelValue="value => setTextValue(field.name, value)" type="text" class="w-full" />
+            <Textarea v-else-if="field.type === 'longtext'" :id="getFieldInputId(field)"
+              :modelValue="getTextValue(field.name)" @update:modelValue="value => setTextValue(field.name, value)"
+              rows="3" class="w-full" />
+            <InputNumber v-else-if="field.type === 'number'" :inputId="getFieldInputId(field)"
+              :modelValue="getNumberValue(field.name)" @update:modelValue="value => setNumberValue(field.name, value)"
+              inputClass="w-full" class="w-full" />
+            <DatePicker v-else-if="field.type === 'date'" :inputId="getFieldInputId(field)"
+              :modelValue="getDateValue(field.name)" @update:modelValue="value => setDateValue(field.name, value)"
+              :dateFormat="getDateFormat(field)" inputClass="w-full" class="w-full" />
+            <Select v-else-if="field.type === 'select'" :inputId="getFieldInputId(field)"
+              :modelValue="getSelectValue(field.name)" @update:modelValue="value => setSelectValue(field.name, value)"
+              :options="getSelectChoices(field)" class="w-full">
               <template #option="{ option }">
-                <Chip
-                  :label="option"
-                  :style="getChipStyle(option, getSelectChoices(field))"
-                  class="text-xs py-0 px-2 h-5 leading-none"
-                  :pt="{ root: { class: 'rounded-full' } }"
-                />
+                <Chip :label="option" :style="getChipStyle(option, getSelectChoices(field))"
+                  class="text-base py-0 px-2 h-5 leading-none" :pt="{ root: { class: 'rounded-full' } }" />
               </template>
             </Select>
-            <MultiSelect
-              v-else-if="field.type === 'multiselect'"
-              :inputId="getFieldInputId(field)"
+            <MultiSelect v-else-if="field.type === 'multiselect'" :inputId="getFieldInputId(field)"
               :modelValue="getMultiselectValue(field.name)"
-              @update:modelValue="value => setMultiselectValue(field.name, value)"
-              :options="getSelectChoices(field)"
-              display="chip"
-              class="w-full"
-            />
+              @update:modelValue="value => setMultiselectValue(field.name, value)" :options="getSelectChoices(field)"
+              display="chip" class="w-full" />
             <div v-else-if="field.type === 'boolean'" class="flex items-center gap-2">
-              <button
-                type="button"
-                class="flex items-center"
-                @click="setBooleanValue(field.name, !getBooleanValue(field.name))"
-              >
-                <component
-                  :is="getBooleanIcon(field)"
-                  :size="20"
+              <button type="button" class="flex items-center"
+                @click="setBooleanValue(field.name, !getBooleanValue(field.name))">
+                <component :is="getBooleanIcon(field)" :size="20"
                   :fill="getBooleanValue(field.name) ? 'currentColor' : 'transparent'"
                   :stroke-width="getBooleanValue(field.name) ? 0 : 1.5"
-                  :class="getBooleanValue(field.name) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-                />
+                  :class="getBooleanValue(field.name) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'" />
               </button>
             </div>
             <div v-else-if="field.type === 'url'" class="relative w-full">
-              <InputText
-                :id="getFieldInputId(field)"
-                :modelValue="getTextValue(field.name)"
-                @update:modelValue="value => setTextValue(field.name, value)"
-                type="text"
-                class="w-full pr-8"
-              />
-              <button
-                type="button"
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--accent-primary)]"
-                title="Open link"
-                @click="openExternal(getTextValue(field.name))"
-              >
+              <InputText :id="getFieldInputId(field)" :modelValue="getTextValue(field.name)"
+                @update:modelValue="value => setTextValue(field.name, value)" type="text" class="w-full pr-8" />
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--accent-primary)]"
+                title="Open link" @click="openExternal(getTextValue(field.name))">
                 <Link :size="14" />
               </button>
             </div>
-            <Select
-              v-else-if="field.type === 'rating'"
-              :inputId="getFieldInputId(field)"
-              :modelValue="getRatingValue(field.name)"
-              @update:modelValue="value => setRatingValue(field.name, value)"
-              :options="getRatingOptions(field)"
-              optionLabel="label"
-              optionValue="value"
-              class="w-full"
-            >
+            <Select v-else-if="field.type === 'rating'" :inputId="getFieldInputId(field)"
+              :modelValue="getRatingValue(field.name)" @update:modelValue="value => setRatingValue(field.name, value)"
+              :options="getRatingOptions(field)" optionLabel="label" optionValue="value" class="w-full">
               <template #value="{ value }">
                 <div class="flex items-center gap-1">
                   <span v-if="value === null" class="text-[var(--text-muted)]">None</span>
                   <div v-else class="flex items-center">
-                    <component
-                      v-for="index in getRatingMax(field)"
-                      :key="index"
-                      :is="getRatingIcon(field)"
-                      :size="16"
+                    <component v-for="index in getRatingMax(field)" :key="index" :is="getRatingIcon(field)" :size="16"
                       :fill="index <= (value ?? 0) ? getRatingColor(field) : 'transparent'"
                       :stroke-width="index <= (value ?? 0) ? 0 : 1.5"
-                      :class="index <= (value ?? 0) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-                    />
+                      :class="index <= (value ?? 0) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'" />
                   </div>
                 </div>
               </template>
@@ -137,17 +63,12 @@
                 <div class="flex items-center gap-2">
                   <span v-if="option.value === null" class="text-[var(--text-muted)]">None</span>
                   <div v-else class="flex items-center">
-                    <component
-                      v-for="index in getRatingMax(field)"
-                      :key="index"
-                      :is="getRatingIcon(field)"
-                      :size="16"
+                    <component v-for="index in getRatingMax(field)" :key="index" :is="getRatingIcon(field)" :size="16"
                       :fill="index <= option.value ? getRatingColor(field) : 'transparent'"
                       :stroke-width="index <= option.value ? 0 : 1.5"
-                      :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
-                    />
+                      :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'" />
                   </div>
-                  <span class="text-xs text-[var(--text-muted)]">{{ option.label }}</span>
+                  <span class="text-base text-[var(--text-muted)]">{{ option.label }}</span>
                 </div>
               </template>
             </Select>

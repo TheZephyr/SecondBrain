@@ -1,6 +1,6 @@
 <template>
   <div class="flex items-center justify-center py-32 text-[var(--text-muted)]">
-    <p class="text-sm">Kanban view — coming soon</p>
+    <p class="text-base">Kanban view — coming soon</p>
   </div>
 </template>
 

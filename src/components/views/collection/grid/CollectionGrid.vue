@@ -1,52 +1,29 @@
 <template>
   <div class="flex h-full w-full min-h-0 flex-col">
-    <CollectionGridToolbar
-      v-model:searchQuery="searchModel"
-      :multiSortMeta="multiSortMeta"
-    />
+    <CollectionGridToolbar v-model:searchQuery="searchModel" :multiSortMeta="multiSortMeta" />
 
-    <div
-      v-if="orderedFields.length === 0"
-      class="flex flex-1 flex-col items-center justify-center px-10 py-16 text-center"
-    >
+    <div v-if="orderedFields.length === 0"
+      class="flex flex-1 flex-col items-center justify-center px-10 py-16 text-center">
       <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
       <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
-      <p class="mt-2 text-sm text-[var(--text-muted)]">
+      <p class="mt-2 text-base text-[var(--text-muted)]">
         Define the structure of your collection by adding fields
       </p>
-      <Button class="mt-6 min-w-[140px] gap-2 px-4 !text-white" @click="notifyAddField">
-        <Plus />
+      <Button class="mt-6 min-w-[140px] gap-2 px-4 text-white" @click="notifyAddField">
+        <i class="pi pi-plus text-sm"></i>
         Add Fields
       </Button>
     </div>
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
-      <div
-        class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
-      >
-        <CollectionGridHeader
-          :headerGroups="headerGroups"
-          :gridTemplateColumns="gridTemplateColumns"
-          :multiSortMeta="multiSortMeta"
-          @sort="onSort"
-          @manage-fields="notifyAddField"
-          @set-column-width="onSetColumnWidth"
-          @persist-column-widths="onPersistColumnWidths"
-        />
-        <CollectionGridBody
-          class="min-h-0 flex-1"
-          :rows="rows"
-          :gridTemplateColumns="gridTemplateColumns"
-          :itemsTotal="itemsTotal"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :debouncedSearchQuery="debouncedSearchQuery"
-          :orderedFields="orderedFields"
-          :duplicateMap="duplicateMap"
-          :loadNextPage="loadNextPage"
-          @edit-item="emitEditItem"
-          @row-contextmenu="onRowContextMenu"
-        />
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]">
+        <CollectionGridHeader :headerGroups="headerGroups" :gridTemplateColumns="gridTemplateColumns"
+          :multiSortMeta="multiSortMeta" @sort="onSort" @manage-fields="notifyAddField"
+          @set-column-width="onSetColumnWidth" @persist-column-widths="onPersistColumnWidths" />
+        <CollectionGridBody class="min-h-0 flex-1" :rows="rows" :gridTemplateColumns="gridTemplateColumns"
+          :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :debouncedSearchQuery="debouncedSearchQuery" :orderedFields="orderedFields" :duplicateMap="duplicateMap"
+          :loadNextPage="loadNextPage" @edit-item="emitEditItem" @row-contextmenu="onRowContextMenu" />
         <CollectionGridFooter :itemsTotal="itemsTotal" />
       </div>
 
@@ -190,7 +167,7 @@ const contextMenuTotalRows = ref(0)
 const contextMenuPt = {
   root: {
     class:
-      'rounded-md border border-[var(--border-color)] bg-[var(--bg-secondary)] text-sm shadow-lg'
+      'rounded-md border border-[var(--border-color)] bg-[var(--bg-secondary)] text-base shadow-lg'
   },
   rootList: {
     class: 'py-1'
@@ -200,7 +177,7 @@ const contextMenuPt = {
   },
   itemLink: {
     class:
-      'flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
+      'flex items-center gap-2 px-3 py-2 text-base text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]'
   },
   separator: {
     class: 'my-1 border-t border-[var(--border-color)]'
