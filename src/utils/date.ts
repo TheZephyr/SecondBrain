@@ -1,4 +1,4 @@
-import type { ItemDataValue } from "../types/models";
+import type { DateFieldOptions, ItemDataValue } from "../types/models";
 
 export type MonthGridCell = {
   key: string;
@@ -27,6 +27,68 @@ export function parseDateValue(
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseDateWithFormat(value: string, format?: string): Date | null {
+  const formatValue = format ?? "YYYY-MM-DD";
+  let match: RegExpMatchArray | null = null;
+
+  switch (formatValue) {
+    case "YYYY.MM.DD":
+      match = value.match(/^(\d{4})\.(\d{2})\.(\d{2})$/);
+      if (match) {
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        const date = new Date(year, month, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    case "DD-MM-YYYY":
+      match = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (match) {
+        const day = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const year = Number(match[3]);
+        const date = new Date(year, month, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    case "DD.MM.YYYY":
+      match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (match) {
+        const day = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const year = Number(match[3]);
+        const date = new Date(year, month, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    case "YYYY-MM-DD":
+    default:
+      match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        const date = new Date(year, month, day);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+  }
+}
+
+export function parseDateInput(
+  value: ItemDataValue | Date | null | undefined,
+  format?: string,
+): Date | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const formatted = parseDateWithFormat(value, format);
+    if (formatted) return formatted;
+  }
+  return parseDateValue(value);
+}
+
 export function formatDateForStorage(
   value: ItemDataValue | Date | null | undefined,
 ): string {
@@ -49,6 +111,45 @@ export function formatDateForDisplay(
   const date = parseDateValue(value);
   if (!date) return "-";
   return date.toLocaleDateString();
+}
+
+export function formatDateWithFieldOptions(
+  value: ItemDataValue | Date | null | undefined,
+  options: DateFieldOptions,
+): string {
+  const date = parseDateValue(value);
+  if (!date) return "-";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const format = options.format ?? "YYYY-MM-DD";
+
+  switch (format) {
+    case "YYYY.MM.DD":
+      return `${year}.${month}.${day}`;
+    case "DD-MM-YYYY":
+      return `${day}-${month}-${year}`;
+    case "DD.MM.YYYY":
+      return `${day}.${month}.${year}`;
+    case "YYYY-MM-DD":
+    default:
+      return `${year}-${month}-${day}`;
+  }
+}
+
+export function formatDateForPrimeVue(format?: string): string {
+  switch (format) {
+    case "YYYY.MM.DD":
+      return "yy.mm.dd";
+    case "DD-MM-YYYY":
+      return "dd-mm-yy";
+    case "DD.MM.YYYY":
+      return "dd.mm.yy";
+    case "YYYY-MM-DD":
+    default:
+      return "yy-mm-dd";
+  }
 }
 
 function startOfMondayWeek(date: Date): Date {

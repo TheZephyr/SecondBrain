@@ -37,6 +37,7 @@
             :gridTemplateColumns="gridTemplateColumns"
             :orderedFields="orderedFields"
             :rowIds="rowIds"
+            :duplicateMap="duplicateMap"
             :isSelected="isRowSelected(rowAt(virtualRow.index).original.id)"
             @edit-item="$emit('edit-item', $event)"
             @row-contextmenu="$emit('row-contextmenu', $event)"
@@ -89,6 +90,7 @@ const props = defineProps<{
   itemsFullyLoaded: boolean
   debouncedSearchQuery: string
   orderedFields: Field[]
+  duplicateMap: Map<string, Set<string>>
   loadNextPage: () => Promise<void>
 }>()
 

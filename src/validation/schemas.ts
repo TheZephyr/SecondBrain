@@ -23,6 +23,17 @@ export const nonNegativeIntSchema = z.number().int().min(0);
 export const viewTypeSchema = z.enum(["grid", "kanban", "calendar"]);
 export const viewIsDefaultSchema = z.union([z.literal(0), z.literal(1)]);
 export const viewOrderSchema = nonNegativeIntSchema;
+export const fieldTypeSchema = z.enum([
+  "text",
+  "longtext",
+  "number",
+  "date",
+  "select",
+  "multiselect",
+  "boolean",
+  "url",
+  "rating",
+]);
 export const MAX_BULK_DELETE_IDS = 1000;
 export const MAX_BULK_PATCH_UPDATES = 500;
 
@@ -138,7 +149,7 @@ export const UpdateCollectionInputSchema = z.object({
 export const NewFieldInputSchema = z.object({
   collectionId: positiveIntSchema,
   name: fieldNameSchema,
-  type: z.enum(["text", "textarea", "number", "date", "select"]),
+  type: fieldTypeSchema,
   options: z.string().nullable(),
   orderIndex: orderIndexSchema.optional(),
 });
@@ -146,7 +157,7 @@ export const NewFieldInputSchema = z.object({
 export const UpdateFieldInputSchema = z.object({
   id: positiveIntSchema,
   name: fieldNameSchema,
-  type: z.enum(["text", "textarea", "number", "date", "select"]),
+  type: fieldTypeSchema,
   options: z.string().nullable(),
   orderIndex: orderIndexSchema.optional(),
 });

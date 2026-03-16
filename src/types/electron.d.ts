@@ -101,6 +101,9 @@ export interface IElectronAPI {
     options: OpenDialogOptions,
   ) => Promise<IpcResult<string | null>>;
   readFile: (filePath: string) => Promise<IpcResult<string | null>>;
+
+  // External
+  openExternal: (url: string) => Promise<IpcResult<void>>;
 }
 
 declare global {

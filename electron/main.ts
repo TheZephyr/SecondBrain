@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
 import type {
   IpcMainInvokeEvent,
   SaveDialogOptions,
@@ -717,6 +717,16 @@ handleIpc("import:readFile", async (_, filePath: string) => {
       serializeDetails(error),
     );
   }
+});
+
+// ==================== EXTERNAL ====================
+handleIpc("openExternal", async (_, url: string) => {
+  if (!url || typeof url !== "string" || url.trim().length === 0) {
+    throw new AppError("VALIDATION_FAILED", "Invalid URL.");
+  }
+
+  await shell.openExternal(url);
+  return;
 });
 
 app.whenReady().then(async () => {

@@ -270,7 +270,7 @@ describe("importCollection – edge cases", () => {
           collectionId: col.id,
           name: "Genre",
           type: "select",
-          options: "Fiction,Non-fiction",
+          options: JSON.stringify({ choices: ["Fiction", "Non-fiction"] }),
           orderIndex: 2,
         },
       ],
@@ -285,7 +285,9 @@ describe("importCollection – edge cases", () => {
     expect(fields[1].order_index).toBe(1);
     expect(fields[2].name).toBe("Genre");
     expect(fields[2].order_index).toBe(2);
-    expect(fields[2].options).toBe("Fiction,Non-fiction");
+    expect(fields[2].options).toBe(
+      JSON.stringify({ choices: ["Fiction", "Non-fiction"] }),
+    );
   });
 
   it("imports items with varying data shapes", () => {

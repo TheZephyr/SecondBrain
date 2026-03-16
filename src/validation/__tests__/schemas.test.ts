@@ -7,6 +7,7 @@ import {
   NewFieldInputSchema,
   ReorderFieldsInputSchema,
   ReorderViewsInputSchema,
+  UpdateFieldInputSchema,
   UpdateViewConfigInputSchema,
   ViewConfigSchema,
   itemDataSchema,
@@ -64,6 +65,64 @@ describe("validation schemas", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("accepts all new field types in NewFieldInputSchema", () => {
+    const types = [
+      "text",
+      "longtext",
+      "number",
+      "date",
+      "select",
+      "multiselect",
+      "boolean",
+      "url",
+      "rating",
+    ] as const;
+
+    for (const type of types) {
+      const result = NewFieldInputSchema.safeParse({
+        collectionId: 1,
+        name: "Field",
+        type,
+        options: null,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects textarea in NewFieldInputSchema", () => {
+    const result = NewFieldInputSchema.safeParse({
+      collectionId: 1,
+      name: "Legacy",
+      type: "textarea",
+      options: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts all new field types in UpdateFieldInputSchema", () => {
+    const types = [
+      "text",
+      "longtext",
+      "number",
+      "date",
+      "select",
+      "multiselect",
+      "boolean",
+      "url",
+      "rating",
+    ] as const;
+
+    for (const type of types) {
+      const result = UpdateFieldInputSchema.safeParse({
+        id: 1,
+        name: "Field",
+        type,
+        options: null,
+      });
+      expect(result.success).toBe(true);
+    }
   });
 
   it("rejects import payloads with mismatched field collectionId", () => {

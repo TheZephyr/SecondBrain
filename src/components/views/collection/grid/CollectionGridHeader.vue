@@ -29,9 +29,10 @@
           @click="event => toggleSort(headerMeta(header)?.field, event)"
         >
           <span class="flex min-w-0 items-center gap-1.5">
-            <i
-              class="pi flex-shrink-0 text-[var(--text-muted)]"
-              :class="FIELD_TYPE_ICONS[headerMeta(header)?.field?.type ?? 'text']"
+            <component
+              :is="iconMap[FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text'].icon]"
+              :size="14"
+              class="flex-shrink-0 text-[var(--text-muted)]"
             />
             <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
           </span>
@@ -70,11 +71,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, type Component } from 'vue'
 import type { Header, HeaderGroup } from '@tanstack/vue-table'
+import * as icons from 'lucide-vue-next'
 import { ChevronDown, ChevronUp, Plus } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import { FIELD_TYPE_ICONS, type Field } from '../../../../types/models'
+import { FIELD_TYPE_META, type Field } from '../../../../types/models'
 import type { MultiSortMeta } from '../types'
 import type { GridRow, GridColumnMeta } from './types'
 
@@ -93,6 +95,7 @@ const emit = defineEmits<{
 
 const headers = computed(() => props.headerGroups[0]?.headers ?? [])
 const MIN_COLUMN_WIDTH = 60
+const iconMap = icons as unknown as Record<string, Component>
 
 let activeResize:
   | { fieldId: number; startX: number; startWidth: number; pointerId: number }

@@ -42,6 +42,7 @@
           :itemsFullyLoaded="itemsFullyLoaded"
           :debouncedSearchQuery="debouncedSearchQuery"
           :orderedFields="orderedFields"
+          :duplicateMap="duplicateMap"
           :loadNextPage="loadNextPage"
           @edit-item="emitEditItem"
           @row-contextmenu="onRowContextMenu"
@@ -77,6 +78,8 @@ import { gridEditingKey, gridSelectionKey } from './types'
 import { useGridSelection } from '../../../../composables/collection/grid/useGridSelection'
 import { useGridEditing } from '../../../../composables/collection/grid/useGridEditing'
 import { useGridColumns } from '../../../../composables/collection/grid/useGridColumns'
+import { parseFieldOptions } from '../../../../utils/fieldOptions'
+import { normalizeUniqueKey } from '../../../../utils/fieldUnique'
 
 type RowContextMenuPayload = {
   event: MouseEvent
@@ -150,6 +153,34 @@ const table = useVueTable<Item>({
 
 const rows = computed<Row<Item>[]>(() => table.getRowModel().rows)
 const headerGroups = computed<HeaderGroup<Item>[]>(() => table.getHeaderGroups())
+
+const duplicateMap = computed(() => {
+  const map = new Map<string, Set<string>>()
+  const fieldsWithUnique = props.orderedFields.filter(field => {
+    const options = parseFieldOptions(field.type, field.options) as { uniqueCheck?: boolean }
+    return Boolean(options.uniqueCheck)
+  })
+
+  if (fieldsWithUnique.length === 0) return map
+
+  for (const field of fieldsWithUnique) {
+    const counts = new Map<string, number>()
+    for (const item of props.items) {
+      const key = normalizeUniqueKey(field, item.data[field.name])
+      if (!key) continue
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    const duplicates = new Set<string>()
+    for (const [key, count] of counts.entries()) {
+      if (count > 1) duplicates.add(key)
+    }
+    if (duplicates.size > 0) {
+      map.set(field.name, duplicates)
+    }
+  }
+
+  return map
+})
 
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
 const contextMenuRow = ref<Item | null>(null)

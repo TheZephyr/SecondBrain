@@ -53,6 +53,7 @@
           :rowIndex="rowIndex"
           :rowIds="rowIds"
           :orderedFields="orderedFields"
+          :duplicateMap="duplicateMap"
         />
       </template>
     </div>
@@ -80,6 +81,7 @@ const props = defineProps<{
   gridTemplateColumns: string
   orderedFields: Field[]
   rowIds: number[]
+  duplicateMap: Map<string, Set<string>>
   isSelected: boolean
 }>()
 

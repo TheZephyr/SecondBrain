@@ -542,6 +542,114 @@ describe("field CRUD", () => {
     const col = addCollection({ name: "Empty" });
     expect(getFields(col.id)).toEqual([]);
   });
+
+  it("stores JSON options for new field types", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Fields" });
+
+    const inputs: NewFieldInput[] = [
+      {
+        collectionId: col.id,
+        name: "Text",
+        type: "text",
+        options: JSON.stringify({ defaultValue: "Hello", uniqueCheck: true }),
+        orderIndex: 0,
+      },
+      {
+        collectionId: col.id,
+        name: "LongText",
+        type: "longtext",
+        options: JSON.stringify({
+          richText: false,
+          defaultValue: "Body",
+          uniqueCheck: true,
+        }),
+        orderIndex: 1,
+      },
+      {
+        collectionId: col.id,
+        name: "Number",
+        type: "number",
+        options: JSON.stringify({ defaultValue: 3, uniqueCheck: true }),
+        orderIndex: 2,
+      },
+      {
+        collectionId: col.id,
+        name: "Date",
+        type: "date",
+        options: JSON.stringify({
+          format: "DD.MM.YYYY",
+          defaultValue: "2026-03-16",
+          uniqueCheck: true,
+        }),
+        orderIndex: 3,
+      },
+      {
+        collectionId: col.id,
+        name: "Select",
+        type: "select",
+        options: JSON.stringify({
+          choices: ["A", "B"],
+          defaultValue: "A",
+          uniqueCheck: true,
+        }),
+        orderIndex: 4,
+      },
+      {
+        collectionId: col.id,
+        name: "Multi",
+        type: "multiselect",
+        options: JSON.stringify({
+          choices: ["A", "B"],
+          defaultValue: ["A"],
+          uniqueCheck: true,
+        }),
+        orderIndex: 5,
+      },
+      {
+        collectionId: col.id,
+        name: "Boolean",
+        type: "boolean",
+        options: JSON.stringify({ icon: "heart" }),
+        orderIndex: 6,
+      },
+      {
+        collectionId: col.id,
+        name: "URL",
+        type: "url",
+        options: JSON.stringify({
+          defaultValue: "https://example.com",
+          uniqueCheck: true,
+        }),
+        orderIndex: 7,
+      },
+      {
+        collectionId: col.id,
+        name: "Rating",
+        type: "rating",
+        options: JSON.stringify({
+          icon: "star",
+          color: "currentColor",
+          min: 1,
+          max: 10,
+          defaultValue: 5,
+          uniqueCheck: true,
+        }),
+        orderIndex: 8,
+      },
+    ];
+
+    for (const input of inputs) {
+      addField(input);
+    }
+
+    const fields = getFields(col.id);
+    for (const input of inputs) {
+      const match = fields.find((field) => field.name === input.name);
+      expect(match?.type).toBe(input.type);
+      expect(match?.options).toBe(input.options);
+    }
+  });
 });
 
 // ======================== ITEMS ========================
