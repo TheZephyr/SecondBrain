@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildBackupFileName,
   DEFAULT_BACKUP_SETTINGS,
@@ -13,6 +13,7 @@ import {
   partitionBackups,
   pruneBackupSet,
   saveBackupSettings,
+  tryCreateStartupBackup,
 } from "../backup-utils";
 
 const tempDirs: string[] = [];
@@ -141,5 +142,26 @@ describe("backup utils", () => {
       manualBackupsLimit: 999,
       backupDirectory: "C:\\backups",
     });
+  });
+
+  it("returns true when startup backup succeeds", async () => {
+    await expect(
+      tryCreateStartupBackup(async () => undefined),
+    ).resolves.toBe(true);
+  });
+
+  it("logs and returns false when startup backup fails", async () => {
+    const error = new Error("disk full");
+    const logError = vi.fn();
+
+    const result = await tryCreateStartupBackup(async () => {
+      throw error;
+    }, logError);
+
+    expect(result).toBe(false);
+    expect(logError).toHaveBeenCalledWith(
+      "[Startup Backup] Failed to create startup backup:",
+      error,
+    );
   });
 });

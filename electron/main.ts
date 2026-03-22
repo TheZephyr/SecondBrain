@@ -89,6 +89,7 @@ import {
   partitionBackups,
   pruneBackupSet,
   saveBackupSettings,
+  tryCreateStartupBackup,
 } from "./backup-utils";
 
 let mainWindow: BrowserWindow | null = null;
@@ -427,7 +428,7 @@ async function startDbWorker(pathToDb: string): Promise<void> {
 async function initDatabase(): Promise<boolean> {
   try {
     dbPath = path.join(app.getPath("userData"), "secondbrain.db");
-    await maybeCreateStartupBackup();
+    await tryCreateStartupBackup(maybeCreateStartupBackup);
     await startDbWorker(dbPath);
     return true;
   } catch (error) {
@@ -486,31 +487,41 @@ async function copyDatabaseToBackup(label: BackupLabel): Promise<BackupEntry> {
   }
 
   await stopDbWorker(`Creating ${label} backup.`);
-  await checkpointDatabaseFile(liveDbPath);
+  
+  try {
+    await checkpointDatabaseFile(liveDbPath);
 
-  const backupDirectory = await ensureBackupDirectory(userDataPath);
-  const fileName = buildBackupFileName(label);
-  const destinationPath = path.join(backupDirectory, fileName);
-  await fs.promises.copyFile(liveDbPath, destinationPath);
+    const backupDirectory = await ensureBackupDirectory(userDataPath);
+    const fileName = buildBackupFileName(label);
+    const destinationPath = path.join(backupDirectory, fileName);
+    await fs.promises.copyFile(liveDbPath, destinationPath);
 
-  await startDbWorker(liveDbPath);
+    const backups = await listBackupsFromDisk(userDataPath);
+    const created = backups.find((backup) => backup.fileName === fileName);
+    if (!created) {
+      throw new AppError("FS_READ_FAILED", "Backup file was not created.");
+    }
 
-  const backups = await listBackupsFromDisk(userDataPath);
-  const created = backups.find((backup) => backup.fileName === fileName);
-  if (!created) {
-    throw new AppError("FS_READ_FAILED", "Backup file was not created.");
+    const settings = await loadBackupSettings(userDataPath);
+    const limit = getBackupRetentionLimit(settings, label);
+    const buckets = partitionBackups(backups);
+    if (label === "startup") {
+      await pruneBackupSet(buckets.automatic, limit);
+    } else {
+      await pruneBackupSet(buckets.manual, limit);
+    }
+
+    return created;
+  } finally {
+    // Always attempt to restart the database worker, even if an error occurred
+    try {
+      await startDbWorker(liveDbPath);
+    } catch (error) {
+      console.error(`[Backup] Failed to restart database worker after ${label} backup:`, error);
+      // Re-throw the original error if we had one, otherwise throw the restart error
+      throw error;
+    }
   }
-
-  const settings = await loadBackupSettings(userDataPath);
-  const limit = getBackupRetentionLimit(settings, label);
-  const buckets = partitionBackups(backups);
-  if (label === "startup") {
-    await pruneBackupSet(buckets.automatic, limit);
-  } else {
-    await pruneBackupSet(buckets.manual, limit);
-  }
-
-  return created;
 }
 
 async function maybeCreateStartupBackup(): Promise<void> {

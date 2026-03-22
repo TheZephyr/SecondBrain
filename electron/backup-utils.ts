@@ -111,6 +111,20 @@ export async function ensureBackupDirectory(
   return backupDirectory;
 }
 
+export async function tryCreateStartupBackup(
+  createBackup: () => Promise<void>,
+  logError: (message?: unknown, ...optionalParams: unknown[]) => void =
+    console.error,
+): Promise<boolean> {
+  try {
+    await createBackup();
+    return true;
+  } catch (error) {
+    logError("[Startup Backup] Failed to create startup backup:", error);
+    return false;
+  }
+}
+
 export function formatBackupTimestamp(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
