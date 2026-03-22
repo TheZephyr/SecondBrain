@@ -166,6 +166,8 @@ export function useCollectionItemsQuery({
       })),
       calendarDateField: existing?.calendarDateField,
       calendarDateFieldId: existing?.calendarDateFieldId,
+      groupingFieldId: existing?.groupingFieldId,
+      kanbanColumnOrder: existing?.kanbanColumnOrder,
       selectedFieldIds: existing?.selectedFieldIds ?? []
     }
     await saveViewConfig(targetViewId, nextConfig)
@@ -194,6 +196,8 @@ export function useCollectionItemsQuery({
       sort: migratedSort,
       calendarDateField: existingConfig?.calendarDateField,
       calendarDateFieldId: existingConfig?.calendarDateFieldId,
+      groupingFieldId: existingConfig?.groupingFieldId,
+      kanbanColumnOrder: existingConfig?.kanbanColumnOrder,
       selectedFieldIds: existingConfig?.selectedFieldIds ?? []
     }
 

@@ -12,6 +12,7 @@ import type {
   DuplicateItemInput,
   MoveItemInput,
   ReorderFieldsInput,
+  ReorderItemsInput,
   ReorderViewsInput,
   ViewConfig,
 } from "../src/types/models";
@@ -541,6 +542,49 @@ function bulkDeleteItems(
   );
 
   return bulkDeleteTransaction(input);
+}
+
+function reorderItems(
+  database: Database.Database,
+  input: ReorderItemsInput,
+): boolean {
+  const reorderItemsTransaction = database.transaction(
+    (payload: ReorderItemsInput) => {
+      const existingIds = getExistingItemIds(
+        database,
+        payload.collectionId,
+        payload.itemOrders.map((entry) => entry.id),
+      );
+      const missingIds = getMissingIds(
+        payload.itemOrders.map((entry) => entry.id),
+        existingIds,
+      );
+      if (missingIds.length > 0) {
+        throw new Error(
+          `Item reorder payload contains invalid item IDs for collection ${payload.collectionId}: ${missingIds.join(", ")}`,
+        );
+      }
+
+      const updateItemOrder = database.prepare(
+        'UPDATE items SET "order" = ? WHERE id = ? AND collection_id = ?',
+      );
+      for (const entry of payload.itemOrders) {
+        const info = updateItemOrder.run(
+          entry.order,
+          entry.id,
+          payload.collectionId,
+        );
+        if (toNumber(info.changes) !== 1) {
+          throw new Error(
+            `Failed to reorder item ${entry.id} in collection ${payload.collectionId}.`,
+          );
+        }
+      }
+    },
+  );
+
+  reorderItemsTransaction(input);
+  return true;
 }
 
 function getItemsDataByIds(
@@ -1079,6 +1123,8 @@ function parseStoredViewConfig(config: string | null): ViewConfig | null {
     })),
     calendarDateField: validated.data.calendarDateField,
     calendarDateFieldId: validated.data.calendarDateFieldId,
+    groupingFieldId: validated.data.groupingFieldId,
+    kanbanColumnOrder: validated.data.kanbanColumnOrder,
     selectedFieldIds: validated.data.selectedFieldIds,
   };
 }
@@ -1364,6 +1410,8 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
         })),
         calendarDateField: operation.input.config.calendarDateField,
         calendarDateFieldId: operation.input.config.calendarDateFieldId,
+        groupingFieldId: operation.input.config.groupingFieldId,
+        kanbanColumnOrder: operation.input.config.kanbanColumnOrder,
         selectedFieldIds: operation.input.config.selectedFieldIds,
       };
       const info = database
@@ -1587,6 +1635,10 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
       const database = requireDb();
       database.prepare("DELETE FROM items WHERE id = ?").run(operation.id);
       return true;
+    }
+    case "reorderItems": {
+      const database = requireDb();
+      return reorderItems(database, operation.input);
     }
     case "bulkDeleteItems": {
       const database = requireDb();

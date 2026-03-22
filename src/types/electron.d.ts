@@ -18,6 +18,7 @@ import type {
   InsertItemAtInput,
   DuplicateItemInput,
   MoveItemInput,
+  ReorderItemsInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   BulkMutationResult,
@@ -80,6 +81,7 @@ export interface IElectronAPI {
   moveItem: (input: MoveItemInput) => Promise<IpcResult<boolean>>;
   updateItem: (item: UpdateItemInput) => Promise<IpcResult<boolean>>;
   deleteItem: (id: number) => Promise<IpcResult<boolean>>;
+  reorderItems: (input: ReorderItemsInput) => Promise<IpcResult<boolean>>;
   bulkDeleteItems: (
     input: BulkDeleteItemsInput,
   ) => Promise<IpcResult<BulkMutationResult>>;

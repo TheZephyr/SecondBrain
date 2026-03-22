@@ -11,6 +11,12 @@
       <span class="min-w-0 truncate text-[var(--text-primary)]">
         {{ activeViewName }}
       </span>
+      <template v-if="breadcrumbTabName">
+        <span class="text-[var(--text-muted)]">/</span>
+        <span class="min-w-0 truncate text-[var(--text-primary)]">
+          {{ breadcrumbTabName }}
+        </span>
+      </template>
     </div>
 
     <div class="flex items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-1">
@@ -55,14 +61,18 @@ const activeButtonClass = 'bg-[var(--accent-light)] text-[var(--accent-primary)]
 const inactiveButtonClass = 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
 
 const activeViewName = computed(() => {
+  const activeView = currentViews.value.find(view => view.id === activeViewId.value)
+  return activeView?.name ?? 'View'
+})
+
+const breadcrumbTabName = computed(() => {
+  if (!selectedCollection.value) {
+    return ''
+  }
   if (collectionSettingsOpen.value) {
     return 'Settings'
   }
-  if (activeCollectionPanel.value === 'fields') {
-    return 'Fields'
-  }
-  const activeView = currentViews.value.find(view => view.id === activeViewId.value)
-  return activeView?.name ?? 'View'
+  return activeCollectionPanel.value === 'fields' ? 'Fields' : 'Data'
 })
 
 function setPanel(panel: 'data' | 'fields') {

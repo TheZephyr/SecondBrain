@@ -1,8 +1,7 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <CollectionCalendarToolbar :monthLabel="monthLabel" :dateFields="dateFields"
-      :selectedDateFieldId="selectedDateFieldId" :isLoadingAll="isEnsuringAllItems" @previous-month="goToPreviousMonth"
-      @next-month="goToNextMonth" @update:selectedDateFieldId="value => void setSelectedDateFieldId(value)" />
+    <CollectionCalendarToolbar :monthLabel="monthLabel" :isLoadingAll="isEnsuringAllItems"
+      @previous-month="goToPreviousMonth" @next-month="goToNextMonth" />
 
     <div v-if="dateFields.length === 0" class="flex flex-1 flex-col items-center justify-center px-8 text-center">
       <i class="pi pi-calendar mb-4 text-4xl text-[var(--text-muted)]"></i>
@@ -28,14 +27,11 @@
 
 <script setup lang="ts">
 import { toRef } from 'vue'
-import { useStore } from '../../../../store'
 import type { Field, Item, ItemSortSpec } from '../../../../types/models'
 import { useCollectionCalendar } from '../../../../composables/collection/calendar/useCollectionCalendar'
 import type { LoadItemsOptions } from '../../../../composables/collection/useCollectionItemsQuery'
 import CollectionCalendarGrid from './CollectionCalendarGrid.vue'
 import CollectionCalendarToolbar from './CollectionCalendarToolbar.vue'
-
-const store = useStore()
 
 const props = defineProps<{
   viewId: number
@@ -46,6 +42,7 @@ const props = defineProps<{
   itemsSort: ItemSortSpec[]
   orderedFields: Field[]
   loadItems: (options?: LoadItemsOptions) => Promise<void>
+  groupingFieldId: number | null
 }>()
 
 const emit = defineEmits<{
@@ -59,7 +56,6 @@ const {
   monthLabel,
   monthCells,
   isEnsuringAllItems,
-  setSelectedDateFieldId,
   goToPreviousMonth,
   goToNextMonth
 } = useCollectionCalendar({
@@ -71,7 +67,6 @@ const {
   itemsSearch: toRef(props, 'itemsSearch'),
   itemsSort: toRef(props, 'itemsSort'),
   loadItems: props.loadItems,
-  loadViewConfig: store.loadViewConfig,
-  saveViewConfig: store.saveViewConfig
+  groupingFieldId: toRef(props, 'groupingFieldId')
 })
 </script>

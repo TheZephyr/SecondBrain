@@ -46,6 +46,7 @@ function makeElectronAPIMock() {
     moveItem: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
+    reorderItems: vi.fn(),
     bulkDeleteItems: vi.fn(),
     bulkPatchItems: vi.fn(),
     importCollection: vi.fn(),

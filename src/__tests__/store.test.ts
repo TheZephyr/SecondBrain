@@ -44,6 +44,7 @@ function makeElectronAPIMock() {
     moveItem: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
+    reorderItems: vi.fn(),
     bulkDeleteItems: vi.fn(),
     bulkPatchItems: vi.fn(),
     importCollection: vi.fn(),
@@ -632,6 +633,8 @@ describe("view config", () => {
           sort: [{ field: "data.Title", order: -1 }],
           calendarDateField: "Due Date",
           calendarDateFieldId: undefined,
+          groupingFieldId: undefined,
+          kanbanColumnOrder: undefined,
           selectedFieldIds: [],
         },
       });

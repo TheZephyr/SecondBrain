@@ -29,6 +29,7 @@ import type {
   BulkPatchItemsInput,
   BulkMutationResult,
   ImportCollectionInput,
+  ReorderItemsInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
 import type {
@@ -56,6 +57,7 @@ import {
   ImportCollectionInputSchema,
   GetItemsInputSchema,
   itemDataSchema,
+  ReorderItemsInputSchema,
   positiveIntSchema,
 } from "../src/validation/schemas";
 
@@ -618,6 +620,18 @@ handleIpc("db:updateItem", async (_, item: UpdateItemInput) => {
 handleIpc("db:deleteItem", async (_, id) => {
   const itemId = parsePositiveInt(id, "db:deleteItem");
   return invokeDbWorker({ type: "deleteItem", id: itemId });
+});
+
+handleIpc("db:reorderItems", async (_, payload: ReorderItemsInput) => {
+  const input = parseOrThrow(
+    ReorderItemsInputSchema,
+    payload,
+    "db:reorderItems",
+  );
+  return invokeDbWorker<boolean>(
+    { type: "reorderItems", input },
+    { timeoutMs: DB_BULK_TIMEOUT_MS },
+  );
 });
 
 handleIpc("db:bulkDeleteItems", async (_, payload: BulkDeleteItemsInput) => {

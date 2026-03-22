@@ -15,6 +15,7 @@ import type {
   UpdateFieldInput,
   ReorderFieldsInput,
   ReorderViewsInput,
+  ReorderItemsInput,
   NewItemInput,
   UpdateItemInput,
   InsertItemAtInput,
@@ -138,9 +139,40 @@ export const useStore = defineStore("main", () => {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
   }
 
+  function normalizeGroupingFieldId(value: unknown): number | undefined {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+  }
+
+  function normalizeKanbanColumnOrder(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    const seen = new Set<string>();
+    const normalized: string[] = [];
+    for (const entry of value) {
+      if (typeof entry !== "string") {
+        continue;
+      }
+      const trimmed = entry.trim();
+      if (!trimmed) {
+        continue;
+      }
+      if (seen.has(trimmed)) {
+        continue;
+      }
+      seen.add(trimmed);
+      normalized.push(trimmed);
+    }
+
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
   async function updateChildViewFieldSelections(
     collectionId: number,
     updater: (currentIds: number[], allFieldIds: number[]) => number[],
+    removedFieldId?: number,
   ) {
     const childViews = currentViews.value.filter(
       (view) => view.collection_id === collectionId && view.is_default === 0,
@@ -158,9 +190,19 @@ export const useStore = defineStore("main", () => {
       const baseSelected =
         existingSelected.length > 0 ? existingSelected : allFieldIds;
       const nextSelected = updater(baseSelected, allFieldIds);
+      const groupingFieldId =
+        removedFieldId && existing?.groupingFieldId === removedFieldId
+          ? undefined
+          : existing?.groupingFieldId;
+      const kanbanColumnOrder =
+        groupingFieldId === undefined
+          ? undefined
+          : existing?.kanbanColumnOrder;
       const unchanged =
         nextSelected.length === baseSelected.length &&
-        nextSelected.every((id, index) => id === baseSelected[index]);
+        nextSelected.every((id, index) => id === baseSelected[index]) &&
+        groupingFieldId === existing?.groupingFieldId &&
+        kanbanColumnOrder === existing?.kanbanColumnOrder;
 
       if (unchanged) {
         continue;
@@ -171,6 +213,8 @@ export const useStore = defineStore("main", () => {
         sort: existing?.sort ?? [],
         calendarDateField: existing?.calendarDateField,
         calendarDateFieldId: existing?.calendarDateFieldId,
+        groupingFieldId,
+        kanbanColumnOrder,
         selectedFieldIds: nextSelected,
       });
     }
@@ -306,6 +350,8 @@ export const useStore = defineStore("main", () => {
       calendarDateFieldId: normalizeCalendarDateFieldId(
         config.calendarDateFieldId,
       ),
+      groupingFieldId: normalizeGroupingFieldId(config.groupingFieldId),
+      kanbanColumnOrder: normalizeKanbanColumnOrder(config.kanbanColumnOrder),
       selectedFieldIds: normalizeSelectedFieldIds(config.selectedFieldIds),
     };
 
@@ -405,6 +451,7 @@ export const useStore = defineStore("main", () => {
           }
           return next;
         },
+        fieldId,
       );
     }
   }
@@ -572,6 +619,23 @@ export const useStore = defineStore("main", () => {
     }
   }
 
+  async function reorderItems(input: ReorderItemsInput) {
+    const payload: ReorderItemsInput = {
+      collectionId: input.collectionId,
+      itemOrders: input.itemOrders.map((entry) => ({
+        id: entry.id,
+        order: Math.max(0, Math.round(Number(entry.order))),
+      })),
+    };
+
+    const result = await window.electronAPI.reorderItems(payload);
+    const success = handleIpc(result, "db:reorderItems", false);
+    if (success && selectedCollection.value?.id === payload.collectionId) {
+      await loadItems(payload.collectionId);
+    }
+    return success;
+  }
+
   async function bulkDeleteItems(
     input: BulkDeleteItemsInput,
   ): Promise<BulkMutationResult | null> {
@@ -689,6 +753,7 @@ export const useStore = defineStore("main", () => {
     deleteItem,
     bulkDeleteItems,
     bulkPatchItems,
+    reorderItems,
     selectCollection,
     showDashboard,
   };

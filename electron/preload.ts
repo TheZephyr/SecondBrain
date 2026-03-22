@@ -61,6 +61,7 @@ const electronAPI: IElectronAPI = {
   moveItem: (input) => invoke("db:moveItem", input),
   updateItem: (item) => invoke("db:updateItem", item),
   deleteItem: (id: number) => invoke("db:deleteItem", id),
+  reorderItems: (input) => invoke("db:reorderItems", input),
   bulkDeleteItems: (input) => invoke("db:bulkDeleteItems", input),
   bulkPatchItems: (input) => invoke("db:bulkPatchItems", input),
   importCollection: (input) => invoke("db:importCollection", input),

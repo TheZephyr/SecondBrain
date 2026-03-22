@@ -13,6 +13,7 @@ import type {
   UpdateItemInput,
   ViewConfig,
   ReorderViewsInput,
+  ReorderItemsInput,
 } from "../../src/types/models";
 
 // ---------------------------------------------------------------------------
@@ -75,6 +76,10 @@ function updateViewConfig(viewId: number, config: ViewConfig): boolean {
 
 function reorderViews(input: ReorderViewsInput): boolean {
   return handleOperation({ type: "reorderViews", input }) as boolean;
+}
+
+function reorderItems(input: ReorderItemsInput): boolean {
+  return handleOperation({ type: "reorderItems", input }) as boolean;
 }
 
 function getCollectionItemCounts(): CollectionItemCount[] {
@@ -312,6 +317,8 @@ describe("view CRUD", () => {
       ],
       calendarDateField: "Due Date",
       calendarDateFieldId: 2,
+      groupingFieldId: 2,
+      kanbanColumnOrder: ["Todo", "Done"],
       selectedFieldIds: [1, 2],
     };
 
@@ -684,6 +691,28 @@ describe("item CRUD", () => {
     const result = getItems(col.id);
     const itemData = JSON.parse(result.items[0].data);
     expect(itemData.Title).toBe("Modified");
+  });
+
+  it("reorders items by updating order values", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    const first = addItem({ collectionId: col.id, data: { Title: "A" } });
+    const second = addItem({ collectionId: col.id, data: { Title: "B" } });
+    const third = addItem({ collectionId: col.id, data: { Title: "C" } });
+
+    reorderItems({
+      collectionId: col.id,
+      itemOrders: [
+        { id: third.id, order: 0 },
+        { id: first.id, order: 5 },
+      ],
+    });
+
+    const result = getItems(col.id);
+    const ids = result.items.map((item) => item.id);
+    expect(ids[0]).toBe(third.id);
+    expect(ids).toContain(first.id);
+    expect(ids).toContain(second.id);
   });
 
   it("deletes an item", () => {

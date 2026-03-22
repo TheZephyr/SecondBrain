@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+﻿import { describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref, type EffectScope } from 'vue'
-import type { Field, Item, ItemSortSpec, ViewConfig } from '../../../types/models'
+import type { Field, Item, ItemSortSpec } from '../../../types/models'
 import { useCollectionCalendar } from '../calendar/useCollectionCalendar'
 
 function makeField(input: Partial<Field> & Pick<Field, 'id' | 'name'>): Field {
@@ -39,7 +39,7 @@ async function flushAsyncWork() {
 }
 
 describe('useCollectionCalendar', () => {
-  it('auto-selects and persists the single available date field', async () => {
+  it('auto-selects the single available date field', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 2, 8))
 
@@ -54,11 +54,7 @@ describe('useCollectionCalendar', () => {
     const itemsSearch = ref('')
     const itemsSort = ref<ItemSortSpec[]>([])
     const loadItems = vi.fn(async () => undefined)
-    const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
-      columnWidths: {},
-      sort: []
-    }))
-    const saveViewConfig = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(null)
 
     try {
       await withScope(async scope => {
@@ -72,8 +68,7 @@ describe('useCollectionCalendar', () => {
             itemsSearch,
             itemsSort,
             loadItems,
-            loadViewConfig,
-            saveViewConfig
+            groupingFieldId
           })
         )
 
@@ -84,20 +79,13 @@ describe('useCollectionCalendar', () => {
         await flushAsyncWork()
 
         expect(calendar.selectedDateFieldId.value).toBe(2)
-        expect(saveViewConfig).toHaveBeenCalledWith(5, {
-          columnWidths: {},
-          sort: [],
-          calendarDateField: undefined,
-          calendarDateFieldId: 2,
-          selectedFieldIds: []
-        })
       })
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('clears an invalid saved date field when multiple date fields exist', async () => {
+  it('returns null when groupingFieldId is invalid with multiple date fields', async () => {
     const viewId = ref(7)
     const orderedFields = ref<Field[]>([
       makeField({ id: 1, name: 'Start', type: 'date' }),
@@ -109,12 +97,7 @@ describe('useCollectionCalendar', () => {
     const itemsSearch = ref('')
     const itemsSort = ref<ItemSortSpec[]>([])
     const loadItems = vi.fn(async () => undefined)
-    const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
-      columnWidths: { 1: 140 },
-      sort: [{ field: 'data.Title', order: 1 }],
-      calendarDateFieldId: 999
-    }))
-    const saveViewConfig = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(999)
 
     await withScope(async scope => {
       const calendar = scope.run(() =>
@@ -127,8 +110,7 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          loadViewConfig,
-          saveViewConfig
+          groupingFieldId
         })
       )
 
@@ -139,13 +121,6 @@ describe('useCollectionCalendar', () => {
       await flushAsyncWork()
 
       expect(calendar.selectedDateFieldId.value).toBeNull()
-      expect(saveViewConfig).toHaveBeenCalledWith(7, {
-        columnWidths: { 1: 140 },
-        sort: [{ field: 'data.Title', order: 1 }],
-        calendarDateField: undefined,
-        calendarDateFieldId: undefined,
-        selectedFieldIds: []
-      })
     })
   })
 
@@ -168,12 +143,7 @@ describe('useCollectionCalendar', () => {
     const itemsSearch = ref('')
     const itemsSort = ref<ItemSortSpec[]>([])
     const loadItems = vi.fn(async () => undefined)
-    const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
-      columnWidths: {},
-      sort: [],
-      calendarDateFieldId: 2
-    }))
-    const saveViewConfig = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(2)
 
     try {
       await withScope(async scope => {
@@ -187,8 +157,7 @@ describe('useCollectionCalendar', () => {
             itemsSearch,
             itemsSort,
             loadItems,
-            loadViewConfig,
-            saveViewConfig
+            groupingFieldId
           })
         )
 
@@ -240,12 +209,7 @@ describe('useCollectionCalendar', () => {
       items.value = [makeItem(1, { Title: 'A', 'Due Date': '2026-03-08' })]
       itemsFullyLoaded.value = false
     })
-    const loadViewConfig = vi.fn(async (): Promise<ViewConfig | null> => ({
-      columnWidths: {},
-      sort: [],
-      calendarDateFieldId: 2
-    }))
-    const saveViewConfig = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(2)
 
     await withScope(async scope => {
       const calendar = scope.run(() =>
@@ -258,8 +222,7 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          loadViewConfig,
-          saveViewConfig
+          groupingFieldId
         })
       )
 

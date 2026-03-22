@@ -158,12 +158,24 @@ export type ViewConfig = {
   sort: ItemSortSpec[];
   calendarDateField?: string;
   calendarDateFieldId?: number;
+  groupingFieldId?: number;
+  kanbanColumnOrder?: string[];
   selectedFieldIds?: number[];
 };
 
 export type UpdateViewConfigInput = {
   viewId: number;
   config: ViewConfig;
+};
+
+export type ItemOrderUpdate = {
+  id: number;
+  order: number;
+};
+
+export type ReorderItemsInput = {
+  collectionId: number;
+  itemOrders: ItemOrderUpdate[];
 };
 
 export type GetItemsInput = {

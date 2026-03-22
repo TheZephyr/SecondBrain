@@ -61,7 +61,7 @@
           </div>
         </div>
         <Button text class="mt-2" @click="addChoice">
-          <<i class="pi pi-plus text-sm"></i>
+          <i class="pi pi-plus text-sm"></i>
             Add option
         </Button>
       </div>

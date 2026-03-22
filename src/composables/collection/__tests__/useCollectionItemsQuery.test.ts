@@ -305,6 +305,8 @@ describe("useCollectionItemsQuery", () => {
         sort: [{ field: "data.Title", order: -1 }],
         calendarDateField: undefined,
         calendarDateFieldId: undefined,
+        groupingFieldId: undefined,
+        kanbanColumnOrder: undefined,
         selectedFieldIds: [],
       });
     });
@@ -356,6 +358,8 @@ describe("useCollectionItemsQuery", () => {
         ],
         calendarDateField: undefined,
         calendarDateFieldId: undefined,
+        groupingFieldId: undefined,
+        kanbanColumnOrder: undefined,
         selectedFieldIds: [],
       });
       await vi.waitFor(() => {

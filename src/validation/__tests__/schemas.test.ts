@@ -6,6 +6,7 @@ import {
   ImportCollectionInputSchema,
   NewFieldInputSchema,
   ReorderFieldsInputSchema,
+  ReorderItemsInputSchema,
   ReorderViewsInputSchema,
   UpdateFieldInputSchema,
   UpdateViewConfigInputSchema,
@@ -289,6 +290,8 @@ describe("validation schemas", () => {
         { field: "data.Year", order: -1 },
       ],
       calendarDateFieldId: 7,
+      groupingFieldId: 5,
+      kanbanColumnOrder: ["Todo", "In Progress"],
       selectedFieldIds: [1, 3, 5],
     });
 
@@ -326,6 +329,18 @@ describe("validation schemas", () => {
       viewOrders: [
         { id: 10, order: 1 },
         { id: 11, order: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid reorder items payload", () => {
+    const result = ReorderItemsInputSchema.safeParse({
+      collectionId: 4,
+      itemOrders: [
+        { id: 100, order: 0 },
+        { id: 101, order: 1 },
       ],
     });
 

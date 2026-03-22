@@ -7,8 +7,10 @@
         :orderedFields="sourceOrderedFields" :items="items" @add-field="addField" @update-field="updateField"
         @delete-field="confirmDeleteField" @reorder-fields="onFieldsReorder" />
       <CollectionChildFieldsPanel v-else-if="activeCollectionPanel === 'fields' && activeView"
-        :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" @toggle-field="onToggleSelectedField"
-        @reorder-selected="onReorderSelectedFields" />
+        :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" :viewType="activeView.type"
+        :groupingFieldId="groupingFieldId" :groupingFields="groupingFields"
+        @toggle-field="onToggleSelectedField" @reorder-selected="onReorderSelectedFields"
+        @update:groupingFieldId="onUpdateGroupingFieldId" />
       <template v-else>
         <CollectionGrid v-if="activeView?.type === 'grid'" :viewId="activeView.id" :items="items"
           :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
@@ -18,16 +20,21 @@
           @delete-item="confirmDeleteItem" @update-item="onInlineUpdateItem" @insert-item-at="onInsertItemAt"
           @duplicate-item="onDuplicateItem" @move-item="onMoveItem"
           @manage-fields="store.setActiveCollectionPanel('fields')" @open-add-item="openAddItemDialog" />
-        <CollectionKanbanView v-else-if="activeView?.type === 'kanban'" :orderedFields="viewOrderedFields" />
+        <CollectionKanbanView v-else-if="activeView?.type === 'kanban'" :viewId="activeView.id" :items="items"
+          :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
+          :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
+          :groupingFieldId="groupingFieldId" :childViewConfig="childViewConfig" :saveViewConfig="store.saveViewConfig"
+          @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData" />
         <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :viewId="activeView.id" :items="items"
           :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
           :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
-          @edit-item="openEditItemDialog" />
+          :groupingFieldId="groupingFieldId" @edit-item="openEditItemDialog" />
       </template>
     </div>
 
-    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="viewOrderedFields" :editingItem="editingItem"
-      :items="items" @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
+    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="viewOrderedFields"
+      :editingItem="editingItem" :items="items" :initialData="initialItemData"
+      @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
 
     <ConfirmDialog />
   </div>
@@ -55,6 +62,7 @@ import type {
   FieldOptions,
   FieldType,
   Item,
+  ItemData,
   InsertItemAtInput,
   DuplicateItemInput,
   MoveItemInput,
@@ -62,7 +70,7 @@ import type {
   ViewConfig
 } from '../../types/models'
 import CollectionGrid from './collection/grid/CollectionGrid.vue'
-import CollectionKanbanView from './collection/CollectionKanbanView.vue'
+import CollectionKanbanView from './collection/kanban/CollectionKanbanView.vue'
 import CollectionCalendarView from './collection/calendar/CollectionCalendarView.vue'
 import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
 import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
@@ -103,6 +111,7 @@ const emit = defineEmits<{
 
 const showAddItemForm = ref(false)
 const editingItem = ref<Item | null>(null)
+const initialItemData = ref<ItemData | null>(null)
 
 const { safeFields, orderedFields: sourceOrderedFields } = useSafeFields({
   fields,
@@ -119,6 +128,24 @@ const isSourceViewActive = computed(() => activeView.value?.is_default === 1)
 
 const childViewConfig = ref<ViewConfig | null>(null)
 let childConfigToken = 0
+
+function normalizeGroupingFieldId(value: unknown): number | null {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function buildViewConfig(base: ViewConfig | null, overrides: Partial<ViewConfig>): ViewConfig {
+  return {
+    columnWidths: base?.columnWidths ?? {},
+    sort: base?.sort ?? [],
+    calendarDateField: base?.calendarDateField,
+    calendarDateFieldId: base?.calendarDateFieldId,
+    groupingFieldId: base?.groupingFieldId,
+    kanbanColumnOrder: base?.kanbanColumnOrder,
+    selectedFieldIds: base?.selectedFieldIds ?? [],
+    ...overrides
+  }
+}
 
 const selectedFieldIds = computed(() => {
   if (!activeView.value || activeView.value.is_default === 1) {
@@ -144,6 +171,30 @@ const viewOrderedFields = computed(() => {
     .filter((field): field is Field => Boolean(field))
 
   return ordered
+})
+
+const groupingFieldId = computed(() => {
+  if (!activeView.value || activeView.value.is_default === 1) {
+    return null
+  }
+
+  const configured = normalizeGroupingFieldId(childViewConfig.value?.groupingFieldId)
+  if (configured !== null) {
+    return configured
+  }
+
+  return normalizeGroupingFieldId(childViewConfig.value?.calendarDateFieldId)
+})
+
+const groupingFields = computed(() => {
+  if (!activeView.value) return []
+  if (activeView.value.type === 'kanban') {
+    return sourceOrderedFields.value.filter(field => field.type === 'select')
+  }
+  if (activeView.value.type === 'calendar') {
+    return sourceOrderedFields.value.filter(field => field.type === 'date')
+  }
+  return []
 })
 
 async function loadCollectionItems(options: LoadItemsOptions = {}) {
@@ -185,6 +236,19 @@ watch(
       return
     }
 
+    if (config && !config.groupingFieldId && config.calendarDateFieldId) {
+      const migrated = buildViewConfig(config, {
+        calendarDateFieldId: undefined,
+        groupingFieldId: config.calendarDateFieldId
+      })
+      await store.saveViewConfig(view.id, migrated)
+      if (token !== childConfigToken) {
+        return
+      }
+      childViewConfig.value = migrated
+      return
+    }
+
     childViewConfig.value = config
   },
   { immediate: true }
@@ -201,11 +265,13 @@ watch(
 
 function openAddItemDialog() {
   editingItem.value = null
+  initialItemData.value = null
   showAddItemForm.value = true
 }
 
 function openEditItemDialog(item: Item) {
   editingItem.value = item
+  initialItemData.value = null
   showAddItemForm.value = true
 }
 
@@ -213,7 +279,14 @@ function onItemDialogVisibilityChange(nextVisible: boolean) {
   showAddItemForm.value = nextVisible
   if (!nextVisible) {
     editingItem.value = null
+    initialItemData.value = null
   }
+}
+
+function openAddItemDialogWithData(data: ItemData) {
+  editingItem.value = null
+  initialItemData.value = data
+  showAddItemForm.value = true
 }
 
 async function onInlineUpdateItem(payload: UpdateItemInput) {
@@ -247,6 +320,7 @@ async function saveItem(payload: ItemEditorSavePayload) {
 
   showAddItemForm.value = false
   editingItem.value = null
+  initialItemData.value = null
 }
 
 async function addField(newField: FieldDraftInput) {
@@ -439,17 +513,31 @@ async function persistChildViewConfig(
   viewId: number,
   nextSelectedIds: number[]
 ) {
-  let existing = childViewConfig.value
-  if (!existing) {
-    existing = await store.loadViewConfig(viewId)
-  }
-  const config: ViewConfig = {
-    columnWidths: existing?.columnWidths ?? {},
-    sort: existing?.sort ?? [],
-    calendarDateField: existing?.calendarDateField,
-    calendarDateFieldId: existing?.calendarDateFieldId,
+  const existing = childViewConfig.value
+  const config = buildViewConfig(existing, {
     selectedFieldIds: nextSelectedIds
+  })
+
+  await store.saveViewConfig(viewId, config)
+  if (activeView.value?.id === viewId) {
+    childViewConfig.value = config
   }
+}
+
+async function onUpdateGroupingFieldId(fieldId: number | null) {
+  const viewId = activeView.value?.id
+  if (!viewId || activeView.value?.is_default === 1) {
+    return
+  }
+
+  const existing = childViewConfig.value
+  const normalized = normalizeGroupingFieldId(fieldId) ?? undefined
+  const config = buildViewConfig(existing, {
+    groupingFieldId: normalized,
+    calendarDateFieldId: undefined,
+    kanbanColumnOrder:
+      activeView.value?.type === 'kanban' ? undefined : existing?.kanbanColumnOrder
+  })
 
   await store.saveViewConfig(viewId, config)
   if (activeView.value?.id === viewId) {

@@ -98,7 +98,7 @@ import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
-import type { BooleanIcon, Field, Item, RatingFieldOptions } from '../../../types/models'
+import type { BooleanIcon, Field, Item, ItemData, RatingFieldOptions } from '../../../types/models'
 import { useCollectionItemForm } from '../../../composables/collection/useCollectionItemForm'
 import { useFieldUniqueCheck } from '../../../composables/collection/useFieldUniqueCheck'
 import { getChipStyle } from '../../../utils/selectChip'
@@ -112,6 +112,7 @@ const props = defineProps<{
   orderedFields: Field[]
   editingItem: Item | null
   items: Item[]
+  initialData?: ItemData | null
 }>()
 
 const emit = defineEmits<{
@@ -119,12 +120,13 @@ const emit = defineEmits<{
   (e: 'save', value: ItemEditorSavePayload): void
 }>()
 
+const initialDataRef = computed(() => props.initialData ?? null)
+
 const {
   formData,
   startCreate,
   startEdit,
   cancelForm,
-  resetFormData,
   toItemData,
   getFieldInputId,
   getTextValue,
@@ -141,7 +143,7 @@ const {
   setBooleanValue,
   getRatingValue,
   setRatingValue
-} = useCollectionItemForm(toRef(props, 'orderedFields'))
+} = useCollectionItemForm(toRef(props, 'orderedFields'), initialDataRef)
 
 const { duplicateFields } = useFieldUniqueCheck({
   items: toRef(props, 'items'),
@@ -180,7 +182,7 @@ watch(
   () => {
     if (!props.visible) return
     if (props.editingItem) return
-    resetFormData()
+    startCreate()
   },
   { deep: true }
 )

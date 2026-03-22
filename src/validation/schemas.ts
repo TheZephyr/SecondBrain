@@ -72,6 +72,21 @@ export const ViewConfigSchema = z.object({
   sort: z.array(ItemSortSpecSchema),
   calendarDateField: z.string().trim().min(1).max(64).optional(),
   calendarDateFieldId: positiveIntSchema.optional(),
+  groupingFieldId: positiveIntSchema.optional(),
+  kanbanColumnOrder: z
+    .array(z.string().trim().min(1))
+    .superRefine((value, ctx) => {
+      const trimmed = value.map((entry) => entry.trim());
+      const unique = new Set(trimmed);
+      if (unique.size !== trimmed.length) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Kanban column order must contain unique values.",
+          path: ["kanbanColumnOrder"],
+        });
+      }
+    })
+    .optional(),
   selectedFieldIds: z.array(positiveIntSchema).default([]),
 });
 
@@ -251,6 +266,28 @@ export const ReorderViewsInputSchema = z
         });
         break;
       }
+    }
+  });
+
+export const ItemOrderUpdateSchema = z.object({
+  id: positiveIntSchema,
+  order: nonNegativeIntSchema,
+});
+
+export const ReorderItemsInputSchema = z
+  .object({
+    collectionId: positiveIntSchema,
+    itemOrders: z.array(ItemOrderUpdateSchema).min(1),
+  })
+  .superRefine((value, ctx) => {
+    const ids = value.itemOrders.map((entry) => entry.id);
+    const uniqueIds = new Set(ids);
+    if (uniqueIds.size !== ids.length) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Item reorder payload must contain unique item IDs.",
+        path: ["itemOrders"],
+      });
     }
   });
 

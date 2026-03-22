@@ -1,4 +1,4 @@
-import {
+﻿import {
   computed,
   onScopeDispose,
   ref,
@@ -8,8 +8,7 @@ import {
 import type {
   Field,
   Item,
-  ItemSortSpec,
-  ViewConfig
+  ItemSortSpec
 } from '../../../types/models'
 import type { LoadItemsOptions } from '../useCollectionItemsQuery'
 import {
@@ -39,35 +38,12 @@ type UseCollectionCalendarParams = {
   itemsSearch: Ref<string>
   itemsSort: Ref<ItemSortSpec[]>
   loadItems: (options?: LoadItemsOptions) => Promise<void>
-  loadViewConfig: (viewId: number) => Promise<ViewConfig | null>
-  saveViewConfig: (viewId: number, config: ViewConfig) => Promise<void>
-}
-
-function normalizeFieldName(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
+  groupingFieldId: Ref<number | null>
 }
 
 function normalizeFieldId(value: unknown): number | null {
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function normalizeViewConfig(config: ViewConfig | null): ViewConfig {
-  return {
-    columnWidths: { ...(config?.columnWidths ?? {}) },
-    sort: (config?.sort ?? []).map(entry => ({
-      field: entry.field,
-      order: entry.order
-    })),
-    calendarDateField: normalizeFieldName(config?.calendarDateField) ?? undefined,
-    calendarDateFieldId: normalizeFieldId(config?.calendarDateFieldId) ?? undefined,
-    selectedFieldIds: config?.selectedFieldIds ?? []
-  }
 }
 
 function buildWeekdayLabels(locale?: string): string[] {
@@ -99,17 +75,12 @@ export function useCollectionCalendar({
   itemsSearch,
   itemsSort,
   loadItems,
-  loadViewConfig,
-  saveViewConfig
+  groupingFieldId
 }: UseCollectionCalendarParams) {
   const today = new Date()
   const displayedMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
-  const storedCalendarDateFieldId = ref<number | null>(null)
-  const storedCalendarDateFieldName = ref<string | null>(null)
   const weekdayLabels = buildWeekdayLabels()
-  const configLoaded = ref(false)
   const isEnsuringAllItems = ref(false)
-  let configLoadToken = 0
   let loadAllToken = 0
 
   const dateFields = computed(() => {
@@ -125,19 +96,11 @@ export function useCollectionCalendar({
       return null
     }
 
-    const storedId = normalizeFieldId(storedCalendarDateFieldId.value)
-    if (storedId !== null) {
-      const exists = dateFields.value.some(field => field.id === storedId)
+    const desired = normalizeFieldId(groupingFieldId.value)
+    if (desired !== null) {
+      const exists = dateFields.value.some(field => field.id === desired)
       if (exists) {
-        return storedId
-      }
-    }
-
-    const normalizedStoredName = normalizeFieldName(storedCalendarDateFieldName.value)
-    if (normalizedStoredName) {
-      const match = dateFields.value.find(field => field.name === normalizedStoredName)
-      if (match) {
-        return match.id
+        return desired
       }
     }
 
@@ -214,33 +177,6 @@ export function useCollectionCalendar({
     }))
   })
 
-  async function persistCalendarDateField(nextFieldId: number | null) {
-    const parsedViewId = Number(viewId.value)
-    if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
-      return
-    }
-
-    const existingConfig = normalizeViewConfig(await loadViewConfig(parsedViewId))
-    const normalizedFieldId = normalizeFieldId(nextFieldId) ?? undefined
-
-    await saveViewConfig(parsedViewId, {
-      ...existingConfig,
-      calendarDateField: undefined,
-      calendarDateFieldId: normalizedFieldId
-    })
-  }
-
-  async function setSelectedDateFieldId(nextFieldId: number | null) {
-    const normalizedFieldId = normalizeFieldId(nextFieldId)
-    storedCalendarDateFieldId.value = normalizedFieldId
-
-    if (!configLoaded.value) {
-      return
-    }
-
-    await persistCalendarDateField(normalizedFieldId)
-  }
-
   function goToPreviousMonth() {
     displayedMonth.value = new Date(
       displayedMonth.value.getFullYear(),
@@ -259,7 +195,7 @@ export function useCollectionCalendar({
 
   async function runLoadAllLoop(token: number) {
     while (token === loadAllToken) {
-      if (dateFields.value.length === 0) {
+      if (selectedDateFieldId.value === null) {
         return
       }
 
@@ -296,7 +232,7 @@ export function useCollectionCalendar({
   }
 
   function ensureAllItemsLoaded() {
-    if (dateFields.value.length === 0 || isEnsuringAllItems.value) {
+    if (selectedDateFieldId.value === null || isEnsuringAllItems.value) {
       return
     }
 
@@ -312,51 +248,18 @@ export function useCollectionCalendar({
 
   watch(
     viewId,
-    async nextViewId => {
-      const parsedViewId = Number(nextViewId)
-      configLoaded.value = false
-      storedCalendarDateFieldId.value = null
-      storedCalendarDateFieldName.value = null
-
-      if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
-        configLoaded.value = true
-        return
-      }
-
-      const token = ++configLoadToken
-      const config = await loadViewConfig(parsedViewId)
-      if (token !== configLoadToken) {
-        return
-      }
-
-      const normalized = normalizeViewConfig(config)
-      storedCalendarDateFieldId.value = normalizeFieldId(normalized.calendarDateFieldId)
-      storedCalendarDateFieldName.value = normalizeFieldName(normalized.calendarDateField)
-      configLoaded.value = true
-    },
-    { immediate: true }
-  )
-
-  watch(
-    [selectedDateFieldId, configLoaded],
-    ([resolvedFieldId, loaded]) => {
-      if (!loaded) {
-        return
-      }
-
-      if (normalizeFieldId(storedCalendarDateFieldId.value) === resolvedFieldId) {
-        return
-      }
-
-      void setSelectedDateFieldId(resolvedFieldId)
-    },
-    { immediate: true }
-  )
-
-  watch(
-    [dateFields, itemsLoading, itemsFullyLoaded, itemsSearch, itemsSort, () => items.value.length],
     () => {
-      if (dateFields.value.length === 0) {
+      displayedMonth.value = new Date(today.getFullYear(), today.getMonth(), 1)
+      loadAllToken += 1
+      isEnsuringAllItems.value = false
+    },
+    { immediate: true }
+  )
+
+  watch(
+    [selectedDateFieldId, itemsLoading, itemsFullyLoaded, itemsSearch, itemsSort, () => items.value.length],
+    () => {
+      if (selectedDateFieldId.value === null) {
         return
       }
 
@@ -375,7 +278,6 @@ export function useCollectionCalendar({
 
   onScopeDispose(() => {
     loadAllToken += 1
-    configLoadToken += 1
   })
 
   return {
@@ -386,7 +288,6 @@ export function useCollectionCalendar({
     monthLabel,
     monthCells,
     isEnsuringAllItems,
-    setSelectedDateFieldId,
     goToPreviousMonth,
     goToNextMonth
   }

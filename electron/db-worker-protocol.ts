@@ -15,6 +15,7 @@ import type {
   DuplicateItemInput,
   MoveItemInput,
   ReorderFieldsInput,
+  ReorderItemsInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
 } from "../src/types/models";
@@ -45,6 +46,7 @@ export type DbWorkerOperation =
   | { type: "moveItem"; input: MoveItemInput }
   | { type: "updateItem"; input: UpdateItemInput }
   | { type: "deleteItem"; id: number }
+  | { type: "reorderItems"; input: ReorderItemsInput }
   | { type: "bulkDeleteItems"; input: BulkDeleteItemsInput }
   | { type: "bulkPatchItems"; input: BulkPatchItemsInput }
   | { type: "importCollection"; input: ImportCollectionInput };

@@ -122,6 +122,8 @@ export function useGridColumns({ orderedFields, viewId }: UseGridColumnsParams) 
       })),
       calendarDateField: existingConfig?.calendarDateField,
       calendarDateFieldId: existingConfig?.calendarDateFieldId,
+      groupingFieldId: existingConfig?.groupingFieldId,
+      kanbanColumnOrder: existingConfig?.kanbanColumnOrder,
       selectedFieldIds: existingConfig?.selectedFieldIds ?? []
     }
     await store.saveViewConfig(targetViewId, nextConfig)

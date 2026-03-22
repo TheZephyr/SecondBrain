@@ -9,6 +9,7 @@
   "scripts": {
     "rebuild:node": "npm rebuild better-sqlite3",
     "rebuild:electron": "npx @electron/rebuild -f -w better-sqlite3",
+    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "pretest": "npm run rebuild:node",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest --coverage",

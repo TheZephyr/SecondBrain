@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 import type {
   Field,
   Item,
@@ -199,10 +199,41 @@ export function buildItemDataFromForm(formData: ItemFormData, fields: Field[]): 
   return plainData
 }
 
-export function useCollectionItemForm(fields: Ref<Field[]>) {
+function buildItemFormDataFromData(data: ItemData, fields: Field[]): ItemFormData {
+  const fakeItem: Item = {
+    id: 0,
+    collection_id: 0,
+    order: 0,
+    data
+  }
+  return buildItemFormDataFromItem(fakeItem, fields)
+}
+
+export function useCollectionItemForm(fields: Ref<Field[]>, initialData?: Ref<ItemData | null>) {
   const formData = ref<ItemFormData>(createDefaultItemFormData(fields.value))
   const editingItem = ref<Item | null>(null)
   const isEditing = computed(() => editingItem.value !== null)
+
+  function applyInitialData() {
+    const base = createDefaultItemFormData(fields.value)
+    const data = initialData?.value ?? null
+    if (!data) {
+      formData.value = base
+      return
+    }
+
+    const initialKeys = new Set(Object.keys(data))
+    const initialForm = buildItemFormDataFromData(data, fields.value)
+    const merged = createEmptyItemFormData()
+    fields.value.forEach(field => {
+      if (initialKeys.has(field.name)) {
+        merged[field.name] = initialForm[field.name]
+      } else {
+        merged[field.name] = base[field.name]
+      }
+    })
+    formData.value = merged
+  }
 
   function resetFormData() {
     formData.value = createDefaultItemFormData(fields.value)
@@ -210,7 +241,7 @@ export function useCollectionItemForm(fields: Ref<Field[]>) {
 
   function startCreate() {
     editingItem.value = null
-    resetFormData()
+    applyInitialData()
   }
 
   function startEdit(item: Item) {
@@ -220,11 +251,18 @@ export function useCollectionItemForm(fields: Ref<Field[]>) {
 
   function cancelForm() {
     editingItem.value = null
-    resetFormData()
+    applyInitialData()
   }
 
   function toItemData(): ItemData {
     return buildItemDataFromForm(formData.value, fields.value)
+  }
+
+  if (initialData) {
+    watch([initialData, isEditing, fields], () => {
+      if (isEditing.value) return
+      applyInitialData()
+    })
   }
 
   function getFieldInputId(field: Field) {

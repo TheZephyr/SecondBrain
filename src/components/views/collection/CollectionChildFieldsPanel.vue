@@ -20,29 +20,56 @@
         </span>
       </div>
     </div>
+    <div v-if="showGroupingSection" class="space-y-3 pt-2">
+      <div class="text-base font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+        {{ groupingLabel }}
+      </div>
+      <Select :modelValue="groupingFieldId" :options="groupingOptions" optionLabel="label" optionValue="value"
+        placeholder="Choose field" class="w-full" @update:modelValue="emit('update:groupingFieldId', $event)" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Checkbox from 'primevue/checkbox'
+import Select from 'primevue/select'
 import { GripVertical } from 'lucide-vue-next'
-import type { Field } from '../../../types/models'
+import type { Field, ViewType } from '../../../types/models'
 
 const props = defineProps<{
   orderedFields: Field[]
   selectedFieldIds: number[]
+  viewType: ViewType
+  groupingFieldId: number | null
+  groupingFields: Field[]
 }>()
 
 const emit = defineEmits<{
   (e: 'toggle-field', payload: { id: number; selected: boolean }): void
   (e: 'reorder-selected', payload: { draggedId: number; targetId: number }): void
+  (e: 'update:groupingFieldId', value: number | null): void
 }>()
 
 const draggedId = ref<number | null>(null)
 const dragOverId = ref<number | null>(null)
 
 const selectedSet = computed(() => new Set(props.selectedFieldIds))
+
+const groupingLabel = computed(() => {
+  return props.viewType === 'kanban' ? 'Stacked by' : 'Organised by'
+})
+
+const showGroupingSection = computed(() => {
+  return props.viewType === 'kanban' || props.viewType === 'calendar'
+})
+
+const groupingOptions = computed(() => {
+  return props.groupingFields.map(field => ({
+    label: field.name,
+    value: field.id
+  }))
+})
 
 function isSelected(id: number) {
   return selectedSet.value.has(id)

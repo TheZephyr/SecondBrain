@@ -1,5 +1,5 @@
 <template>
-  <aside class="flex w-64 flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]">
+  <aside class="flex w-64 flex-col min-w-[240px] border-r border-[var(--border-color)] bg-[var(--bg-secondary)]">
     <div class="border-b border-[var(--border-color)] p-4">
       <div class="flex items-center gap-3">
         <Brain class="text-[var(--accent-primary)] size-10 pt-1" />
@@ -160,6 +160,11 @@
         <label class="text-base font-medium text-[var(--text-secondary)]">View Name</label>
         <InputText v-model="viewModalName" type="text" autofocus />
       </div>
+      <div v-if="viewModalMode === 'create' && viewModalType === 'kanban'" class="space-y-2">
+        <label class="text-base font-medium text-[var(--text-secondary)]">Stacked by</label>
+        <Select v-model="viewModalKanbanFieldId" :options="kanbanFieldOptions" optionLabel="label"
+          optionValue="value" placeholder="Choose select field" class="w-full" />
+      </div>
       <div v-if="viewModalMode === 'create' && viewModalType === 'calendar'" class="space-y-2">
         <label class="text-base font-medium text-[var(--text-secondary)]">Date field</label>
         <Select v-model="viewModalCalendarFieldId" :options="calendarFieldOptions" optionLabel="label"
@@ -223,6 +228,7 @@ const viewModalName = ref("");
 const viewModalCollectionId = ref<number | null>(null);
 const viewModalViewId = ref<number | null>(null);
 const viewModalCalendarFieldId = ref<number | null>(null);
+const viewModalKanbanFieldId = ref<number | null>(null);
 const draggedViewId = ref<number | null>(null);
 const dragOverViewId = ref<number | null>(null);
 
@@ -245,6 +251,10 @@ const sourceDateFields = computed(() =>
   fields.value.filter((field) => field.type === "date"),
 );
 
+const sourceSelectFields = computed(() =>
+  fields.value.filter((field) => field.type === "select"),
+);
+
 const calendarFieldOptions = computed(() =>
   sourceDateFields.value.map((field) => ({
     label: field.name,
@@ -252,8 +262,16 @@ const calendarFieldOptions = computed(() =>
   })),
 );
 
+const kanbanFieldOptions = computed(() =>
+  sourceSelectFields.value.map((field) => ({
+    label: field.name,
+    value: field.id,
+  })),
+);
+
 const viewTypeOptions = computed<ViewTypeOption[]>(() => {
   const calendarDisabled = sourceDateFields.value.length === 0;
+  const kanbanDisabled = sourceSelectFields.value.length === 0;
   return [
     {
       type: "grid",
@@ -266,6 +284,10 @@ const viewTypeOptions = computed<ViewTypeOption[]>(() => {
       label: "Kanban",
       icon: "pi-bars",
       iconClass: "text-[var(--accent-primary)]",
+      disabled: kanbanDisabled,
+      tooltip: kanbanDisabled
+        ? "Add a select field to the source view first."
+        : undefined,
     },
     {
       type: "calendar",
@@ -391,6 +413,8 @@ function openCreateViewModal(collectionId: number, type: ViewType) {
   viewModalName.value = buildViewName(type);
   viewModalCalendarFieldId.value =
     type === "calendar" ? (calendarFieldOptions.value[0]?.value ?? null) : null;
+  viewModalKanbanFieldId.value =
+    type === "kanban" ? (kanbanFieldOptions.value[0]?.value ?? null) : null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -402,6 +426,7 @@ function openEditViewModal(view: View) {
   viewModalViewId.value = view.id;
   viewModalName.value = view.name;
   viewModalCalendarFieldId.value = null;
+  viewModalKanbanFieldId.value = null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -412,6 +437,7 @@ function closeViewModal() {
   viewModalViewId.value = null;
   viewModalCollectionId.value = null;
   viewModalCalendarFieldId.value = null;
+  viewModalKanbanFieldId.value = null;
 }
 
 async function saveViewModal() {
@@ -438,11 +464,24 @@ async function saveViewModal() {
       viewModalType.value === "calendar"
         ? viewModalCalendarFieldId.value
         : null;
+    const kanbanFieldId =
+      viewModalType.value === "kanban"
+        ? viewModalKanbanFieldId.value
+        : null;
     if (viewModalType.value === "calendar" && !calendarFieldId) {
       notifications.push({
         severity: "warn",
         summary: "Missing date field",
         detail: "Choose a date field for the calendar view.",
+        life: 5000,
+      });
+      return;
+    }
+    if (viewModalType.value === "kanban" && !kanbanFieldId) {
+      notifications.push({
+        severity: "warn",
+        summary: "Missing select field",
+        detail: "Choose a select field for the kanban view.",
         life: 5000,
       });
       return;
@@ -470,6 +509,7 @@ async function saveViewModal() {
         columnWidths: {},
         sort: [],
         calendarDateFieldId: calendarFieldId ?? undefined,
+        groupingFieldId: kanbanFieldId ?? undefined,
         selectedFieldIds,
       });
     }
