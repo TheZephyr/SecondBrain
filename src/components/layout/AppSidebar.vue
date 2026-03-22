@@ -5,7 +5,7 @@
         <Brain class="text-[var(--accent-primary)] size-10 pt-1" />
         <div>
           <h1 class="text-lg font-semibold text-[var(--text-primary)]">Second Brain</h1>
-          <p class="text-xs text-[var(--text-muted)]">v {{ appVersion }}</p>
+          <p class="text-xs text-[var(--text-muted)]">{{ appVersion }}</p>
         </div>
       </div>
     </div>
@@ -128,13 +128,14 @@
       </Button>
     </nav>
 
-    <div class="border-t border-[var(--border-color)] px-4 py-2">
-      <div class="flex items-center justify-between text-base text-[var(--text-muted)]">
-        <div class="flex items-center gap-2">
-          <i class="pi pi-cog text-base"></i>
-          <span>Settings</span>
-        </div>
-      </div>
+    <div class="border-t border-[var(--border-color)] px-2 py-2">
+      <Button text class="w-full justify-start gap-3 rounded-md px-3 py-2 text-base" :class="currentView === 'settings'
+        ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
+        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+        @click="showSettings">
+        <i class="pi pi-cog text-base"></i>
+        <span>Settings</span>
+      </Button>
     </div>
   </aside>
 
@@ -162,8 +163,8 @@
       </div>
       <div v-if="viewModalMode === 'create' && viewModalType === 'kanban'" class="space-y-2">
         <label class="text-base font-medium text-[var(--text-secondary)]">Stacked by</label>
-        <Select v-model="viewModalKanbanFieldId" :options="kanbanFieldOptions" optionLabel="label"
-          optionValue="value" placeholder="Choose select field" class="w-full" />
+        <Select v-model="viewModalKanbanFieldId" :options="kanbanFieldOptions" optionLabel="label" optionValue="value"
+          placeholder="Choose select field" class="w-full" />
       </div>
       <div v-if="viewModalMode === 'create' && viewModalType === 'calendar'" class="space-y-2">
         <label class="text-base font-medium text-[var(--text-secondary)]">Date field</label>
@@ -596,6 +597,10 @@ async function confirmDeleteView(view: View) {
 
 function showDashboard() {
   store.showDashboard();
+}
+
+function showSettings() {
+  store.showSettings();
 }
 
 async function createCollection() {

@@ -1,5 +1,7 @@
 import type {
   Collection,
+  BackupEntry,
+  BackupSettings,
   View,
   Field,
   Item,
@@ -24,8 +26,13 @@ import type {
   BulkMutationResult,
   ImportCollectionInput,
   CollectionItemCount,
+  FullArchiveExportInput,
+  FullArchiveExportResult,
+  FullArchivePreview,
+  FullArchiveRestoreReport,
   PaginatedItemsResult,
   ViewConfig,
+  UpdateBackupSettingsInput,
 } from "./models";
 import type { IpcResult } from "./ipc";
 
@@ -103,6 +110,26 @@ export interface IElectronAPI {
     options: OpenDialogOptions,
   ) => Promise<IpcResult<string | null>>;
   readFile: (filePath: string) => Promise<IpcResult<string | null>>;
+
+  // Full Archive
+  exportFullArchive: (
+    input: FullArchiveExportInput,
+  ) => Promise<IpcResult<FullArchiveExportResult | null>>;
+  previewFullArchiveRestore: () => Promise<IpcResult<FullArchivePreview | null>>;
+  restoreFullArchive: (
+    filePath: string,
+  ) => Promise<IpcResult<FullArchiveRestoreReport>>;
+
+  // Backups
+  getBackupSettings: () => Promise<IpcResult<BackupSettings>>;
+  updateBackupSettings: (
+    input: UpdateBackupSettingsInput,
+  ) => Promise<IpcResult<BackupSettings>>;
+  listBackups: () => Promise<IpcResult<BackupEntry[]>>;
+  createManualBackup: () => Promise<IpcResult<BackupEntry>>;
+  restoreBackup: (fileName: string) => Promise<IpcResult<boolean>>;
+  deleteBackup: (fileName: string) => Promise<IpcResult<boolean>>;
+  openBackupsFolder: () => Promise<IpcResult<boolean>>;
 
   // External
   openExternal: (url: string) => Promise<IpcResult<void>>;

@@ -1,7 +1,7 @@
 {
   "name": "second-brain",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.3.0",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -17,6 +17,7 @@
     "dev:vite": "vite",
     "predev:electron": "npm run rebuild:electron && node build-electron.js",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
+    "build:electron": "node build-electron.js",
     "build": "npm version patch && vue-tsc && vite build && node build-electron.js && electron-builder",
     "build:win": "npm run build -- --win",
     "postinstall": "electron-builder install-app-deps",

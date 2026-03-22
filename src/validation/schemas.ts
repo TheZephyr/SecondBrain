@@ -20,9 +20,17 @@ export const fieldNameSchema = z
 export const positiveIntSchema = z.number().int().positive();
 export const orderIndexSchema = z.number().int().min(0);
 export const nonNegativeIntSchema = z.number().int().min(0);
+export const backupRetentionSchema = z.number().int().min(0).max(999);
 export const viewTypeSchema = z.enum(["grid", "kanban", "calendar"]);
 export const viewIsDefaultSchema = z.union([z.literal(0), z.literal(1)]);
 export const viewOrderSchema = nonNegativeIntSchema;
+export const backupLabelSchema = z.enum(["startup", "manual", "pre_restore"]);
+export const backupFileNameSchema = z
+  .string()
+  .regex(
+    /^secondbrain_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(startup|manual|pre_restore)\.db$/,
+    "Invalid backup file name.",
+  );
 export const fieldTypeSchema = z.enum([
   "text",
   "longtext",
@@ -397,3 +405,143 @@ export const GetItemsInputSchema = z.object({
   search: z.string().trim().max(200).optional().default(""),
   sort: z.array(ItemSortSpecSchema).max(3).optional().default([]),
 });
+
+export const UpdateBackupSettingsInputSchema = z.object({
+  automaticBackupsEnabled: z.boolean(),
+  automaticBackupsLimit: backupRetentionSchema,
+  manualBackupsLimit: backupRetentionSchema,
+});
+
+export const FULL_ARCHIVE_VERSION = 1;
+
+export const fullArchiveTypeSchema = z.literal("full_archive");
+export const archiveFilePathSchema = z.string().trim().min(1);
+
+export const FullArchiveExportInputSchema = z.object({
+  description: z.string().max(5000).default(""),
+});
+
+export const fullArchiveItemValueSchema = z.union([
+  z.string(),
+  z
+    .number()
+    .refine((n) => Number.isFinite(n), { message: "Number must be finite" }),
+  z.boolean(),
+  z.null(),
+  z.array(z.string()),
+]);
+
+export const fullArchiveItemDataSchema = z.preprocess(
+  (value, ctx) => {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Archive item data must be a plain object.",
+      });
+      return value;
+    }
+
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Archive item data must not use a custom prototype.",
+      });
+    }
+
+    return value;
+  },
+  z.record(z.string(), fullArchiveItemValueSchema),
+);
+
+export const FullArchiveFieldSchema = z
+  .object({
+    name: z.string().trim().min(1).max(256),
+    type: z.string().trim().min(1).max(64),
+    orderIndex: orderIndexSchema,
+    options: z.record(z.string(), z.unknown()).nullable(),
+  })
+  .passthrough();
+
+export const FullArchiveSortSpecSchema = z.object({
+  field: z.string().trim().min(1).max(256),
+  order: z.union([z.literal(1), z.literal(-1)]),
+});
+
+export const FullArchiveGridViewConfigSchema = z
+  .object({
+    columnWidths: z.record(z.string(), z.number().int().min(60)),
+    sort: z.array(FullArchiveSortSpecSchema),
+    selectedFields: z.array(z.string().trim().min(1)),
+  })
+  .passthrough();
+
+export const FullArchiveKanbanViewConfigSchema = z
+  .object({
+    groupingField: z.string().trim().min(1).nullable(),
+    columnOrder: z.array(z.string().trim().min(1)),
+    selectedFields: z.array(z.string().trim().min(1)),
+  })
+  .passthrough();
+
+export const FullArchiveCalendarViewConfigSchema = z
+  .object({
+    dateField: z.string().trim().min(1).nullable(),
+    selectedFields: z.array(z.string().trim().min(1)),
+  })
+  .passthrough();
+
+export const FullArchiveViewSchema = z
+  .object({
+    name: z.string().trim().min(1).max(256),
+    type: z.string().trim().min(1).max(64),
+    isDefault: z.boolean(),
+    order: nonNegativeIntSchema,
+    config: z.record(z.string(), z.unknown()),
+  })
+  .passthrough();
+
+export const FullArchiveItemSchema = z
+  .object({
+    order: nonNegativeIntSchema,
+    data: fullArchiveItemDataSchema,
+  })
+  .passthrough();
+
+export const FullArchiveCollectionStatsSchema = z
+  .object({
+    fieldCount: nonNegativeIntSchema,
+    itemCount: nonNegativeIntSchema,
+  })
+  .passthrough();
+
+export const FullArchiveCollectionSchema = z
+  .object({
+    name: z.string().trim().min(1).max(256),
+    exportedAt: z.string().trim().min(1),
+    stats: FullArchiveCollectionStatsSchema,
+    fields: z.array(FullArchiveFieldSchema),
+    views: z.array(FullArchiveViewSchema),
+    items: z.array(FullArchiveItemSchema),
+  })
+  .passthrough();
+
+export const FullArchiveStatsSchema = z
+  .object({
+    collectionCount: nonNegativeIntSchema,
+    totalFieldCount: nonNegativeIntSchema,
+    totalItemCount: nonNegativeIntSchema,
+  })
+  .passthrough();
+
+export const FullArchiveFileSchema = z
+  .object({
+    type: fullArchiveTypeSchema,
+    version: z.number().int().min(1),
+    appVersion: z.string().trim().min(1),
+    exportedAt: z.string().trim().min(1),
+    description: z.string(),
+    stats: FullArchiveStatsSchema,
+    collections: z.array(FullArchiveCollectionSchema),
+  })
+  .passthrough();

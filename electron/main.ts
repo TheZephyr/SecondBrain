@@ -7,8 +7,18 @@ import type {
 import path from "path";
 import fs from "fs";
 import { Worker } from "worker_threads";
+import Database from "better-sqlite3";
 import type { ZodType } from "zod";
 import type {
+  BackupEntry,
+  BackupLabel,
+  BackupSettings,
+  FullArchiveDatabaseSummary,
+  FullArchiveExportInput,
+  FullArchiveFile,
+  FullArchiveExportResult,
+  FullArchivePreview,
+  FullArchiveRestoreReport,
   ItemData,
   GetItemsInput,
   NewCollectionInput,
@@ -30,6 +40,7 @@ import type {
   BulkMutationResult,
   ImportCollectionInput,
   ReorderItemsInput,
+  UpdateBackupSettingsInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
 import type {
@@ -59,7 +70,27 @@ import {
   itemDataSchema,
   ReorderItemsInputSchema,
   positiveIntSchema,
+  backupFileNameSchema,
+  archiveFilePathSchema,
+  FullArchiveExportInputSchema,
+  UpdateBackupSettingsInputSchema,
 } from "../src/validation/schemas";
+import {
+  buildFullArchiveFileName,
+  buildFullArchivePreviewSummary,
+  parseFullArchiveContent,
+} from "../src/utils/fullArchive";
+import {
+  buildBackupFileName,
+  ensureBackupDirectory,
+  getBackupRetentionLimit,
+  listBackups as listBackupsFromDisk,
+  loadBackupSettings,
+  partitionBackups,
+  pruneBackupSet,
+  saveBackupSettings,
+  tryCreateStartupBackup,
+} from "./backup-utils";
 
 let mainWindow: BrowserWindow | null = null;
 let dbWorker: Worker | null = null;
@@ -82,6 +113,7 @@ const isDev = process.env.NODE_ENV === "development";
 const DB_REQUEST_TIMEOUT_MS = 10_000;
 const DB_IMPORT_TIMEOUT_MS = 120_000;
 const DB_BULK_TIMEOUT_MS = 30_000;
+const DB_ARCHIVE_TIMEOUT_MS = 180_000;
 
 class AppError extends Error {
   code: IpcErrorCode;
@@ -396,6 +428,7 @@ async function startDbWorker(pathToDb: string): Promise<void> {
 async function initDatabase(): Promise<boolean> {
   try {
     dbPath = path.join(app.getPath("userData"), "secondbrain.db");
+    await tryCreateStartupBackup(maybeCreateStartupBackup);
     await startDbWorker(dbPath);
     return true;
   } catch (error) {
@@ -407,6 +440,279 @@ async function initDatabase(): Promise<boolean> {
     app.exit(1);
     return false;
   }
+}
+
+function requireDbPath(): string {
+  if (!dbPath) {
+    throw new AppError("DB_NOT_READY", "Database path not initialized.");
+  }
+  return dbPath;
+}
+
+function requireUserDataPath(): string {
+  if (!app.isReady()) {
+    throw new AppError("UNKNOWN", "Application is not ready.");
+  }
+  return app.getPath("userData");
+}
+
+async function checkpointDatabaseFile(targetDbPath: string): Promise<void> {
+  if (!(await fs.promises.stat(targetDbPath).catch(() => null))) {
+    return;
+  }
+
+  const tempDb = new Database(targetDbPath);
+  try {
+    tempDb.pragma("busy_timeout = 5000");
+    tempDb.pragma("wal_checkpoint(TRUNCATE)");
+    // TODO: This helper opens SQLite with better-sqlite3 and runs wal_checkpoint(TRUNCATE) 
+    // synchronously in the main process, and it is called by user-triggered backup/restore flows. 
+    // On large databases this blocks the Electron event loop, making the UI unresponsive during 
+    // backup operations. The checkpoint should run in the DB worker (or another worker thread) 
+    // to avoid main-thread stalls.
+  } finally {
+    tempDb.close();
+  }
+}
+
+async function removeDbSidecars(targetDbPath: string): Promise<void> {
+  await Promise.all(
+    [`${targetDbPath}-wal`, `${targetDbPath}-shm`].map((filePath) =>
+      fs.promises.unlink(filePath).catch(() => undefined),
+    ),
+  );
+}
+
+async function copyDatabaseToBackup(
+  label: BackupLabel,
+  excludeFromPruning?: string[],
+): Promise<BackupEntry> {
+  const liveDbPath = requireDbPath();
+  const userDataPath = requireUserDataPath();
+
+  if (!(await fs.promises.stat(liveDbPath).catch(() => null))) {
+    throw new AppError("FS_READ_FAILED", "Database file does not exist.");
+  }
+
+  await stopDbWorker(`Creating ${label} backup.`);
+
+  try {
+    await checkpointDatabaseFile(liveDbPath);
+
+    const backupDirectory = await ensureBackupDirectory(userDataPath);
+    const fileName = buildBackupFileName(label);
+    const destinationPath = path.join(backupDirectory, fileName);
+    await fs.promises.copyFile(liveDbPath, destinationPath);
+
+    const backups = await listBackupsFromDisk(userDataPath);
+    const created = backups.find((backup) => backup.fileName === fileName);
+    if (!created) {
+      throw new AppError("FS_READ_FAILED", "Backup file was not created.");
+    }
+
+    const settings = await loadBackupSettings(userDataPath);
+    const limit = getBackupRetentionLimit(settings, label);
+    const buckets = partitionBackups(backups);
+    const excludeSet = new Set(excludeFromPruning ?? []);
+    if (label === "startup") {
+      const filtered = buckets.automatic.filter(
+        (b) => !excludeSet.has(b.fileName),
+      );
+      await pruneBackupSet(filtered, limit);
+    } else {
+      const filtered = buckets.manual.filter(
+        (b) => !excludeSet.has(b.fileName),
+      );
+      await pruneBackupSet(filtered, limit);
+    }
+
+    return created;
+  } finally {
+    // Always attempt to restart the database worker, even if an error occurred
+    try {
+      await startDbWorker(liveDbPath);
+    } catch (error) {
+      console.error(
+        `[Backup] Failed to restart database worker after ${label} backup:`,
+        error,
+      );
+      // Re-throw the original error if we had one, otherwise throw the restart error
+      throw error;
+    }
+  }
+}
+
+async function maybeCreateStartupBackup(): Promise<void> {
+  const liveDbPath = requireDbPath();
+  const userDataPath = requireUserDataPath();
+  const settings = await loadBackupSettings(userDataPath);
+
+  if (!settings.automaticBackupsEnabled) {
+    return;
+  }
+  if (!(await fs.promises.stat(liveDbPath).catch(() => null))) {
+    return;
+  }
+
+  await checkpointDatabaseFile(liveDbPath);
+  const backupDirectory = await ensureBackupDirectory(userDataPath);
+  const fileName = buildBackupFileName("startup");
+  await fs.promises.copyFile(liveDbPath, path.join(backupDirectory, fileName));
+
+  const backups = await listBackupsFromDisk(userDataPath);
+  await pruneBackupSet(
+    partitionBackups(backups).automatic,
+    settings.automaticBackupsLimit,
+  );
+}
+
+async function restoreBackupFromFileName(fileName: string): Promise<boolean> {
+  const userDataPath = requireUserDataPath();
+  const liveDbPath = requireDbPath();
+  const backups = await listBackupsFromDisk(userDataPath);
+  const backup = backups.find((entry) => entry.fileName === fileName);
+  if (!backup) {
+    throw new AppError("FS_READ_FAILED", "Backup file not found.");
+  }
+
+  await copyDatabaseToBackup("pre_restore", [backup.fileName]);
+  await stopDbWorker("Restore backup requested.");
+  await checkpointDatabaseFile(backup.filePath);
+  await removeDbSidecars(liveDbPath);
+  await fs.promises.copyFile(backup.filePath, liveDbPath);
+  await removeDbSidecars(liveDbPath);
+  // TODO: After stopDbWorker("Restore backup requested.") runs, any failure in the subsequent 
+  // checkpoint/copy sequence returns an IPC error but never brings the worker back up. 
+  // In that error path the app keeps running with dbWorker unset, so all later DB IPC calls 
+  // fail with DB_NOT_READY until the user manually restarts the app. Wrap the restore steps 
+  // in a try/finally that restarts the worker when relaunch does not occur.
+
+  app.relaunch();
+  app.exit(0);
+  return true;
+}
+
+async function readArchiveFromFilePath(filePath: string) {
+  let content: string;
+  try {
+    content = await fs.promises.readFile(filePath, "utf-8");
+  } catch (error) {
+    throw new AppError(
+      "FS_READ_FAILED",
+      "Failed to read archive file.",
+      serializeDetails(error),
+    );
+  }
+
+  try {
+    return parseFullArchiveContent(content);
+  } catch (error) {
+    throw new AppError(
+      "VALIDATION_FAILED",
+      error instanceof Error ? error.message : "Invalid archive file.",
+      serializeDetails({ filePath }),
+    );
+  }
+}
+
+async function exportFullArchiveToDisk(
+  input: FullArchiveExportInput,
+): Promise<FullArchiveExportResult | null> {
+  if (!mainWindow) {
+    throw new AppError("UNKNOWN", "Main window not available.");
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Export Full Archive",
+    defaultPath: buildFullArchiveFileName(),
+    filters: [
+      { name: "JSON Files", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  const archive = await invokeDbWorker<FullArchiveFile>({
+    type: "exportFullArchive",
+    input: {
+      appVersion: app.getVersion(),
+      description: input.description,
+    },
+  });
+
+  try {
+    await fs.promises.writeFile(
+      result.filePath,
+      `${JSON.stringify(archive, null, 2)}\n`,
+      "utf-8",
+    );
+  } catch (error) {
+    throw new AppError(
+      "FS_WRITE_FAILED",
+      "Failed to write archive file.",
+      serializeDetails(error),
+    );
+  }
+
+  return {
+    filePath: result.filePath,
+    stats: archive.stats,
+  };
+}
+
+async function previewFullArchiveRestore(): Promise<FullArchivePreview | null> {
+  if (!mainWindow) {
+    throw new AppError("UNKNOWN", "Main window not available.");
+  }
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select Full Archive",
+    filters: [
+      { name: "JSON Files", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+    properties: ["openFile"],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const filePath = result.filePaths[0];
+  const archive = await readArchiveFromFilePath(filePath);
+  const currentDbSummary = await invokeDbWorker<FullArchiveDatabaseSummary>({
+    type: "getArchiveDatabaseSummary",
+  });
+
+  return buildFullArchivePreviewSummary(filePath, archive, currentDbSummary);
+}
+
+async function restoreFullArchiveFromFilePath(
+  filePath: string,
+): Promise<FullArchiveRestoreReport> {
+  const archive = await readArchiveFromFilePath(filePath);
+  const backup = await copyDatabaseToBackup("pre_restore");
+  const report = await invokeDbWorker<
+    Omit<FullArchiveRestoreReport, "preRestoreBackupPath">
+  >(
+    {
+      type: "restoreFullArchive",
+      input: archive,
+    },
+    {
+      timeoutMs: DB_ARCHIVE_TIMEOUT_MS,
+    },
+  );
+
+  await restartDbWorker("Full archive restore completed.");
+
+  return {
+    ...report,
+    preRestoreBackupPath: backup.filePath,
+  };
 }
 
 // ==================== COLLECTIONS ====================
@@ -731,6 +1037,80 @@ handleIpc("import:readFile", async (_, filePath: string) => {
       serializeDetails(error),
     );
   }
+});
+
+// ==================== FULL ARCHIVE ====================
+handleIpc("archive:exportFull", async (_, payload: FullArchiveExportInput) => {
+  const input = parseOrThrow(
+    FullArchiveExportInputSchema,
+    payload,
+    "archive:exportFull",
+  );
+  return exportFullArchiveToDisk(input);
+});
+
+handleIpc("archive:previewRestore", async () => {
+  return previewFullArchiveRestore();
+});
+
+handleIpc("archive:restore", async (_, filePath: string) => {
+  const parsedFilePath = parseOrThrow(
+    archiveFilePathSchema,
+    filePath,
+    "archive:restore",
+  );
+  return restoreFullArchiveFromFilePath(parsedFilePath);
+});
+
+// ==================== BACKUPS ====================
+handleIpc("backup:getSettings", async () => {
+  return loadBackupSettings(requireUserDataPath());
+});
+
+handleIpc(
+  "backup:updateSettings",
+  async (_, payload: UpdateBackupSettingsInput) => {
+    const input = parseOrThrow(
+      UpdateBackupSettingsInputSchema,
+      payload,
+      "backup:updateSettings",
+    );
+    return saveBackupSettings(requireUserDataPath(), input);
+  },
+);
+
+handleIpc("backup:list", async () => {
+  return listBackupsFromDisk(requireUserDataPath());
+});
+
+handleIpc("backup:createManual", async () => {
+  return copyDatabaseToBackup("manual");
+});
+
+handleIpc("backup:restore", async (_, fileName: string) => {
+  const parsedFileName = parseOrThrow(
+    backupFileNameSchema,
+    fileName,
+    "backup:restore",
+  );
+  return restoreBackupFromFileName(parsedFileName);
+});
+
+handleIpc("backup:delete", async (_, fileName: string) => {
+  const parsedFileName = parseOrThrow(
+    backupFileNameSchema,
+    fileName,
+    "backup:delete",
+  );
+  const backupDirectory = await ensureBackupDirectory(requireUserDataPath());
+  await fs.promises.unlink(path.join(backupDirectory, parsedFileName));
+  return true;
+});
+
+handleIpc("backup:openFolder", async () => {
+  const backupDirectory = await ensureBackupDirectory(requireUserDataPath());
+  await shell.openPath(backupDirectory);
+  return true;
 });
 
 // ==================== EXTERNAL ====================

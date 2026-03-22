@@ -75,6 +75,21 @@ const electronAPI: IElectronAPI = {
   showOpenDialog: (options) => invoke("import:showOpenDialog", options),
   readFile: (filePath: string) => invoke("import:readFile", filePath),
 
+  // Full Archive
+  exportFullArchive: (input) => invoke("archive:exportFull", input),
+  previewFullArchiveRestore: () => invoke("archive:previewRestore"),
+  restoreFullArchive: (filePath: string) =>
+    invoke("archive:restore", filePath),
+
+  // Backups
+  getBackupSettings: () => invoke("backup:getSettings"),
+  updateBackupSettings: (input) => invoke("backup:updateSettings", input),
+  listBackups: () => invoke("backup:list"),
+  createManualBackup: () => invoke("backup:createManual"),
+  restoreBackup: (fileName: string) => invoke("backup:restore", fileName),
+  deleteBackup: (fileName: string) => invoke("backup:delete", fileName),
+  openBackupsFolder: () => invoke("backup:openFolder"),
+
   // External
   openExternal: (url: string) => invoke("openExternal", url),
 };
