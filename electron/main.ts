@@ -478,7 +478,10 @@ async function removeDbSidecars(targetDbPath: string): Promise<void> {
   );
 }
 
-async function copyDatabaseToBackup(label: BackupLabel): Promise<BackupEntry> {
+async function copyDatabaseToBackup(
+  label: BackupLabel,
+  excludeFromPruning?: string[],
+): Promise<BackupEntry> {
   const liveDbPath = requireDbPath();
   const userDataPath = requireUserDataPath();
 
@@ -505,10 +508,15 @@ async function copyDatabaseToBackup(label: BackupLabel): Promise<BackupEntry> {
     const settings = await loadBackupSettings(userDataPath);
     const limit = getBackupRetentionLimit(settings, label);
     const buckets = partitionBackups(backups);
+    const excludeSet = new Set(excludeFromPruning ?? []);
     if (label === "startup") {
-      await pruneBackupSet(buckets.automatic, limit);
+      const filtered = buckets.automatic.filter(
+        (b) => !excludeSet.has(b.fileName),
+      );
+      await pruneBackupSet(filtered, limit);
     } else {
-      await pruneBackupSet(buckets.manual, limit);
+      const filtered = buckets.manual.filter((b) => !excludeSet.has(b.fileName));
+      await pruneBackupSet(filtered, limit);
     }
 
     return created;
@@ -557,7 +565,7 @@ async function restoreBackupFromFileName(fileName: string): Promise<boolean> {
     throw new AppError("FS_READ_FAILED", "Backup file not found.");
   }
 
-  await copyDatabaseToBackup("pre_restore");
+  await copyDatabaseToBackup("pre_restore", [backup.fileName]);
   await stopDbWorker("Restore backup requested.");
   await checkpointDatabaseFile(backup.filePath);
   await removeDbSidecars(liveDbPath);
