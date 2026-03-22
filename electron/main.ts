@@ -465,6 +465,11 @@ async function checkpointDatabaseFile(targetDbPath: string): Promise<void> {
   try {
     tempDb.pragma("busy_timeout = 5000");
     tempDb.pragma("wal_checkpoint(TRUNCATE)");
+    // TODO: This helper opens SQLite with better-sqlite3 and runs wal_checkpoint(TRUNCATE) 
+    // synchronously in the main process, and it is called by user-triggered backup/restore flows. 
+    // On large databases this blocks the Electron event loop, making the UI unresponsive during 
+    // backup operations. The checkpoint should run in the DB worker (or another worker thread) 
+    // to avoid main-thread stalls.
   } finally {
     tempDb.close();
   }
@@ -490,7 +495,7 @@ async function copyDatabaseToBackup(
   }
 
   await stopDbWorker(`Creating ${label} backup.`);
-  
+
   try {
     await checkpointDatabaseFile(liveDbPath);
 
@@ -515,7 +520,9 @@ async function copyDatabaseToBackup(
       );
       await pruneBackupSet(filtered, limit);
     } else {
-      const filtered = buckets.manual.filter((b) => !excludeSet.has(b.fileName));
+      const filtered = buckets.manual.filter(
+        (b) => !excludeSet.has(b.fileName),
+      );
       await pruneBackupSet(filtered, limit);
     }
 
@@ -525,7 +532,10 @@ async function copyDatabaseToBackup(
     try {
       await startDbWorker(liveDbPath);
     } catch (error) {
-      console.error(`[Backup] Failed to restart database worker after ${label} backup:`, error);
+      console.error(
+        `[Backup] Failed to restart database worker after ${label} backup:`,
+        error,
+      );
       // Re-throw the original error if we had one, otherwise throw the restart error
       throw error;
     }
@@ -571,6 +581,11 @@ async function restoreBackupFromFileName(fileName: string): Promise<boolean> {
   await removeDbSidecars(liveDbPath);
   await fs.promises.copyFile(backup.filePath, liveDbPath);
   await removeDbSidecars(liveDbPath);
+  // TODO: After stopDbWorker("Restore backup requested.") runs, any failure in the subsequent 
+  // checkpoint/copy sequence returns an IPC error but never brings the worker back up. 
+  // In that error path the app keeps running with dbWorker unset, so all later DB IPC calls 
+  // fail with DB_NOT_READY until the user manually restarts the app. Wrap the restore steps 
+  // in a try/finally that restarts the worker when relaunch does not occur.
 
   app.relaunch();
   app.exit(0);
@@ -680,7 +695,9 @@ async function restoreFullArchiveFromFilePath(
 ): Promise<FullArchiveRestoreReport> {
   const archive = await readArchiveFromFilePath(filePath);
   const backup = await copyDatabaseToBackup("pre_restore");
-  const report = await invokeDbWorker<Omit<FullArchiveRestoreReport, "preRestoreBackupPath">>(
+  const report = await invokeDbWorker<
+    Omit<FullArchiveRestoreReport, "preRestoreBackupPath">
+  >(
     {
       type: "restoreFullArchive",
       input: archive,
@@ -1023,17 +1040,14 @@ handleIpc("import:readFile", async (_, filePath: string) => {
 });
 
 // ==================== FULL ARCHIVE ====================
-handleIpc(
-  "archive:exportFull",
-  async (_, payload: FullArchiveExportInput) => {
-    const input = parseOrThrow(
-      FullArchiveExportInputSchema,
-      payload,
-      "archive:exportFull",
-    );
-    return exportFullArchiveToDisk(input);
-  },
-);
+handleIpc("archive:exportFull", async (_, payload: FullArchiveExportInput) => {
+  const input = parseOrThrow(
+    FullArchiveExportInputSchema,
+    payload,
+    "archive:exportFull",
+  );
+  return exportFullArchiveToDisk(input);
+});
 
 handleIpc("archive:previewRestore", async () => {
   return previewFullArchiveRestore();
