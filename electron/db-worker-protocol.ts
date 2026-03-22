@@ -18,6 +18,7 @@ import type {
   ReorderItemsInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
+  FullArchiveFile,
 } from "../src/types/models";
 
 export type DbWorkerOperation =
@@ -49,7 +50,10 @@ export type DbWorkerOperation =
   | { type: "reorderItems"; input: ReorderItemsInput }
   | { type: "bulkDeleteItems"; input: BulkDeleteItemsInput }
   | { type: "bulkPatchItems"; input: BulkPatchItemsInput }
-  | { type: "importCollection"; input: ImportCollectionInput };
+  | { type: "importCollection"; input: ImportCollectionInput }
+  | { type: "getArchiveDatabaseSummary" }
+  | { type: "exportFullArchive"; input: { appVersion: string; description: string } }
+  | { type: "restoreFullArchive"; input: FullArchiveFile };
 
 export type DbWorkerRequest = {
   id: number;

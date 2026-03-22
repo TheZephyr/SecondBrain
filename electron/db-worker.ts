@@ -23,6 +23,11 @@ import type {
   DbWorkerRequest,
   DbWorkerResponse,
 } from "./db-worker-protocol";
+import {
+  exportFullArchive as buildFullArchiveExport,
+  getArchiveDatabaseSummary,
+  restoreFullArchive as runFullArchiveRestore,
+} from "./full-archive";
 
 let db: Database.Database | null = null;
 let ftsEnabled = false;
@@ -1267,7 +1272,7 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
     case "getCollections": {
       const database = requireDb();
       return database
-        .prepare("SELECT * FROM collections ORDER BY created_at ASC")
+        .prepare("SELECT * FROM collections ORDER BY created_at ASC, id ASC")
         .all();
     }
     case "getCollectionItemCounts": {
@@ -1653,6 +1658,18 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
       const database = requireDb();
       runImport(database, operation.input);
       return true;
+    }
+    case "getArchiveDatabaseSummary": {
+      const database = requireDb();
+      return getArchiveDatabaseSummary(database);
+    }
+    case "exportFullArchive": {
+      const database = requireDb();
+      return buildFullArchiveExport(database, operation.input);
+    }
+    case "restoreFullArchive": {
+      const database = requireDb();
+      return runFullArchiveRestore(database, operation.input, ftsEnabled);
     }
     default: {
       const exhaustiveCheck: never = operation;

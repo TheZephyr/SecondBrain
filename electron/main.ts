@@ -13,6 +13,12 @@ import type {
   BackupEntry,
   BackupLabel,
   BackupSettings,
+  FullArchiveDatabaseSummary,
+  FullArchiveExportInput,
+  FullArchiveFile,
+  FullArchiveExportResult,
+  FullArchivePreview,
+  FullArchiveRestoreReport,
   ItemData,
   GetItemsInput,
   NewCollectionInput,
@@ -65,8 +71,15 @@ import {
   ReorderItemsInputSchema,
   positiveIntSchema,
   backupFileNameSchema,
+  archiveFilePathSchema,
+  FullArchiveExportInputSchema,
   UpdateBackupSettingsInputSchema,
 } from "../src/validation/schemas";
+import {
+  buildFullArchiveFileName,
+  buildFullArchivePreviewSummary,
+  parseFullArchiveContent,
+} from "../src/utils/fullArchive";
 import {
   buildBackupFileName,
   ensureBackupDirectory,
@@ -99,6 +112,7 @@ const isDev = process.env.NODE_ENV === "development";
 const DB_REQUEST_TIMEOUT_MS = 10_000;
 const DB_IMPORT_TIMEOUT_MS = 120_000;
 const DB_BULK_TIMEOUT_MS = 30_000;
+const DB_ARCHIVE_TIMEOUT_MS = 180_000;
 
 class AppError extends Error {
   code: IpcErrorCode;
@@ -544,6 +558,127 @@ async function restoreBackupFromFileName(fileName: string): Promise<boolean> {
   return true;
 }
 
+async function readArchiveFromFilePath(filePath: string) {
+  let content: string;
+  try {
+    content = await fs.promises.readFile(filePath, "utf-8");
+  } catch (error) {
+    throw new AppError(
+      "FS_READ_FAILED",
+      "Failed to read archive file.",
+      serializeDetails(error),
+    );
+  }
+
+  try {
+    return parseFullArchiveContent(content);
+  } catch (error) {
+    throw new AppError(
+      "VALIDATION_FAILED",
+      error instanceof Error ? error.message : "Invalid archive file.",
+      serializeDetails({ filePath }),
+    );
+  }
+}
+
+async function exportFullArchiveToDisk(
+  input: FullArchiveExportInput,
+): Promise<FullArchiveExportResult | null> {
+  if (!mainWindow) {
+    throw new AppError("UNKNOWN", "Main window not available.");
+  }
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Export Full Archive",
+    defaultPath: buildFullArchiveFileName(),
+    filters: [
+      { name: "JSON Files", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  const archive = await invokeDbWorker<FullArchiveFile>({
+    type: "exportFullArchive",
+    input: {
+      appVersion: app.getVersion(),
+      description: input.description,
+    },
+  });
+
+  try {
+    await fs.promises.writeFile(
+      result.filePath,
+      `${JSON.stringify(archive, null, 2)}\n`,
+      "utf-8",
+    );
+  } catch (error) {
+    throw new AppError(
+      "FS_WRITE_FAILED",
+      "Failed to write archive file.",
+      serializeDetails(error),
+    );
+  }
+
+  return {
+    filePath: result.filePath,
+    stats: archive.stats,
+  };
+}
+
+async function previewFullArchiveRestore(): Promise<FullArchivePreview | null> {
+  if (!mainWindow) {
+    throw new AppError("UNKNOWN", "Main window not available.");
+  }
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select Full Archive",
+    filters: [
+      { name: "JSON Files", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+    properties: ["openFile"],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const filePath = result.filePaths[0];
+  const archive = await readArchiveFromFilePath(filePath);
+  const currentDbSummary = await invokeDbWorker<FullArchiveDatabaseSummary>({
+    type: "getArchiveDatabaseSummary",
+  });
+
+  return buildFullArchivePreviewSummary(filePath, archive, currentDbSummary);
+}
+
+async function restoreFullArchiveFromFilePath(
+  filePath: string,
+): Promise<FullArchiveRestoreReport> {
+  const archive = await readArchiveFromFilePath(filePath);
+  const backup = await copyDatabaseToBackup("pre_restore");
+  const report = await invokeDbWorker<Omit<FullArchiveRestoreReport, "preRestoreBackupPath">>(
+    {
+      type: "restoreFullArchive",
+      input: archive,
+    },
+    {
+      timeoutMs: DB_ARCHIVE_TIMEOUT_MS,
+    },
+  );
+
+  await restartDbWorker("Full archive restore completed.");
+
+  return {
+    ...report,
+    preRestoreBackupPath: backup.filePath,
+  };
+}
+
 // ==================== COLLECTIONS ====================
 handleIpc("db:getCollections", async () => {
   return invokeDbWorker({ type: "getCollections" });
@@ -866,6 +1001,32 @@ handleIpc("import:readFile", async (_, filePath: string) => {
       serializeDetails(error),
     );
   }
+});
+
+// ==================== FULL ARCHIVE ====================
+handleIpc(
+  "archive:exportFull",
+  async (_, payload: FullArchiveExportInput) => {
+    const input = parseOrThrow(
+      FullArchiveExportInputSchema,
+      payload,
+      "archive:exportFull",
+    );
+    return exportFullArchiveToDisk(input);
+  },
+);
+
+handleIpc("archive:previewRestore", async () => {
+  return previewFullArchiveRestore();
+});
+
+handleIpc("archive:restore", async (_, filePath: string) => {
+  const parsedFilePath = parseOrThrow(
+    archiveFilePathSchema,
+    filePath,
+    "archive:restore",
+  );
+  return restoreFullArchiveFromFilePath(parsedFilePath);
 });
 
 // ==================== BACKUPS ====================

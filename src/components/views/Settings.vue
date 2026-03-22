@@ -2,6 +2,218 @@
   <div class="min-h-full px-6 py-8">
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <ConfirmDialog />
+      <Dialog
+        v-model:visible="archivePreviewVisible"
+        modal
+        :draggable="false"
+        header="Restore Full Archive"
+        class="w-full max-w-3xl"
+      >
+        <div v-if="archivePreview" class="space-y-4">
+          <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+            <div class="text-sm font-medium text-[var(--text-secondary)]">Archive file</div>
+            <div class="mt-1 break-all font-mono text-sm text-[var(--text-primary)]">
+              {{ archivePreview.filePath }}
+            </div>
+            <div class="mt-3 grid gap-3 md:grid-cols-2">
+              <div class="rounded-md border border-[var(--border-color)] p-3">
+                <div class="text-xs uppercase tracking-wide text-[var(--text-muted)]">Archive</div>
+                <div class="mt-2 text-sm text-[var(--text-secondary)]">
+                  <div>{{ archivePreview.archiveSummary.stats.collectionCount }} collections</div>
+                  <div>{{ archivePreview.archiveSummary.stats.totalFieldCount }} fields</div>
+                  <div>{{ archivePreview.archiveSummary.stats.totalItemCount }} items</div>
+                </div>
+              </div>
+              <div class="rounded-md border border-[var(--border-color)] p-3">
+                <div class="text-xs uppercase tracking-wide text-[var(--text-muted)]">Current Database</div>
+                <div class="mt-2 text-sm text-[var(--text-secondary)]">
+                  <div>{{ archivePreview.currentDbSummary.collectionCount }} collections</div>
+                  <div>{{ archivePreview.currentDbSummary.totalFieldCount }} fields</div>
+                  <div>{{ archivePreview.currentDbSummary.totalItemCount }} items</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="rounded-lg border p-4 text-sm"
+            :class="archivePreview.willReplaceExistingData
+              ? 'border-[color-mix(in_srgb,var(--warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-[var(--text-secondary)]'
+              : 'border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-secondary)]'"
+          >
+            <div class="font-medium text-[var(--text-primary)]">
+              {{ archivePreview.willReplaceExistingData ? 'Existing data will be replaced.' : 'Current database is empty.' }}
+            </div>
+            <div class="mt-1">
+              A <span class="font-medium">pre_restore</span> backup will be created automatically before the restore begins.
+            </div>
+          </div>
+
+          <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+            <div class="text-sm font-medium text-[var(--text-primary)]">Collections in archive</div>
+            <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
+              <div
+                v-for="collection in archivePreview.archiveSummary.collections"
+                :key="collection.name"
+                class="flex items-center justify-between rounded-md border border-[var(--border-color)] px-3 py-2 text-sm"
+              >
+                <span class="font-medium text-[var(--text-primary)]">{{ collection.name }}</span>
+                <span class="text-[var(--text-muted)]">
+                  {{ collection.stats.fieldCount }} fields, {{ collection.stats.itemCount }} items
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <Button
+            severity="secondary"
+            text
+            :disabled="restoringArchive"
+            @click="archivePreviewVisible = false"
+          >
+            Cancel
+          </Button>
+          <Button
+            severity="danger"
+            :loading="restoringArchive"
+            @click="restoreArchive"
+          >
+            Restore Full Archive
+          </Button>
+        </template>
+      </Dialog>
+
+      <Dialog
+        v-model:visible="archiveReportVisible"
+        modal
+        :draggable="false"
+        header="Archive Restore Report"
+        class="w-full max-w-3xl"
+        @hide="handleArchiveReportHide"
+      >
+        <div v-if="archiveReport" class="space-y-4">
+          <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+            <div class="text-sm font-medium text-[var(--text-primary)]">Pre-restore backup</div>
+            <div class="mt-1 break-all font-mono text-sm text-[var(--text-secondary)]">
+              {{ archiveReport.preRestoreBackupPath }}
+            </div>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+              <div class="text-sm font-medium text-[var(--text-primary)]">
+                Restored Collections ({{ archiveReport.restoredCollections.length }})
+              </div>
+              <div class="mt-3 space-y-2">
+                <div
+                  v-for="name in archiveReport.restoredCollections"
+                  :key="name"
+                  class="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-secondary)]"
+                >
+                  {{ name }}
+                </div>
+                <div
+                  v-if="archiveReport.restoredCollections.length === 0"
+                  class="text-sm text-[var(--text-muted)]"
+                >
+                  No collections were restored.
+                </div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+              <div class="text-sm font-medium text-[var(--text-primary)]">
+                Failed Collections ({{ archiveReport.failedCollections.length }})
+              </div>
+              <div class="mt-3 space-y-2">
+                <div
+                  v-for="failure in archiveReport.failedCollections"
+                  :key="`${failure.collectionName}-${failure.message}`"
+                  class="rounded-md border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] px-3 py-2 text-sm text-[var(--text-secondary)]"
+                >
+                  <div class="font-medium text-[var(--text-primary)]">{{ failure.collectionName }}</div>
+                  <div class="mt-1 text-[var(--text-muted)]">{{ failure.message }}</div>
+                </div>
+                <div
+                  v-if="archiveReport.failedCollections.length === 0"
+                  class="text-sm text-[var(--text-muted)]"
+                >
+                  No collection-level restore failures.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+            <div class="text-sm font-medium text-[var(--text-primary)]">
+              Dropped View References ({{ archiveReport.droppedViewReferences.length }})
+            </div>
+            <div class="mt-3 space-y-2" v-if="archiveReport.droppedViewReferences.length > 0">
+              <div
+                v-for="warning in archiveReport.droppedViewReferences"
+                :key="`${warning.collectionName}-${warning.viewName}-${warning.referenceType}-${warning.referenceValue}`"
+                class="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-secondary)]"
+              >
+                <div class="font-medium text-[var(--text-primary)]">
+                  {{ warning.collectionName }} / {{ warning.viewName }}
+                </div>
+                <div class="mt-1 text-[var(--text-muted)]">
+                  {{ warning.referenceType }}: {{ warning.referenceValue }}. {{ warning.reason }}
+                </div>
+              </div>
+            </div>
+            <div v-else class="mt-3 text-sm text-[var(--text-muted)]">No dropped view references.</div>
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+              <div class="text-sm font-medium text-[var(--text-primary)]">
+                Skipped Entities ({{ archiveReport.skippedEntities.length }})
+              </div>
+              <div class="mt-3 space-y-2" v-if="archiveReport.skippedEntities.length > 0">
+                <div
+                  v-for="warning in archiveReport.skippedEntities"
+                  :key="`${warning.collectionName}-${warning.scope}-${warning.name}-${warning.type}`"
+                  class="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-secondary)]"
+                >
+                  <div class="font-medium text-[var(--text-primary)]">
+                    {{ warning.collectionName }} / {{ warning.name }}
+                  </div>
+                  <div class="mt-1 text-[var(--text-muted)]">
+                    {{ warning.scope }} type "{{ warning.type }}" skipped. {{ warning.reason }}
+                  </div>
+                </div>
+              </div>
+              <div v-else class="mt-3 text-sm text-[var(--text-muted)]">No skipped fields or views.</div>
+            </div>
+            <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+              <div class="text-sm font-medium text-[var(--text-primary)]">
+                Stat Mismatches ({{ archiveReport.statMismatches.length }})
+              </div>
+              <div class="mt-3 space-y-2" v-if="archiveReport.statMismatches.length > 0">
+                <div
+                  v-for="mismatch in archiveReport.statMismatches"
+                  :key="`${mismatch.scope}-${mismatch.collectionName ?? 'total'}-${mismatch.stat}`"
+                  class="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-secondary)]"
+                >
+                  <div class="font-medium text-[var(--text-primary)]">
+                    {{ mismatch.scope === 'collection' ? mismatch.collectionName : 'Total database' }}
+                  </div>
+                  <div class="mt-1 text-[var(--text-muted)]">
+                    {{ mismatch.stat }} expected {{ mismatch.expected }}, got {{ mismatch.actual }}.
+                  </div>
+                </div>
+              </div>
+              <div v-else class="mt-3 text-sm text-[var(--text-muted)]">No stat mismatches detected.</div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <Button @click="archiveReportVisible = false">Close</Button>
+        </template>
+      </Dialog>
 
       <section id="general" class="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
         <div class="mb-4 flex items-start justify-between gap-4">
@@ -173,12 +385,53 @@
           </div>
           <Tag severity="info">Import & Export</Tag>
         </div>
-        <p class="text-sm text-[var(--text-secondary)]">
-          Collection import/export is in Collection Settings. Open a collection, then use
-          Collection Settings to export CSV/JSON or import data into that collection.
-        </p>
-        <div class="mt-4">
-          <Button label="Back to Dashboard" severity="secondary" outlined @click="store.showDashboard()" />
+        <div class="rounded-lg border border-[var(--border-color)]">
+          <div class="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <template #title>Full Archive Export</template>
+              <template #content>
+                <div class="space-y-4">
+                  <p class="text-sm text-[var(--text-secondary)]">
+                    Export the entire database to a single JSON archive for cross-machine migration or long-term
+                    storage.
+                  </p>
+                  <div class="space-y-2">
+                    <label for="archiveDescription" class="text-sm text-[var(--text-secondary)]">Description</label>
+                    <Textarea id="archiveDescription" v-model="archiveDescription" rows="4" class="w-full" autoResize
+                      placeholder="Optional notes about this archive" />
+                  </div>
+                  <Button label="Export Full Archive" :loading="exportingArchive" @click="exportArchive" />
+                  <div v-if="lastArchiveExportPath" class="text-xs text-[var(--text-muted)]">
+                    Last export: <span class="font-mono">{{ lastArchiveExportPath }}</span>
+                  </div>
+                </div>
+              </template>
+            </Card>
+
+            <Card>
+              <template #title>Full Archive Restore</template>
+              <template #content>
+                <div class="space-y-4">
+                  <p class="text-sm text-[var(--text-secondary)]">
+                    Restore a full archive into the current database. Existing data will be replaced after a mandatory
+                    pre-restore backup is created.
+                  </p>
+                  <Button label="Select Archive File" severity="danger" outlined :loading="previewingArchive"
+                    @click="openArchivePreview" />
+                </div>
+              </template>
+            </Card>
+          </div>
+        </div>
+        
+        <div class="mt-6 rounded-lg border border-[var(--border-color)] p-4">
+          <div class="text-sm font-medium text-[var(--text-primary)]">Collection Import/Export</div>
+          <p class="mt-2 text-sm text-[var(--text-secondary)]">
+            Collection-level CSV/JSON import and export stays in Collection Settings for per-collection workflows.
+          </p>
+          <div class="mt-4">
+            <Button label="Back to Dashboard" severity="secondary" outlined @click="store.showDashboard()" />
+          </div>
         </div>
       </section>
 
@@ -213,13 +466,21 @@ import { onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Card from "primevue/card";
 import ConfirmDialog from "primevue/confirmdialog";
+import Dialog from "primevue/dialog";
 import InputNumber from "primevue/inputnumber";
 import Tag from "primevue/tag";
+import Textarea from "primevue/textarea";
 import ToggleSwitch from "primevue/toggleswitch";
 import { useConfirm } from "primevue/useconfirm";
 import { useStore } from "../../store";
 import { handleIpc } from "../../utils/ipc";
-import type { BackupEntry, BackupLabel } from "../../types/models";
+import type {
+  BackupEntry,
+  BackupLabel,
+  FullArchiveExportResult,
+  FullArchivePreview,
+  FullArchiveRestoreReport,
+} from "../../types/models";
 
 const appVersion = __APP_VERSION__;
 const store = useStore();
@@ -235,6 +496,16 @@ const creatingBackup = ref(false);
 const savingSettings = ref(false);
 const restoringFileName = ref<string | null>(null);
 const deletingFileName = ref<string | null>(null);
+const archiveDescription = ref("");
+const exportingArchive = ref(false);
+const previewingArchive = ref(false);
+const restoringArchive = ref(false);
+const archivePreview = ref<FullArchivePreview | null>(null);
+const archivePreviewVisible = ref(false);
+const archiveReport = ref<FullArchiveRestoreReport | null>(null);
+const archiveReportVisible = ref(false);
+const navigateToDashboardAfterArchiveReport = ref(false);
+const lastArchiveExportPath = ref<string | null>(null);
 
 function normalizeLimit(value: number | null | undefined, fallback: number): number {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -335,6 +606,82 @@ async function createBackupNow() {
 async function openBackupsFolder() {
   const result = await window.electronAPI.openBackupsFolder();
   handleIpc(result, "backup:openFolder", false);
+}
+
+async function exportArchive() {
+  exportingArchive.value = true;
+  try {
+    const result = await window.electronAPI.exportFullArchive({
+      description: archiveDescription.value,
+    });
+    const exported = handleIpc<FullArchiveExportResult | null>(
+      result,
+      "archive:exportFull",
+      null,
+    );
+    if (exported) {
+      lastArchiveExportPath.value = exported.filePath;
+    }
+  } finally {
+    exportingArchive.value = false;
+  }
+}
+
+async function openArchivePreview() {
+  previewingArchive.value = true;
+  try {
+    const result = await window.electronAPI.previewFullArchiveRestore();
+    const preview = handleIpc<FullArchivePreview | null>(
+      result,
+      "archive:previewRestore",
+      null,
+    );
+    if (preview) {
+      archivePreview.value = preview;
+      archivePreviewVisible.value = true;
+    }
+  } finally {
+    previewingArchive.value = false;
+  }
+}
+
+async function restoreArchive() {
+  if (!archivePreview.value) {
+    return;
+  }
+
+  restoringArchive.value = true;
+  try {
+    const result = await window.electronAPI.restoreFullArchive(
+      archivePreview.value.filePath,
+    );
+    const report = handleIpc<FullArchiveRestoreReport | null>(
+      result,
+      "archive:restore",
+      null,
+    );
+    if (!report) {
+      return;
+    }
+
+    archivePreviewVisible.value = false;
+    archivePreview.value = null;
+    archiveReport.value = report;
+    archiveReportVisible.value = true;
+    navigateToDashboardAfterArchiveReport.value = true;
+    await store.loadCollections();
+  } finally {
+    restoringArchive.value = false;
+  }
+}
+
+function handleArchiveReportHide() {
+  if (!navigateToDashboardAfterArchiveReport.value) {
+    return;
+  }
+
+  navigateToDashboardAfterArchiveReport.value = false;
+  store.showDashboard();
 }
 
 async function restoreBackup(fileName: string) {

@@ -26,6 +26,10 @@ import type {
   BulkMutationResult,
   ImportCollectionInput,
   CollectionItemCount,
+  FullArchiveExportInput,
+  FullArchiveExportResult,
+  FullArchivePreview,
+  FullArchiveRestoreReport,
   PaginatedItemsResult,
   ViewConfig,
   UpdateBackupSettingsInput,
@@ -106,6 +110,15 @@ export interface IElectronAPI {
     options: OpenDialogOptions,
   ) => Promise<IpcResult<string | null>>;
   readFile: (filePath: string) => Promise<IpcResult<string | null>>;
+
+  // Full Archive
+  exportFullArchive: (
+    input: FullArchiveExportInput,
+  ) => Promise<IpcResult<FullArchiveExportResult | null>>;
+  previewFullArchiveRestore: () => Promise<IpcResult<FullArchivePreview | null>>;
+  restoreFullArchive: (
+    filePath: string,
+  ) => Promise<IpcResult<FullArchiveRestoreReport>>;
 
   // Backups
   getBackupSettings: () => Promise<IpcResult<BackupSettings>>;

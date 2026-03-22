@@ -75,6 +75,12 @@ const electronAPI: IElectronAPI = {
   showOpenDialog: (options) => invoke("import:showOpenDialog", options),
   readFile: (filePath: string) => invoke("import:readFile", filePath),
 
+  // Full Archive
+  exportFullArchive: (input) => invoke("archive:exportFull", input),
+  previewFullArchiveRestore: () => invoke("archive:previewRestore"),
+  restoreFullArchive: (filePath: string) =>
+    invoke("archive:restore", filePath),
+
   // Backups
   getBackupSettings: () => invoke("backup:getSettings"),
   updateBackupSettings: (input) => invoke("backup:updateSettings", input),
