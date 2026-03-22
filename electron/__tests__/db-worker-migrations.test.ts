@@ -10,6 +10,17 @@ type TempDb = { dbPath: string; dir: string };
 
 const tempDbs: TempDb[] = [];
 
+function createTempDbFile(): TempDb {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "secondbrain-"));
+  const dbPath = path.join(dir, "test.db");
+  const db = new Database(dbPath);
+  db.close();
+
+  const temp = { dbPath, dir };
+  tempDbs.push(temp);
+  return temp;
+}
+
 function createLegacyDb(): TempDb {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "secondbrain-"));
   const dbPath = path.join(dir, "legacy.db");
@@ -63,6 +74,17 @@ afterEach(() => {
 });
 
 describe("db migration v5 (field options)", () => {
+  it("enables WAL journal mode on file-backed databases", () => {
+    const { dbPath } = createTempDbFile();
+    initDatabase(dbPath);
+
+    const db = new Database(dbPath);
+    const row = db.pragma("journal_mode", { simple: true }) as string;
+    db.close();
+
+    expect(row).toBe("wal");
+  });
+
   it("converts textarea to longtext and select options to JSON", () => {
     const { dbPath } = createLegacyDb();
     initDatabase(dbPath);
