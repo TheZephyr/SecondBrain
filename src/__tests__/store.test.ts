@@ -52,13 +52,18 @@ function makeElectronAPIMock() {
     writeFile: vi.fn(),
     showOpenDialog: vi.fn(),
     readFile: vi.fn(),
+    getBackupSettings: vi.fn(),
+    updateBackupSettings: vi.fn(),
+    listBackups: vi.fn(),
+    createManualBackup: vi.fn(),
+    restoreBackup: vi.fn(),
+    deleteBackup: vi.fn(),
+    openBackupsFolder: vi.fn(),
+    openExternal: vi.fn(),
   };
 }
 
-function emptyPaginatedResult(
-  limit = 100,
-  offset = 0,
-): PaginatedItemsResult {
+function emptyPaginatedResult(limit = 100, offset = 0): PaginatedItemsResult {
   return { items: [], total: 0, limit, offset };
 }
 
@@ -188,16 +193,14 @@ describe("loadItems", () => {
     const firstPromise = new Promise((resolve) => {
       resolveFirst = resolve;
     });
-    mockApi.getItems
-      .mockReturnValueOnce(firstPromise)
-      .mockResolvedValueOnce(
-        ok<PaginatedItemsResult>({
-          items: freshItems,
-          total: 1,
-          limit: 50,
-          offset: 0,
-        }),
-      );
+    mockApi.getItems.mockReturnValueOnce(firstPromise).mockResolvedValueOnce(
+      ok<PaginatedItemsResult>({
+        items: freshItems,
+        total: 1,
+        limit: 50,
+        offset: 0,
+      }),
+    );
 
     // Fire first load (will hang on the promise)
     const firstLoad = store.loadItems(1);
@@ -628,15 +631,15 @@ describe("view config", () => {
 
     expect(mockApi.updateViewConfig).toHaveBeenCalledWith({
       viewId: 4,
-        config: {
-          columnWidths: { 7: 60 },
-          sort: [{ field: "data.Title", order: -1 }],
-          calendarDateField: "Due Date",
-          calendarDateFieldId: undefined,
-          groupingFieldId: undefined,
-          kanbanColumnOrder: undefined,
-          selectedFieldIds: [],
-        },
-      });
+      config: {
+        columnWidths: { 7: 60 },
+        sort: [{ field: "data.Title", order: -1 }],
+        calendarDateField: "Due Date",
+        calendarDateFieldId: undefined,
+        groupingFieldId: undefined,
+        kanbanColumnOrder: undefined,
+        selectedFieldIds: [],
+      },
+    });
   });
 });

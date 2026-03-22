@@ -119,6 +119,29 @@ export type Collection = {
   created_at?: string;
 };
 
+export type BackupLabel = "startup" | "manual" | "pre_restore";
+
+export type BackupEntry = {
+  fileName: string;
+  filePath: string;
+  label: BackupLabel;
+  createdAt: string;
+  sizeBytes: number;
+};
+
+export type BackupSettings = {
+  automaticBackupsEnabled: boolean;
+  automaticBackupsLimit: number;
+  manualBackupsLimit: number;
+  backupDirectory: string;
+};
+
+export type UpdateBackupSettingsInput = {
+  automaticBackupsEnabled: boolean;
+  automaticBackupsLimit: number;
+  manualBackupsLimit: number;
+};
+
 export type ViewType = "grid" | "kanban" | "calendar";
 
 export type View = {

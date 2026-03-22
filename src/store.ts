@@ -61,7 +61,7 @@ export const useStore = defineStore("main", () => {
   const itemsSearch = ref("");
   const itemsSort = ref<ItemSortSpec[]>([]);
   const selectedCollection = ref<Collection | null>(null);
-  const currentView = ref<"dashboard" | "collection">("dashboard");
+  const currentView = ref<"dashboard" | "collection" | "settings">("dashboard");
   const activeCollectionPanel = ref<CollectionPanelType>("data");
   const collectionSettingsOpen = ref(false);
   let itemsRequestToken = 0;
@@ -195,9 +195,7 @@ export const useStore = defineStore("main", () => {
           ? undefined
           : existing?.groupingFieldId;
       const kanbanColumnOrder =
-        groupingFieldId === undefined
-          ? undefined
-          : existing?.kanbanColumnOrder;
+        groupingFieldId === undefined ? undefined : existing?.kanbanColumnOrder;
       const unchanged =
         nextSelected.length === baseSelected.length &&
         nextSelected.every((id, index) => id === baseSelected[index]) &&
@@ -286,7 +284,9 @@ export const useStore = defineStore("main", () => {
       await loadViews(selectedCollection.value.id, { preserveActive: true });
       if (
         activeViewId.value !== null &&
-        !currentViews.value.some((viewItem) => viewItem.id === activeViewId.value)
+        !currentViews.value.some(
+          (viewItem) => viewItem.id === activeViewId.value,
+        )
       ) {
         const fallback = currentViews.value[0];
         activeViewId.value = fallback?.id ?? null;
@@ -304,7 +304,9 @@ export const useStore = defineStore("main", () => {
       await loadViews(selectedCollection.value.id, { preserveActive: true });
       if (
         previousActiveViewId !== null &&
-        !currentViews.value.some((viewItem) => viewItem.id === previousActiveViewId)
+        !currentViews.value.some(
+          (viewItem) => viewItem.id === previousActiveViewId,
+        )
       ) {
         const fallback = currentViews.value[0];
         activeViewId.value = fallback?.id ?? null;
@@ -323,7 +325,10 @@ export const useStore = defineStore("main", () => {
     return handleIpc(result, "db:getViewConfig", null);
   }
 
-  async function saveViewConfig(viewId: number, config: ViewConfig): Promise<void> {
+  async function saveViewConfig(
+    viewId: number,
+    config: ViewConfig,
+  ): Promise<void> {
     const parsedViewId = Number(viewId);
     if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
       return;
@@ -473,7 +478,10 @@ export const useStore = defineStore("main", () => {
     return success;
   }
 
-  async function loadItems(collectionId: number, options: LoadItemsOptions = {}) {
+  async function loadItems(
+    collectionId: number,
+    options: LoadItemsOptions = {},
+  ) {
     const searchChanged =
       options.search !== undefined && options.search !== itemsSearch.value;
     const sortChanged =
@@ -645,11 +653,9 @@ export const useStore = defineStore("main", () => {
     };
 
     const result = await window.electronAPI.bulkDeleteItems(payload);
-    const mutationResult = handleIpc(
-      result,
-      "db:bulkDeleteItems",
-      { affectedCount: 0 } satisfies BulkMutationResult,
-    );
+    const mutationResult = handleIpc(result, "db:bulkDeleteItems", {
+      affectedCount: 0,
+    } satisfies BulkMutationResult);
     if (!result.ok) {
       return null;
     }
@@ -671,11 +677,9 @@ export const useStore = defineStore("main", () => {
     };
 
     const result = await window.electronAPI.bulkPatchItems(payload);
-    const mutationResult = handleIpc(
-      result,
-      "db:bulkPatchItems",
-      { affectedCount: 0 } satisfies BulkMutationResult,
-    );
+    const mutationResult = handleIpc(result, "db:bulkPatchItems", {
+      affectedCount: 0,
+    } satisfies BulkMutationResult);
     if (!result.ok) {
       return null;
     }
@@ -707,6 +711,16 @@ export const useStore = defineStore("main", () => {
 
   function showDashboard() {
     selectCollection(null);
+  }
+
+  function showSettings() {
+    selectedCollection.value = null;
+    currentView.value = "settings";
+    fields.value = [];
+    clearItemsState();
+    clearViewsState();
+    activeCollectionPanel.value = "data";
+    collectionSettingsOpen.value = false;
   }
 
   return {
@@ -756,5 +770,6 @@ export const useStore = defineStore("main", () => {
     reorderItems,
     selectCollection,
     showDashboard,
+    showSettings,
   };
 });

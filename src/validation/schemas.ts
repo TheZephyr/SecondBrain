@@ -20,9 +20,17 @@ export const fieldNameSchema = z
 export const positiveIntSchema = z.number().int().positive();
 export const orderIndexSchema = z.number().int().min(0);
 export const nonNegativeIntSchema = z.number().int().min(0);
+export const backupRetentionSchema = z.number().int().min(0).max(999);
 export const viewTypeSchema = z.enum(["grid", "kanban", "calendar"]);
 export const viewIsDefaultSchema = z.union([z.literal(0), z.literal(1)]);
 export const viewOrderSchema = nonNegativeIntSchema;
+export const backupLabelSchema = z.enum(["startup", "manual", "pre_restore"]);
+export const backupFileNameSchema = z
+  .string()
+  .regex(
+    /^secondbrain_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_(startup|manual|pre_restore)\.db$/,
+    "Invalid backup file name.",
+  );
 export const fieldTypeSchema = z.enum([
   "text",
   "longtext",
@@ -396,4 +404,10 @@ export const GetItemsInputSchema = z.object({
   offset: nonNegativeIntSchema.default(0),
   search: z.string().trim().max(200).optional().default(""),
   sort: z.array(ItemSortSpecSchema).max(3).optional().default([]),
+});
+
+export const UpdateBackupSettingsInputSchema = z.object({
+  automaticBackupsEnabled: z.boolean(),
+  automaticBackupsLimit: backupRetentionSchema,
+  manualBackupsLimit: backupRetentionSchema,
 });

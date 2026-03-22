@@ -54,6 +54,14 @@ function makeElectronAPIMock() {
     writeFile: vi.fn(),
     showOpenDialog: vi.fn(),
     readFile: vi.fn(),
+    getBackupSettings: vi.fn(),
+    updateBackupSettings: vi.fn(),
+    listBackups: vi.fn(),
+    createManualBackup: vi.fn(),
+    restoreBackup: vi.fn(),
+    deleteBackup: vi.fn(),
+    openBackupsFolder: vi.fn(),
+    openExternal: vi.fn(),
   };
 }
 
@@ -696,6 +704,24 @@ describe("showDashboard", () => {
     expect(store.selectedCollection).toBeNull();
     expect(store.currentView).toBe("dashboard");
     expect(store.fields).toEqual([]);
+  });
+});
+
+describe("showSettings", () => {
+  it("clears collection-scoped state and sets currentView to settings", () => {
+    const store = useStore();
+    store.selectedCollection = { id: 1, name: "Col" };
+    store.collectionSettingsOpen = true;
+    store.activeCollectionPanel = "fields";
+    store.fields = [makeField(1, 1)];
+
+    store.showSettings();
+
+    expect(store.selectedCollection).toBeNull();
+    expect(store.currentView).toBe("settings");
+    expect(store.fields).toEqual([]);
+    expect(store.collectionSettingsOpen).toBe(false);
+    expect(store.activeCollectionPanel).toBe("data");
   });
 });
 

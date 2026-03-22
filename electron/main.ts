@@ -7,8 +7,12 @@ import type {
 import path from "path";
 import fs from "fs";
 import { Worker } from "worker_threads";
+import Database from "better-sqlite3";
 import type { ZodType } from "zod";
 import type {
+  BackupEntry,
+  BackupLabel,
+  BackupSettings,
   ItemData,
   GetItemsInput,
   NewCollectionInput,
@@ -30,6 +34,7 @@ import type {
   BulkMutationResult,
   ImportCollectionInput,
   ReorderItemsInput,
+  UpdateBackupSettingsInput,
 } from "../src/types/models";
 import type { IpcError, IpcErrorCode, IpcResult } from "../src/types/ipc";
 import type {
@@ -59,7 +64,19 @@ import {
   itemDataSchema,
   ReorderItemsInputSchema,
   positiveIntSchema,
+  backupFileNameSchema,
+  UpdateBackupSettingsInputSchema,
 } from "../src/validation/schemas";
+import {
+  buildBackupFileName,
+  ensureBackupDirectory,
+  getBackupRetentionLimit,
+  listBackups as listBackupsFromDisk,
+  loadBackupSettings,
+  partitionBackups,
+  pruneBackupSet,
+  saveBackupSettings,
+} from "./backup-utils";
 
 let mainWindow: BrowserWindow | null = null;
 let dbWorker: Worker | null = null;
@@ -396,6 +413,7 @@ async function startDbWorker(pathToDb: string): Promise<void> {
 async function initDatabase(): Promise<boolean> {
   try {
     dbPath = path.join(app.getPath("userData"), "secondbrain.db");
+    await maybeCreateStartupBackup();
     await startDbWorker(dbPath);
     return true;
   } catch (error) {
@@ -407,6 +425,123 @@ async function initDatabase(): Promise<boolean> {
     app.exit(1);
     return false;
   }
+}
+
+function requireDbPath(): string {
+  if (!dbPath) {
+    throw new AppError("DB_NOT_READY", "Database path not initialized.");
+  }
+  return dbPath;
+}
+
+function requireUserDataPath(): string {
+  if (!app.isReady()) {
+    throw new AppError("UNKNOWN", "Application is not ready.");
+  }
+  return app.getPath("userData");
+}
+
+async function checkpointDatabaseFile(targetDbPath: string): Promise<void> {
+  if (!(await fs.promises.stat(targetDbPath).catch(() => null))) {
+    return;
+  }
+
+  const tempDb = new Database(targetDbPath);
+  try {
+    tempDb.pragma("busy_timeout = 5000");
+    tempDb.pragma("wal_checkpoint(TRUNCATE)");
+  } finally {
+    tempDb.close();
+  }
+}
+
+async function removeDbSidecars(targetDbPath: string): Promise<void> {
+  await Promise.all(
+    [`${targetDbPath}-wal`, `${targetDbPath}-shm`].map((filePath) =>
+      fs.promises.unlink(filePath).catch(() => undefined),
+    ),
+  );
+}
+
+async function copyDatabaseToBackup(label: BackupLabel): Promise<BackupEntry> {
+  const liveDbPath = requireDbPath();
+  const userDataPath = requireUserDataPath();
+
+  if (!(await fs.promises.stat(liveDbPath).catch(() => null))) {
+    throw new AppError("FS_READ_FAILED", "Database file does not exist.");
+  }
+
+  await stopDbWorker(`Creating ${label} backup.`);
+  await checkpointDatabaseFile(liveDbPath);
+
+  const backupDirectory = await ensureBackupDirectory(userDataPath);
+  const fileName = buildBackupFileName(label);
+  const destinationPath = path.join(backupDirectory, fileName);
+  await fs.promises.copyFile(liveDbPath, destinationPath);
+
+  await startDbWorker(liveDbPath);
+
+  const backups = await listBackupsFromDisk(userDataPath);
+  const created = backups.find((backup) => backup.fileName === fileName);
+  if (!created) {
+    throw new AppError("FS_READ_FAILED", "Backup file was not created.");
+  }
+
+  const settings = await loadBackupSettings(userDataPath);
+  const limit = getBackupRetentionLimit(settings, label);
+  const buckets = partitionBackups(backups);
+  if (label === "startup") {
+    await pruneBackupSet(buckets.automatic, limit);
+  } else {
+    await pruneBackupSet(buckets.manual, limit);
+  }
+
+  return created;
+}
+
+async function maybeCreateStartupBackup(): Promise<void> {
+  const liveDbPath = requireDbPath();
+  const userDataPath = requireUserDataPath();
+  const settings = await loadBackupSettings(userDataPath);
+
+  if (!settings.automaticBackupsEnabled) {
+    return;
+  }
+  if (!(await fs.promises.stat(liveDbPath).catch(() => null))) {
+    return;
+  }
+
+  await checkpointDatabaseFile(liveDbPath);
+  const backupDirectory = await ensureBackupDirectory(userDataPath);
+  const fileName = buildBackupFileName("startup");
+  await fs.promises.copyFile(liveDbPath, path.join(backupDirectory, fileName));
+
+  const backups = await listBackupsFromDisk(userDataPath);
+  await pruneBackupSet(
+    partitionBackups(backups).automatic,
+    settings.automaticBackupsLimit,
+  );
+}
+
+async function restoreBackupFromFileName(fileName: string): Promise<boolean> {
+  const userDataPath = requireUserDataPath();
+  const liveDbPath = requireDbPath();
+  const backups = await listBackupsFromDisk(userDataPath);
+  const backup = backups.find((entry) => entry.fileName === fileName);
+  if (!backup) {
+    throw new AppError("FS_READ_FAILED", "Backup file not found.");
+  }
+
+  await copyDatabaseToBackup("pre_restore");
+  await stopDbWorker("Restore backup requested.");
+  await checkpointDatabaseFile(backup.filePath);
+  await removeDbSidecars(liveDbPath);
+  await fs.promises.copyFile(backup.filePath, liveDbPath);
+  await removeDbSidecars(liveDbPath);
+
+  app.relaunch();
+  app.exit(0);
+  return true;
 }
 
 // ==================== COLLECTIONS ====================
@@ -731,6 +866,57 @@ handleIpc("import:readFile", async (_, filePath: string) => {
       serializeDetails(error),
     );
   }
+});
+
+// ==================== BACKUPS ====================
+handleIpc("backup:getSettings", async () => {
+  return loadBackupSettings(requireUserDataPath());
+});
+
+handleIpc(
+  "backup:updateSettings",
+  async (_, payload: UpdateBackupSettingsInput) => {
+    const input = parseOrThrow(
+      UpdateBackupSettingsInputSchema,
+      payload,
+      "backup:updateSettings",
+    );
+    return saveBackupSettings(requireUserDataPath(), input);
+  },
+);
+
+handleIpc("backup:list", async () => {
+  return listBackupsFromDisk(requireUserDataPath());
+});
+
+handleIpc("backup:createManual", async () => {
+  return copyDatabaseToBackup("manual");
+});
+
+handleIpc("backup:restore", async (_, fileName: string) => {
+  const parsedFileName = parseOrThrow(
+    backupFileNameSchema,
+    fileName,
+    "backup:restore",
+  );
+  return restoreBackupFromFileName(parsedFileName);
+});
+
+handleIpc("backup:delete", async (_, fileName: string) => {
+  const parsedFileName = parseOrThrow(
+    backupFileNameSchema,
+    fileName,
+    "backup:delete",
+  );
+  const backupDirectory = await ensureBackupDirectory(requireUserDataPath());
+  await fs.promises.unlink(path.join(backupDirectory, parsedFileName));
+  return true;
+});
+
+handleIpc("backup:openFolder", async () => {
+  const backupDirectory = await ensureBackupDirectory(requireUserDataPath());
+  await shell.openPath(backupDirectory);
+  return true;
 });
 
 // ==================== EXTERNAL ====================
