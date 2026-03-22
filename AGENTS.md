@@ -62,6 +62,25 @@
 - Never instruct the user to delete their database to resolve schema conflicts. This is a local-first application; data loss is unacceptable.
 - If you alter existing collections/fields or core indices, you MUST write an incremental migration script in the DB initialization flow that checks `user_version` and executes `ALTER TABLE` or safe data backfill operations.
 
+### 3.6 JSON Blob Serialization Boundary
+
+Three columns in the schema store structured data as JSON blobs: `items.data`, `fields.options`, and `views.config`. SQLite cannot enforce the structure of these blobs, so the application layer is the only enforcement point.
+
+Rules:
+- Every read from these columns MUST go through a single designated deserializer:
+  - `items.data` → `itemDataSchema` (Zod, in `src/validation/schemas.ts`)
+  - `fields.options` → `parseFieldOptions` (in `src/utils/fieldOptions.ts`)
+  - `views.config` → `parseStoredViewConfig` (in `electron/db-worker.ts`)
+- Every write to these columns MUST go through the corresponding serializer.
+- Ad-hoc `JSON.parse` or `JSON.stringify` calls directly against these columns are forbidden outside those designated functions.
+- If a new blob column is added to the schema, a designated serializer/deserializer pair MUST be created before any read/write code is written.
+
+### 3.7 View Config Blob
+
+The `views.config` column stores presentation state (column widths, sort, field visibility, grouping) as a JSON blob. Do not attempt to decompose this into separate table columns — variable-length structures like column widths and sort specs would require junction tables that add join complexity with no meaningful benefit, since this is a user preferences store rather than relational data.
+
+The canonical schema for this blob is `ViewConfigSchema` in `src/validation/schemas.ts`. All reads and writes must go through the designated serializer/deserializer pair per rule 3.6. If the config structure needs to evolve, update the Zod schema and handle defaults in the deserializer — do not add SQL migrations for config shape changes.
+
 ## 4. State Management (Pinia)
 
 - **Synchronization**:

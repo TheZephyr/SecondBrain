@@ -105,7 +105,10 @@ function buildInClausePlaceholders(length: number): string {
   return new Array(length).fill("?").join(", ");
 }
 
-function getMissingIds(requestedIds: number[], existingIds: Set<number>): number[] {
+function getMissingIds(
+  requestedIds: number[],
+  existingIds: Set<number>,
+): number[] {
   return requestedIds.filter((id) => !existingIds.has(id));
 }
 
@@ -338,10 +341,9 @@ function migrateSourceViewAndCalendarConfig(database: Database.Database): void {
         config.calendarDateFieldId > 0;
 
       if (hasLegacyField && !hasCalendarFieldId) {
-        const fieldRow = getFieldId.get(
-          row.collection_id,
-          legacyField,
-        ) as IdRow | undefined;
+        const fieldRow = getFieldId.get(row.collection_id, legacyField) as
+          | IdRow
+          | undefined;
         if (fieldRow) {
           config.calendarDateFieldId = Number(fieldRow.id);
         }
@@ -643,7 +645,11 @@ function bulkPatchItems(
   const bulkPatchTransaction = database.transaction(
     (payload: BulkPatchItemsInput) => {
       const itemIds = payload.updates.map((entry) => entry.id);
-      const itemDataById = getItemsDataByIds(database, payload.collectionId, itemIds);
+      const itemDataById = getItemsDataByIds(
+        database,
+        payload.collectionId,
+        itemIds,
+      );
       const missingIds = getMissingIds(itemIds, new Set(itemDataById.keys()));
       if (missingIds.length > 0) {
         throw new Error(
@@ -663,14 +669,19 @@ function bulkPatchItems(
           );
         }
 
-        const currentData = parseStoredItemDataOrThrow(currentRawData, update.id);
+        const currentData = parseStoredItemDataOrThrow(
+          currentRawData,
+          update.id,
+        );
         const mergedData: ItemData = {
           ...currentData,
           ...update.patch,
         };
         const mergedParse = itemDataSchema.safeParse(mergedData);
         if (!mergedParse.success) {
-          throw new Error(`Bulk patch failed. Item ${update.id} merged data is invalid.`);
+          throw new Error(
+            `Bulk patch failed. Item ${update.id} merged data is invalid.`,
+          );
         }
 
         const info = updateItem.run(
@@ -966,7 +977,7 @@ function getItems(database: Database.Database, input: GetItemsInput) {
   const sortClauses = getItemSortClause(input.sort, fieldTypeMap);
   const orderByClause =
     sortClauses.length > 0
-      ? `${sortClauses.join(', ')}, i."order" ASC, i.id ASC`
+      ? `${sortClauses.join(", ")}, i."order" ASC, i.id ASC`
       : defaultOrderClause;
 
   const rowsSql = `
@@ -1087,7 +1098,11 @@ function runImport(database: Database.Database, input: ImportCollectionInput) {
           'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
         );
         for (const item of data.items) {
-          insertItem.run(item.collectionId, JSON.stringify(item.data), nextOrder);
+          insertItem.run(
+            item.collectionId,
+            JSON.stringify(item.data),
+            nextOrder,
+          );
           nextOrder += 1;
         }
       }
@@ -1238,7 +1253,9 @@ function reorderViews(
         .run(shiftAmount, payload.collectionId);
 
       database
-        .prepare('UPDATE views SET "order" = 0 WHERE collection_id = ? AND is_default = 1')
+        .prepare(
+          'UPDATE views SET "order" = 0 WHERE collection_id = ? AND is_default = 1',
+        )
         .run(payload.collectionId);
 
       const updateViewOrder = database.prepare(
@@ -1465,18 +1482,58 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
     }
     case "updateField": {
       const database = requireDb();
-      database
-        .prepare(
-          "UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?",
-        )
-        .run(
-          operation.input.name,
-          operation.input.type,
-          operation.input.options || null,
-          operation.input.orderIndex || 0,
-          operation.input.id,
-        );
 
+      // Get current field to detect name changes
+      const currentField = database
+        .prepare("SELECT name, collection_id FROM fields WHERE id = ?")
+        .get(operation.input.id) as
+        | { name: string; collection_id: number }
+        | undefined;
+
+      if (!currentField) {
+        throw new Error(`Field ${operation.input.id} not found.`);
+      }
+
+      const oldName = currentField.name;
+      const newName = operation.input.name;
+      const collectionId = currentField.collection_id;
+      const nameChanged = oldName !== newName;
+
+      // Use transaction to ensure atomicity: field rename + data migration
+      const updateFieldTransaction = database.transaction(() => {
+        // Update the field
+        database
+          .prepare(
+            "UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?",
+          )
+          .run(
+            newName,
+            operation.input.type,
+            operation.input.options || null,
+            operation.input.orderIndex || 0,
+            operation.input.id,
+          );
+
+        // If name changed, migrate all item data in the collection
+        if (nameChanged) {
+          database
+            .prepare(
+              `
+              UPDATE items
+              SET data = json_set(
+                json_remove(data, '$."${oldName}"'),
+                '$."${newName}"',
+                json_extract(data, '$."${oldName}"')
+              )
+              WHERE collection_id = ?
+                AND json_type(data, '$."${oldName}"') IS NOT NULL
+            `,
+            )
+            .run(collectionId);
+        }
+      });
+
+      updateFieldTransaction();
       return true;
     }
     case "reorderFields": {
@@ -1503,19 +1560,25 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
         .prepare(
           'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, (SELECT COALESCE(MAX("order"), 0) + 1 FROM items WHERE collection_id = ?))',
         )
-        .run(operation.input.collectionId, dataJson, operation.input.collectionId);
+        .run(
+          operation.input.collectionId,
+          dataJson,
+          operation.input.collectionId,
+        );
 
       return {
         id: Number(info.lastInsertRowid),
         collection_id: operation.input.collectionId,
-        order: getNextItemOrderIndex(database, operation.input.collectionId) - 1,
+        order:
+          getNextItemOrderIndex(database, operation.input.collectionId) - 1,
         data: operation.input.data,
       };
     }
     case "insertItemAt": {
       const database = requireDb();
       const insertItem = database.transaction((input: InsertItemAtInput) => {
-        const targetOrder = input.afterOrder === null ? 0 : input.afterOrder + 1;
+        const targetOrder =
+          input.afterOrder === null ? 0 : input.afterOrder + 1;
         database
           .prepare(
             'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
@@ -1540,39 +1603,41 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
     }
     case "duplicateItem": {
       const database = requireDb();
-      const duplicateItem = database.transaction((input: DuplicateItemInput) => {
-        const source = database
-          .prepare(
-            'SELECT id, collection_id, data, "order" FROM items WHERE id = ? AND collection_id = ?',
-          )
-          .get(input.itemId, input.collectionId) as ItemRow | undefined;
+      const duplicateItem = database.transaction(
+        (input: DuplicateItemInput) => {
+          const source = database
+            .prepare(
+              'SELECT id, collection_id, data, "order" FROM items WHERE id = ? AND collection_id = ?',
+            )
+            .get(input.itemId, input.collectionId) as ItemRow | undefined;
 
-        if (!source) {
-          throw new Error(
-            `Duplicate failed. Item ${input.itemId} not found in collection ${input.collectionId}.`,
-          );
-        }
+          if (!source) {
+            throw new Error(
+              `Duplicate failed. Item ${input.itemId} not found in collection ${input.collectionId}.`,
+            );
+          }
 
-        const targetOrder = toNumber(source.order) + 1;
-        database
-          .prepare(
-            'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
-          )
-          .run(input.collectionId, targetOrder);
+          const targetOrder = toNumber(source.order) + 1;
+          database
+            .prepare(
+              'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
+            )
+            .run(input.collectionId, targetOrder);
 
-        const info = database
-          .prepare(
-            'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
-          )
-          .run(input.collectionId, source.data, targetOrder);
+          const info = database
+            .prepare(
+              'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
+            )
+            .run(input.collectionId, source.data, targetOrder);
 
-        return {
-          id: Number(info.lastInsertRowid),
-          collection_id: input.collectionId,
-          order: targetOrder,
-          data: JSON.parse(source.data) as ItemData,
-        };
-      });
+          return {
+            id: Number(info.lastInsertRowid),
+            collection_id: input.collectionId,
+            order: targetOrder,
+            data: JSON.parse(source.data) as ItemData,
+          };
+        },
+      );
 
       return duplicateItem(operation.input);
     }

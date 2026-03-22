@@ -4,7 +4,7 @@ import path from "path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
-import type { Field } from "../../src/types/models";
+import type { Field, ItemData } from "../../src/types/models";
 
 type TempDb = { dbPath: string; dir: string };
 
@@ -114,5 +114,153 @@ describe("db migration v5 (field options)", () => {
     expect(status?.options).toBe(
       JSON.stringify({ choices: ["Open", "Closed"] }),
     );
+  });
+
+  it("migrates item data when a field is renamed", () => {
+    const { dbPath } = createTempDbFile();
+    initDatabase(dbPath);
+
+    // Create a collection
+    const collection = handleOperation({
+      type: "addCollection",
+      input: { name: "Test Collection", icon: "folder" },
+    }) as { id: number; name: string };
+
+    // Add a field
+    const field = handleOperation({
+      type: "addField",
+      input: {
+        collectionId: collection.id,
+        name: "oldName",
+        type: "text",
+        options: null,
+        orderIndex: 0,
+      },
+    }) as Field;
+
+    // Add an item with data under the old field name
+    const itemData: ItemData = { oldName: "test value" };
+    const item = handleOperation({
+      type: "addItem",
+      input: {
+        collectionId: collection.id,
+        data: itemData,
+      },
+    }) as { id: number; collection_id: number; data: ItemData };
+
+    // Verify the item data is stored correctly
+    const itemsBefore = handleOperation({
+      type: "getItems",
+      input: {
+        collectionId: collection.id,
+        limit: 10,
+        offset: 0,
+        search: undefined,
+        sort: undefined,
+      },
+    }) as { items: any[]; total: number; limit: number; offset: number };
+
+    expect(itemsBefore.items).toHaveLength(1);
+    expect(JSON.parse(itemsBefore.items[0].data)).toEqual({ oldName: "test value" });
+
+    // Rename the field
+    const renameResult = handleOperation({
+      type: "updateField",
+      input: {
+        id: field.id,
+        name: "newName",
+        type: "text",
+        options: null,
+        orderIndex: 0,
+      },
+    }) as boolean;
+
+    expect(renameResult).toBe(true);
+
+    // Verify the field name was updated
+    const fieldsAfter = handleOperation({
+      type: "getFields",
+      collectionId: collection.id,
+    }) as Field[];
+
+    const renamedField = fieldsAfter.find((f) => f.id === field.id);
+    expect(renamedField?.name).toBe("newName");
+
+    // Verify the item data was migrated
+    const itemsAfter = handleOperation({
+      type: "getItems",
+      input: {
+        collectionId: collection.id,
+        limit: 10,
+        offset: 0,
+        search: undefined,
+        sort: undefined,
+      },
+    }) as { items: any[]; total: number; limit: number; offset: number };
+
+    expect(itemsAfter.items).toHaveLength(1);
+    expect(JSON.parse(itemsAfter.items[0].data)).toEqual({ newName: "test value" });
+  });
+
+  it("does not migrate data when field name is unchanged", () => {
+    const { dbPath } = createTempDbFile();
+    initDatabase(dbPath);
+
+    // Create a collection
+    const collection = handleOperation({
+      type: "addCollection",
+      input: { name: "Test Collection", icon: "folder" },
+    }) as { id: number; name: string };
+
+    // Add a field
+    const field = handleOperation({
+      type: "addField",
+      input: {
+        collectionId: collection.id,
+        name: "fieldName",
+        type: "text",
+        options: null,
+        orderIndex: 0,
+      },
+    }) as Field;
+
+    // Add an item with data
+    const itemData: ItemData = { fieldName: "test value" };
+    handleOperation({
+      type: "addItem",
+      input: {
+        collectionId: collection.id,
+        data: itemData,
+      },
+    });
+
+    // Update field without changing name
+    const updateResult = handleOperation({
+      type: "updateField",
+      input: {
+        id: field.id,
+        name: "fieldName", // Same name
+        type: "longtext", // Different type
+        options: null,
+        orderIndex: 0,
+      },
+    }) as boolean;
+
+    expect(updateResult).toBe(true);
+
+    // Verify the item data is unchanged
+    const itemsAfter = handleOperation({
+      type: "getItems",
+      input: {
+        collectionId: collection.id,
+        limit: 10,
+        offset: 0,
+        search: undefined,
+        sort: undefined,
+      },
+    }) as { items: any[]; total: number; limit: number; offset: number };
+
+    expect(itemsAfter.items).toHaveLength(1);
+    expect(JSON.parse(itemsAfter.items[0].data)).toEqual({ fieldName: "test value" });
   });
 });
