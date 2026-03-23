@@ -69,20 +69,20 @@ import type {
   UpdateItemInput,
   ViewConfig
 } from '../../types/models'
-import CollectionGrid from './collection/grid/CollectionGrid.vue'
-import CollectionKanbanView from './collection/kanban/CollectionKanbanView.vue'
-import CollectionCalendarView from './collection/calendar/CollectionCalendarView.vue'
-import CollectionItemEditorDialog from './collection/CollectionItemEditorDialog.vue'
-import CollectionFieldsPanel from './collection/CollectionFieldsPanel.vue'
-import CollectionChildFieldsPanel from './collection/CollectionChildFieldsPanel.vue'
-import CollectionSettingsPanel from './collection/CollectionSettingsPanel.vue'
+import CollectionGrid from './grid/CollectionGrid.vue'
+import CollectionKanbanView from './kanban/CollectionKanbanView.vue'
+import CollectionCalendarView from './calendar/CollectionCalendarView.vue'
+import CollectionItemEditorDialog from './CollectionItemEditorDialog.vue'
+import CollectionFieldsPanel from './settings/CollectionFieldsPanel.vue'
+import CollectionChildFieldsPanel from './settings/CollectionChildFieldsPanel.vue'
+import CollectionSettingsPanel from './settings/CollectionSettingsPanel.vue'
 import { serializeFieldOptions } from '../../utils/fieldOptions'
 import { parseMultiselectValue } from '../../utils/fieldValues'
 import type {
   CollectionSettingsSavePayload,
   FieldDraftInput,
   ItemEditorSavePayload
-} from './collection/types'
+} from './types'
 
 const store = useStore()
 const confirm = useConfirm()

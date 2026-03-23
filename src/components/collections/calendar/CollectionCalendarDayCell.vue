@@ -58,7 +58,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Popover from 'primevue/popover'
 import type { PopoverMethods } from 'primevue/popover'
-import type { CalendarMonthCell } from '../../../../composables/collection/calendar/useCollectionCalendar'
+import type { CalendarMonthCell } from '../../../composables/collection/calendar/useCollectionCalendar'
 import CollectionCalendarItemChip from './CollectionCalendarItemChip.vue'
 
 const props = defineProps<{

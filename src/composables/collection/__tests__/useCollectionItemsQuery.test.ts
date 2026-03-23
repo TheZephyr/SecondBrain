@@ -4,7 +4,7 @@ import type { Field, Item, ViewConfig, ViewType } from "../../../types/models";
 import type {
   MultiSortMeta,
   RawSortMeta,
-} from "../../../components/views/collection/types";
+} from "../../../components/collections/types";
 import {
   areSortMetaEqual,
   getSortStorageKey,

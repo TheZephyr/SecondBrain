@@ -13,12 +13,12 @@
 
 <script setup lang="ts">
 import { inject, ref } from 'vue'
-import type { Field } from '../../../../types/models'
-import { useStore } from '../../../../store'
+import type { Field } from '../../../types/models'
+import { useStore } from '../../../store'
 import {
   buildItemDataFromForm,
   createDefaultItemFormData
-} from '../../../../composables/collection/useCollectionItemForm'
+} from '../../../composables/collection/useCollectionItemForm'
 import { gridEditingKey } from './types'
 
 const props = defineProps<{

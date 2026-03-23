@@ -89,7 +89,7 @@ import type { Field, FieldOptions, FieldType, Item } from '../../../types/models
 import { FIELD_TYPE_META } from '../../../types/models'
 import { getDefaultOptions, parseFieldOptions } from '../../../utils/fieldOptions'
 import FieldOptionsForm from './FieldOptionsForm.vue'
-import type { FieldDraftInput } from './types'
+import type { FieldDraftInput } from './../types'
 
 type RowReorderEvent = { value: Field[] }
 

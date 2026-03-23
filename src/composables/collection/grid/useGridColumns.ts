@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import type { Field, Item, ViewConfig } from '../../../types/models'
-import type { GridColumnDef } from '../../../components/views/collection/grid/types'
+import type { GridColumnDef } from '../../../components/collections/grid/types'
 import { useStore } from '../../../store'
 
 type UseGridColumnsParams = {

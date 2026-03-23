@@ -1,4 +1,4 @@
-import type { FieldOptions, FieldType, ItemData } from '../../../types/models'
+import type { FieldOptions, FieldType, ItemData } from '../../types/models'
 
 export type RawSortMeta = { field?: string; order?: 1 | -1 | 0 | null }
 

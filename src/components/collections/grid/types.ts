@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/vue-table'
 import type { InjectionKey, Ref } from 'vue'
-import type { Field, Item, ItemDataValue } from '../../../../types/models'
+import type { Field, Item, ItemDataValue } from '../../../types/models'
 
 export type GridRow = Item
 

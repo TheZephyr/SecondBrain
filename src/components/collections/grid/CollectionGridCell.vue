@@ -111,18 +111,18 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import Chip from 'primevue/chip'
-import type { BooleanIcon, DateFieldOptions, Field, ItemDataValue, RatingFieldOptions } from '../../../../types/models'
+import type { BooleanIcon, DateFieldOptions, Field, ItemDataValue, RatingFieldOptions } from '../../../types/models'
 import {
   formatDateWithFieldOptions,
   parseDateValue
-} from '../../../../utils/date'
-import { getChipStyle } from '../../../../utils/selectChip'
+} from '../../../utils/date'
+import { getChipStyle } from '../../../utils/selectChip'
 import { gridEditingKey, gridSelectionKey } from './types'
-import { buildGridCellKey } from '../../../../composables/collection/grid/useGridSelection'
-import { parseFieldOptions } from '../../../../utils/fieldOptions'
-import { parseMultiselectValue, parseBooleanValue, parseRatingValue } from '../../../../utils/fieldValues'
-import { normalizeUniqueKey } from '../../../../utils/fieldUnique'
-import { handleIpc } from '../../../../utils/ipc'
+import { buildGridCellKey } from '../../../composables/collection/grid/useGridSelection'
+import { parseFieldOptions } from '../../../utils/fieldOptions'
+import { parseMultiselectValue, parseBooleanValue, parseRatingValue } from '../../../utils/fieldValues'
+import { normalizeUniqueKey } from '../../../utils/fieldUnique'
+import { handleIpc } from '../../../utils/ipc'
 import * as icons from 'lucide-vue-next'
 import { Link } from 'lucide-vue-next'
 

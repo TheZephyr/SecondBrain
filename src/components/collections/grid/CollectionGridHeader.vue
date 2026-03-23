@@ -45,7 +45,7 @@ import type { Header, HeaderGroup } from '@tanstack/vue-table'
 import * as icons from 'lucide-vue-next'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import { FIELD_TYPE_META, type Field } from '../../../../types/models'
+import { FIELD_TYPE_META, type Field } from '../../../types/models'
 import type { MultiSortMeta } from '../types'
 import type { GridRow, GridColumnMeta } from './types'
 

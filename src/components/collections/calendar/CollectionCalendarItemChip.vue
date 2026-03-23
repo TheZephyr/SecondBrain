@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CalendarDayItem } from '../../../../composables/collection/calendar/useCollectionCalendar'
+import type { CalendarDayItem } from '../../../composables/collection/calendar/useCollectionCalendar'
 
 defineProps<{
   entry: CalendarDayItem

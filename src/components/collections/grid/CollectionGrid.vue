@@ -45,18 +45,18 @@ import type {
   InsertItemAtInput,
   DuplicateItemInput,
   MoveItemInput
-} from '../../../../types/models'
+} from '../../../types/models'
 import type { MultiSortMeta } from '../types'
 import CollectionGridHeader from './CollectionGridHeader.vue'
 import CollectionGridBody from './CollectionGridBody.vue'
 import CollectionGridFooter from './CollectionGridFooter.vue'
 import CollectionGridToolbar from './CollectionGridToolbar.vue'
 import { gridEditingKey, gridSelectionKey } from './types'
-import { useGridSelection } from '../../../../composables/collection/grid/useGridSelection'
-import { useGridEditing } from '../../../../composables/collection/grid/useGridEditing'
-import { useGridColumns } from '../../../../composables/collection/grid/useGridColumns'
-import { parseFieldOptions } from '../../../../utils/fieldOptions'
-import { normalizeUniqueKey } from '../../../../utils/fieldUnique'
+import { useGridSelection } from '../../../composables/collection/grid/useGridSelection'
+import { useGridEditing } from '../../../composables/collection/grid/useGridEditing'
+import { useGridColumns } from '../../../composables/collection/grid/useGridColumns'
+import { parseFieldOptions } from '../../../utils/fieldOptions'
+import { normalizeUniqueKey } from '../../../utils/fieldUnique'
 
 type RowContextMenuPayload = {
   event: MouseEvent

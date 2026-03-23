@@ -45,7 +45,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Row } from '@tanstack/vue-table'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { FileText, Search } from 'lucide-vue-next'
-import type { Field, Item } from '../../../../types/models'
+import type { Field, Item } from '../../../types/models'
 import CollectionGridRow from './CollectionGridRow.vue'
 import CollectionGridAddRow from './CollectionGridAddRow.vue'
 

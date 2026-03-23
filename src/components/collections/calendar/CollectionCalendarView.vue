@@ -27,9 +27,9 @@
 
 <script setup lang="ts">
 import { toRef } from 'vue'
-import type { Field, Item, ItemSortSpec } from '../../../../types/models'
-import { useCollectionCalendar } from '../../../../composables/collection/calendar/useCollectionCalendar'
-import type { LoadItemsOptions } from '../../../../composables/collection/useCollectionItemsQuery'
+import type { Field, Item, ItemSortSpec } from '../../../types/models'
+import { useCollectionCalendar } from '../../../composables/collection/calendar/useCollectionCalendar'
+import type { LoadItemsOptions } from '../../../composables/collection/useCollectionItemsQuery'
 import CollectionCalendarGrid from './CollectionCalendarGrid.vue'
 import CollectionCalendarToolbar from './CollectionCalendarToolbar.vue'
 

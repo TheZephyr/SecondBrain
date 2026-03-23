@@ -33,9 +33,9 @@ import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import Chip from 'primevue/chip'
 import { GripVertical } from 'lucide-vue-next'
-import type { Field, Item } from '../../../../types/models'
-import type { KanbanColumn } from '../../../../composables/collection/kanban/useCollectionKanban'
-import { getChipStyle } from '../../../../utils/selectChip'
+import type { Field, Item } from '../../../types/models'
+import type { KanbanColumn } from '../../../composables/collection/kanban/useCollectionKanban'
+import { getChipStyle } from '../../../utils/selectChip'
 import CollectionKanbanCard from './CollectionKanbanCard.vue'
 
 const props = defineProps<{

@@ -19,9 +19,9 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useStore } from "../../store";
-import Dashboard from "../views/Dashboard.vue";
-import Settings from "../views/Settings.vue";
-import Collection from "../views/Collection.vue";
+import Dashboard from "../dashboard/Dashboard.vue";
+import Settings from "../settings/Settings.vue";
+import Collection from "../collections/Collection.vue";
 import ContentNavbar from "./ContentNavbar.vue";
 import type { Collection as CollectionType } from "../../types/models";
 

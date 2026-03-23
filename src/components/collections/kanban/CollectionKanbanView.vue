@@ -36,9 +36,9 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue'
-import type { Field, Item, ItemData, ItemSortSpec, ViewConfig } from '../../../../types/models'
-import type { LoadItemsOptions } from '../../../../composables/collection/useCollectionItemsQuery'
-import { useCollectionKanban } from '../../../../composables/collection/kanban/useCollectionKanban'
+import type { Field, Item, ItemData, ItemSortSpec, ViewConfig } from '../../../types/models'
+import type { LoadItemsOptions } from '../../../composables/collection/useCollectionItemsQuery'
+import { useCollectionKanban } from '../../../composables/collection/kanban/useCollectionKanban'
 import CollectionKanbanColumn from './CollectionKanbanColumn.vue'
 
 const props = defineProps<{

@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CalendarMonthCell } from '../../../../composables/collection/calendar/useCollectionCalendar'
+import type { CalendarMonthCell } from '../../../composables/collection/calendar/useCollectionCalendar'
 import CollectionCalendarDayCell from './CollectionCalendarDayCell.vue'
 
 defineProps<{

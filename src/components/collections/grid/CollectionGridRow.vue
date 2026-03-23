@@ -41,7 +41,7 @@ import { computed } from 'vue'
 import type { Cell, Row } from '@tanstack/vue-table'
 import { ChevronRight } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import type { Field, Item, ItemDataValue } from '../../../../types/models'
+import type { Field, Item, ItemDataValue } from '../../../types/models'
 import type { GridColumnMeta, GridRow } from './types'
 import CollectionGridCell from './CollectionGridCell.vue'
 

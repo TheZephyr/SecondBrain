@@ -234,7 +234,7 @@ import type { Collection, Field } from '../../../types/models'
 import { useCollectionImportExport } from '../../../composables/collection/useCollectionImportExport'
 import { isSafeFieldName } from '../../../validation/fieldNames'
 import { useStore } from '../../../store'
-import type { CollectionSettingsSavePayload } from './types'
+import type { CollectionSettingsSavePayload } from '../types'
 
 const props = defineProps<{
   collection: Collection
