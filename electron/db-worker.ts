@@ -48,7 +48,6 @@ type ItemRow = {
   data: string;
   order: number | bigint;
 };
-type UserVersionRow = { user_version: number | bigint };
 type ViewConfigRow = { config: string | null };
 type ViewConfigMigrationRow = {
   id: number;
@@ -170,236 +169,7 @@ function hasIndex(database: Database.Database, indexName: string): boolean {
   return Boolean(row?.found);
 }
 
-function normalizeFieldOrderIndices(database: Database.Database): void {
-  const collectionRows = database
-    .prepare(
-      "SELECT DISTINCT collection_id AS id FROM fields ORDER BY collection_id ASC",
-    )
-    .all() as IdRow[];
-  const selectFieldIds = database.prepare(
-    "SELECT id FROM fields WHERE collection_id = ? ORDER BY order_index ASC, id ASC",
-  );
-  const updateFieldOrder = database.prepare(
-    "UPDATE fields SET order_index = ? WHERE id = ?",
-  );
 
-  for (const collectionRow of collectionRows) {
-    const fieldRows = selectFieldIds.all(collectionRow.id) as IdRow[];
-    for (let index = 0; index < fieldRows.length; index++) {
-      updateFieldOrder.run(index, fieldRows[index].id);
-    }
-  }
-}
-
-function ensureFieldOrderIntegrity(database: Database.Database): void {
-  if (hasIndex(database, FIELD_ORDER_UNIQUE_INDEX)) {
-    return;
-  }
-
-  const migrateFieldOrder = database.transaction(() => {
-    normalizeFieldOrderIndices(database);
-    database.exec(`
-      CREATE UNIQUE INDEX IF NOT EXISTS ${FIELD_ORDER_UNIQUE_INDEX}
-      ON fields(collection_id, order_index)
-    `);
-  });
-
-  migrateFieldOrder();
-}
-
-function migrateViewsTable(database: Database.Database): void {
-  const row = database.prepare("PRAGMA user_version").get() as
-    | UserVersionRow
-    | undefined;
-  const userVersion = row ? toNumber(row.user_version) : 0;
-
-  if (userVersion >= 1) {
-    return;
-  }
-
-  const migrate = database.transaction(() => {
-    database.exec(`
-      CREATE TABLE IF NOT EXISTS views (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        collection_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL DEFAULT 'grid',
-        is_default INTEGER NOT NULL DEFAULT 0,
-        "order" INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-      )
-    `);
-
-    database.exec(`
-      INSERT INTO views (collection_id, name, type, is_default, "order")
-      SELECT c.id, 'Source', 'grid', 1, 0
-      FROM collections c
-      WHERE NOT EXISTS (
-        SELECT 1 FROM views v WHERE v.collection_id = c.id
-      )
-    `);
-
-    database.exec("PRAGMA user_version = 1");
-  });
-
-  migrate();
-}
-
-function migrateItemsOrderColumn(database: Database.Database): void {
-  const row = database.prepare("PRAGMA user_version").get() as
-    | UserVersionRow
-    | undefined;
-  const userVersion = row ? toNumber(row.user_version) : 0;
-
-  if (userVersion >= 2) {
-    return;
-  }
-
-  const migrate = database.transaction(() => {
-    database.exec('ALTER TABLE items ADD COLUMN "order" INTEGER');
-    database.exec('UPDATE items SET "order" = rowid WHERE "order" IS NULL');
-    database.exec(`
-      CREATE INDEX IF NOT EXISTS idx_items_collection_order
-      ON items (collection_id, "order" ASC)
-    `);
-    database.exec("PRAGMA user_version = 2");
-  });
-
-  migrate();
-}
-
-function migrateViewConfigColumn(database: Database.Database): void {
-  const row = database.prepare("PRAGMA user_version").get() as
-    | UserVersionRow
-    | undefined;
-  const userVersion = row ? toNumber(row.user_version) : 0;
-
-  if (userVersion >= 3) {
-    return;
-  }
-
-  const migrate = database.transaction(() => {
-    database.exec("ALTER TABLE views ADD COLUMN config TEXT DEFAULT NULL");
-    database.exec("PRAGMA user_version = 3");
-  });
-
-  migrate();
-}
-
-function migrateSourceViewAndCalendarConfig(database: Database.Database): void {
-  const row = database.prepare("PRAGMA user_version").get() as
-    | UserVersionRow
-    | undefined;
-  const userVersion = row ? toNumber(row.user_version) : 0;
-
-  if (userVersion >= 4) {
-    return;
-  }
-
-  const migrate = database.transaction(() => {
-    database
-      .prepare("UPDATE views SET name = ? WHERE is_default = 1")
-      .run("Source");
-
-    const viewRows = database
-      .prepare(
-        "SELECT id, collection_id, config FROM views WHERE config IS NOT NULL",
-      )
-      .all() as ViewConfigMigrationRow[];
-    const getFieldId = database.prepare(
-      "SELECT id FROM fields WHERE collection_id = ? AND name = ? LIMIT 1",
-    );
-    const updateConfig = database.prepare(
-      "UPDATE views SET config = ? WHERE id = ?",
-    );
-
-    for (const row of viewRows) {
-      if (!row.config) {
-        continue;
-      }
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(row.config);
-      } catch {
-        continue;
-      }
-
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        continue;
-      }
-
-      const config = parsed as Record<string, unknown>;
-      const legacyField =
-        typeof config.calendarDateField === "string"
-          ? config.calendarDateField.trim()
-          : "";
-      const hasLegacyField = legacyField.length > 0;
-      const hasCalendarFieldId =
-        typeof config.calendarDateFieldId === "number" &&
-        Number.isInteger(config.calendarDateFieldId) &&
-        config.calendarDateFieldId > 0;
-
-      if (hasLegacyField && !hasCalendarFieldId) {
-        const fieldRow = getFieldId.get(row.collection_id, legacyField) as
-          | IdRow
-          | undefined;
-        if (fieldRow) {
-          config.calendarDateFieldId = Number(fieldRow.id);
-        }
-      }
-
-      if ("calendarDateField" in config) {
-        delete config.calendarDateField;
-      }
-
-      updateConfig.run(JSON.stringify(config), row.id);
-    }
-
-    database.exec("PRAGMA user_version = 4");
-  });
-
-  migrate();
-}
-
-function migrateFieldOptionsFormat(database: Database.Database): void {
-  const row = database.prepare("PRAGMA user_version").get() as
-    | UserVersionRow
-    | undefined;
-  const userVersion = row ? toNumber(row.user_version) : 0;
-
-  if (userVersion >= 5) {
-    return;
-  }
-
-  const migrate = database.transaction(() => {
-    database
-      .prepare("UPDATE fields SET type = 'longtext' WHERE type = 'textarea'")
-      .run();
-
-    const selectRows = database
-      .prepare(
-        "SELECT id, options FROM fields WHERE type = 'select' AND options IS NOT NULL AND options NOT LIKE '{%'",
-      )
-      .all() as { id: number; options: string }[];
-
-    const updateOptions = database.prepare(
-      "UPDATE fields SET options = ? WHERE id = ?",
-    );
-
-    for (const row of selectRows) {
-      const choices = row.options
-        .split(",")
-        .map((option) => option.trim())
-        .filter((option) => option.length > 0);
-      updateOptions.run(JSON.stringify({ choices }), row.id);
-    }
-
-    database.exec("PRAGMA user_version = 5");
-  });
-
-  migrate();
-}
 
 function ensureReorderPayloadMatchesCollection(
   database: Database.Database,
@@ -1020,6 +790,7 @@ export function initDatabase(dbPath: string): boolean {
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
 
+  // 1. Collections Table
   db.exec(`
     CREATE TABLE IF NOT EXISTS collections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1029,6 +800,7 @@ export function initDatabase(dbPath: string): boolean {
     )
   `);
 
+  // 2. Fields Table + Unique Order Index
   db.exec(`
     CREATE TABLE IF NOT EXISTS fields (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1040,29 +812,53 @@ export function initDatabase(dbPath: string): boolean {
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `);
-  ensureFieldOrderIntegrity(db);
-  migrateViewsTable(db);
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ${FIELD_ORDER_UNIQUE_INDEX}
+    ON fields(collection_id, order_index)
+  `);
 
+  // 3. Views Table (must be created here)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      collection_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'grid',
+      is_default INTEGER NOT NULL DEFAULT 0,
+      "order" INTEGER NOT NULL DEFAULT 0,
+      config TEXT DEFAULT NULL,
+      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 4. Items Table (must include "order" column)
   db.exec(`
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       collection_id INTEGER NOT NULL,
       data TEXT NOT NULL,
+      "order" INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
     )
   `);
-  migrateItemsOrderColumn(db);
-  migrateViewConfigColumn(db);
-  migrateSourceViewAndCalendarConfig(db);
-  migrateFieldOptionsFormat(db);
-
+  // Add necessary item indexes (order index)
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_items_collection_order
+    ON items (collection_id, "order" ASC)
+  `);
+  
+  // Keep existing created_at index
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_items_collection_created_at_id
     ON items (collection_id, created_at DESC, id DESC)
   `);
 
+  // 5. Set final user version (must be set unconditionally)
+  db.exec("PRAGMA user_version = 1");
+
+  // 6. FTS setup
   ftsEnabled = tryEnableFts(db);
 
   return true;
