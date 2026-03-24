@@ -4,7 +4,8 @@ A desktop application for organizing personal data collections with a flexible, 
 
 ## Features
 
-- **Custom Collections** - Create unlimited collections for any data type
+- **Custom Collections** - Create collections for different data types
+- **Collection views** - Add Grid view for spreadsheet-type data management, Kanban view for tracking progress and Calendar view for scheduling events
 - **Flexible Schema** - Define custom fields with support for text, numbers, dates, dropdowns, and text areas
 - **Data Management** - Import and export data in CSV or JSON formats with preview and merge options
 
@@ -13,8 +14,9 @@ A desktop application for organizing personal data collections with a flexible, 
 - Runtime: Electron
 - Language: TypeScript
 - Database: SQLite
-- Frontend: Vue 3, Vite, PrimeVue, Tailwind CSS
+- Frontend: Vue 3, Vite
 - State: Pinia
+- UI: PrimeVue, Tailwind CSS
 
 ## Contributor Quick Map
 
@@ -58,22 +60,26 @@ A desktop application for organizing personal data collections with a flexible, 
 ### Setup
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/TheZephyr/SecondBrain.git
 cd SecondBrain
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Rebuild native modules for Electron:
+
 ```bash
 npm run rebuild:electron
 ```
 
 4. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -83,36 +89,43 @@ npm run dev
 Run these commands after pulling code changes:
 
 1. Install/update dependencies:
+
 ```bash
 npm install
 ```
 
 2. Run unit tests (includes Node-targeted native rebuild via `pretest`):
+
 ```bash
 npm run test
 ```
 
 3. Run renderer type-check:
+
 ```bash
 npx vue-tsc --noEmit
 ```
 
 4. Run node/electron type-check:
+
 ```bash
 npx tsc --noEmit -p tsconfig.node.json
 ```
 
 5. Validate the production build:
+
 ```bash
 npm run build:win
 ```
 
 6. Launch app for manual smoke testing (includes Electron-targeted native rebuild via `predev:electron`):
+
 ```bash
 npm run dev
 ```
 
 7. Manual edge-case smoke checks:
+
 - Switch between collections with saved table sort and confirm the sort preference is preserved.
 - Reorder fields in a collection that includes legacy/hidden unsafe fields; the reorder mutation should succeed.
 - Import data into a collection that includes legacy/hidden unsafe fields and confirm no order-index conflict errors occur.
@@ -122,7 +135,10 @@ Useful native rebuild scripts:
 - `npm run rebuild:node` - rebuild `better-sqlite3` for your local Node runtime.
 - `npm run rebuild:electron` - rebuild `better-sqlite3` for Electron runtime (via `@electron/rebuild`).
 
+## Troubleshooting
+
 If you see `NODE_MODULE_VERSION` mismatch errors, run:
+
 ```bash
 npm run rebuild:electron
 ```
@@ -130,6 +146,7 @@ npm run rebuild:electron
 ## Build for Production
 
 Create a Windows installer:
+
 ```bash
 npm run build:win
 ```
