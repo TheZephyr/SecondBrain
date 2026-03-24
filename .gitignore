@@ -39,8 +39,11 @@ coverage/
 
 # Agent files and directories
 AGENTS.md
+AGENTS.*.md
 CLAUDE.md
+CLAUDE.*.md
 GEMINI.md
+GEMINI.*.md
 .codex
 .claude
 .gemini
