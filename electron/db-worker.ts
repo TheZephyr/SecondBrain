@@ -1,23 +1,6 @@
 import Database from "better-sqlite3";
 import { parentPort } from "worker_threads";
 import type {
-  BulkDeleteItemsInput,
-  BulkMutationResult,
-  BulkPatchItemsInput,
-  GetItemsInput,
-  ImportCollectionInput,
-  InsertItemAtInput,
-  ItemData,
-  ItemSortSpec,
-  DuplicateItemInput,
-  MoveItemInput,
-  ReorderFieldsInput,
-  ReorderItemsInput,
-  ReorderViewsInput,
-  ViewConfig,
-} from "../src/types/models";
-import { itemDataSchema, ViewConfigSchema } from "../src/validation/schemas";
-import type {
   DbWorkerError,
   DbWorkerOperation,
   DbWorkerRequest,
@@ -29,31 +12,46 @@ import {
   restoreFullArchive as runFullArchiveRestore,
 } from "./full-archive";
 
+import { initDatabaseConnection } from "./db-init";
+import {
+  getCollections,
+  getCollectionItemCounts,
+  addCollection,
+  updateCollection,
+  deleteCollection,
+} from "./db-collections";
+import {
+  getFields,
+  addField,
+  updateField,
+  reorderFields,
+  deleteField,
+} from "./db-fields";
+import {
+  getItems,
+  addItem,
+  insertItemAt,
+  duplicateItem,
+  moveItem,
+  updateItem,
+  deleteItem,
+  reorderItems,
+  bulkDeleteItems,
+  bulkPatchItems,
+  runImport,
+} from "./db-items";
+import {
+  getViews,
+  addView,
+  updateView,
+  deleteView,
+  getViewConfig,
+  updateViewConfig,
+  reorderViews,
+} from "./db-views";
+
 let db: Database.Database | null = null;
 let ftsEnabled = false;
-const SQLITE_IN_CLAUSE_CHUNK_SIZE = 400;
-const FIELD_ORDER_UNIQUE_INDEX = "idx_fields_collection_order_unique";
-
-type CountRow = { count: number | bigint };
-type TotalRow = { total: number | bigint };
-type MaxOrderRow = { maxOrderIndex: number | bigint | null };
-type MaxViewOrderRow = { maxOrder: number | bigint | null };
-type MaxItemOrderRow = { maxOrder: number | bigint | null };
-type IdRow = { id: number };
-type ItemDataRow = { id: number; data: string };
-type ItemOrderRow = { id: number; order: number | bigint };
-type ItemRow = {
-  id: number;
-  collection_id: number;
-  data: string;
-  order: number | bigint;
-};
-type ViewConfigRow = { config: string | null };
-type ViewConfigMigrationRow = {
-  id: number;
-  collection_id: number;
-  config: string | null;
-};
 
 function serializeDetails(details: unknown): string | undefined {
   if (!details) return undefined;
@@ -87,993 +85,13 @@ function requireDb(): Database.Database {
   return db;
 }
 
-function toNumber(value: number | bigint | undefined): number {
-  if (value === undefined) return 0;
-  return typeof value === "bigint" ? Number(value) : value;
-}
-
-function chunkArray<T>(values: T[], chunkSize: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < values.length; i += chunkSize) {
-    chunks.push(values.slice(i, i + chunkSize));
-  }
-  return chunks;
-}
-
-function buildInClausePlaceholders(length: number): string {
-  return new Array(length).fill("?").join(", ");
-}
-
-function getMissingIds(
-  requestedIds: number[],
-  existingIds: Set<number>,
-): number[] {
-  return requestedIds.filter((id) => !existingIds.has(id));
-}
-
-function getNextFieldOrderIndex(
-  database: Database.Database,
-  collectionId: number,
-): number {
-  const row = database
-    .prepare(
-      "SELECT MAX(order_index) AS maxOrderIndex FROM fields WHERE collection_id = ?",
-    )
-    .get(collectionId) as MaxOrderRow | undefined;
-
-  const maxOrderIndex =
-    row?.maxOrderIndex === null || row?.maxOrderIndex === undefined
-      ? -1
-      : toNumber(row.maxOrderIndex);
-  return maxOrderIndex + 1;
-}
-
-function getNextViewOrderIndex(
-  database: Database.Database,
-  collectionId: number,
-): number {
-  const row = database
-    .prepare(
-      'SELECT MAX("order") AS maxOrder FROM views WHERE collection_id = ?',
-    )
-    .get(collectionId) as MaxViewOrderRow | undefined;
-
-  const maxOrder =
-    row?.maxOrder === null || row?.maxOrder === undefined
-      ? -1
-      : toNumber(row.maxOrder);
-  return maxOrder + 1;
-}
-
-function getNextItemOrderIndex(
-  database: Database.Database,
-  collectionId: number,
-): number {
-  const row = database
-    .prepare(
-      'SELECT COALESCE(MAX("order"), 0) AS maxOrder FROM items WHERE collection_id = ?',
-    )
-    .get(collectionId) as MaxItemOrderRow | undefined;
-
-  const maxOrder = row?.maxOrder ?? 0;
-  return toNumber(maxOrder) + 1;
-}
-
-function hasIndex(database: Database.Database, indexName: string): boolean {
-  const row = database
-    .prepare(
-      "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ? LIMIT 1",
-    )
-    .get(indexName) as { found: number } | undefined;
-
-  return Boolean(row?.found);
-}
-
-
-
-function ensureReorderPayloadMatchesCollection(
-  database: Database.Database,
-  input: ReorderFieldsInput,
-) {
-  const fieldRows = database
-    .prepare(
-      "SELECT id FROM fields WHERE collection_id = ? ORDER BY order_index ASC, id ASC",
-    )
-    .all(input.collectionId) as IdRow[];
-
-  if (fieldRows.length !== input.fieldOrders.length) {
-    throw new Error(
-      "Field reorder payload must include every field in the collection exactly once.",
-    );
-  }
-
-  const existingIds = new Set(fieldRows.map((row) => row.id));
-  const payloadIds = input.fieldOrders.map((entry) => entry.id);
-  const payloadUniqueIds = new Set(payloadIds);
-  if (payloadUniqueIds.size !== payloadIds.length) {
-    throw new Error("Field reorder payload contains duplicate field IDs.");
-  }
-
-  const invalidIds: number[] = [];
-  for (const payloadId of payloadUniqueIds) {
-    if (!existingIds.has(payloadId)) {
-      invalidIds.push(payloadId);
-    }
-  }
-
-  if (invalidIds.length > 0) {
-    throw new Error(
-      `Field reorder payload contains IDs outside the collection: ${invalidIds.join(", ")}`,
-    );
-  }
-
-  const missingIds: number[] = [];
-  for (const existingId of existingIds) {
-    if (!payloadUniqueIds.has(existingId)) {
-      missingIds.push(existingId);
-    }
-  }
-
-  if (missingIds.length > 0) {
-    throw new Error(
-      `Field reorder payload is missing IDs from the collection: ${missingIds.join(", ")}`,
-    );
-  }
-}
-
-function reorderFields(
-  database: Database.Database,
-  input: ReorderFieldsInput,
-): boolean {
-  const reorderFieldsTransaction = database.transaction(
-    (payload: ReorderFieldsInput) => {
-      ensureReorderPayloadMatchesCollection(database, payload);
-
-      const shiftAmount = payload.fieldOrders.length;
-      database
-        .prepare(
-          "UPDATE fields SET order_index = order_index + ? WHERE collection_id = ?",
-        )
-        .run(shiftAmount, payload.collectionId);
-
-      const updateFieldOrder = database.prepare(
-        "UPDATE fields SET order_index = ? WHERE id = ? AND collection_id = ?",
-      );
-
-      for (const entry of payload.fieldOrders) {
-        const info = updateFieldOrder.run(
-          entry.orderIndex,
-          entry.id,
-          payload.collectionId,
-        );
-        if (toNumber(info.changes) !== 1) {
-          throw new Error(
-            `Failed to reorder field ${entry.id} in collection ${payload.collectionId}.`,
-          );
-        }
-      }
-    },
-  );
-
-  reorderFieldsTransaction(input);
-  return true;
-}
-
-function getExistingItemIds(
-  database: Database.Database,
-  collectionId: number,
-  itemIds: number[],
-): Set<number> {
-  const existingIds = new Set<number>();
-  for (const chunk of chunkArray(itemIds, SQLITE_IN_CLAUSE_CHUNK_SIZE)) {
-    const placeholders = buildInClausePlaceholders(chunk.length);
-    const sql = `
-      SELECT id
-      FROM items
-      WHERE collection_id = ?
-        AND id IN (${placeholders})
-    `;
-    const rows = database.prepare(sql).all(collectionId, ...chunk) as IdRow[];
-    for (const row of rows) {
-      existingIds.add(row.id);
-    }
-  }
-  return existingIds;
-}
-
-function bulkDeleteItems(
-  database: Database.Database,
-  input: BulkDeleteItemsInput,
-): BulkMutationResult {
-  const bulkDeleteTransaction = database.transaction(
-    (payload: BulkDeleteItemsInput) => {
-      const existingIds = getExistingItemIds(
-        database,
-        payload.collectionId,
-        payload.itemIds,
-      );
-      const missingIds = getMissingIds(payload.itemIds, existingIds);
-      if (missingIds.length > 0) {
-        throw new Error(
-          `Bulk delete failed. Invalid item IDs for collection ${payload.collectionId}: ${missingIds.join(", ")}`,
-        );
-      }
-
-      let affectedCount = 0;
-      for (const chunk of chunkArray(
-        payload.itemIds,
-        SQLITE_IN_CLAUSE_CHUNK_SIZE,
-      )) {
-        const placeholders = buildInClausePlaceholders(chunk.length);
-        const sql = `
-          DELETE FROM items
-          WHERE collection_id = ?
-            AND id IN (${placeholders})
-        `;
-        const info = database.prepare(sql).run(payload.collectionId, ...chunk);
-        affectedCount += toNumber(info.changes);
-      }
-
-      return { affectedCount };
-    },
-  );
-
-  return bulkDeleteTransaction(input);
-}
-
-function reorderItems(
-  database: Database.Database,
-  input: ReorderItemsInput,
-): boolean {
-  const reorderItemsTransaction = database.transaction(
-    (payload: ReorderItemsInput) => {
-      const existingIds = getExistingItemIds(
-        database,
-        payload.collectionId,
-        payload.itemOrders.map((entry) => entry.id),
-      );
-      const missingIds = getMissingIds(
-        payload.itemOrders.map((entry) => entry.id),
-        existingIds,
-      );
-      if (missingIds.length > 0) {
-        throw new Error(
-          `Item reorder payload contains invalid item IDs for collection ${payload.collectionId}: ${missingIds.join(", ")}`,
-        );
-      }
-
-      const updateItemOrder = database.prepare(
-        'UPDATE items SET "order" = ? WHERE id = ? AND collection_id = ?',
-      );
-      for (const entry of payload.itemOrders) {
-        const info = updateItemOrder.run(
-          entry.order,
-          entry.id,
-          payload.collectionId,
-        );
-        if (toNumber(info.changes) !== 1) {
-          throw new Error(
-            `Failed to reorder item ${entry.id} in collection ${payload.collectionId}.`,
-          );
-        }
-      }
-    },
-  );
-
-  reorderItemsTransaction(input);
-  return true;
-}
-
-function getItemsDataByIds(
-  database: Database.Database,
-  collectionId: number,
-  itemIds: number[],
-): Map<number, string> {
-  const itemDataById = new Map<number, string>();
-  for (const chunk of chunkArray(itemIds, SQLITE_IN_CLAUSE_CHUNK_SIZE)) {
-    const placeholders = buildInClausePlaceholders(chunk.length);
-    const sql = `
-      SELECT id, data
-      FROM items
-      WHERE collection_id = ?
-        AND id IN (${placeholders})
-    `;
-    const rows = database
-      .prepare(sql)
-      .all(collectionId, ...chunk) as ItemDataRow[];
-    for (const row of rows) {
-      itemDataById.set(row.id, row.data);
-    }
-  }
-  return itemDataById;
-}
-
-function parseStoredItemDataOrThrow(rawData: string, itemId: number): ItemData {
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(rawData);
-  } catch (error) {
-    throw new Error(
-      `Bulk patch failed. Item ${itemId} contains invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-
-  const parsedData = itemDataSchema.safeParse(parsedJson);
-  if (!parsedData.success) {
-    throw new Error(
-      `Bulk patch failed. Item ${itemId} contains invalid data structure.`,
-    );
-  }
-
-  return parsedData.data as ItemData;
-}
-
-function bulkPatchItems(
-  database: Database.Database,
-  input: BulkPatchItemsInput,
-): BulkMutationResult {
-  const bulkPatchTransaction = database.transaction(
-    (payload: BulkPatchItemsInput) => {
-      const itemIds = payload.updates.map((entry) => entry.id);
-      const itemDataById = getItemsDataByIds(
-        database,
-        payload.collectionId,
-        itemIds,
-      );
-      const missingIds = getMissingIds(itemIds, new Set(itemDataById.keys()));
-      if (missingIds.length > 0) {
-        throw new Error(
-          `Bulk patch failed. Invalid item IDs for collection ${payload.collectionId}: ${missingIds.join(", ")}`,
-        );
-      }
-
-      const updateItem = database.prepare(
-        "UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND collection_id = ?",
-      );
-
-      for (const update of payload.updates) {
-        const currentRawData = itemDataById.get(update.id);
-        if (!currentRawData) {
-          throw new Error(
-            `Bulk patch failed. Item ${update.id} is missing from collection ${payload.collectionId}.`,
-          );
-        }
-
-        const currentData = parseStoredItemDataOrThrow(
-          currentRawData,
-          update.id,
-        );
-        const mergedData: ItemData = {
-          ...currentData,
-          ...update.patch,
-        };
-        const mergedParse = itemDataSchema.safeParse(mergedData);
-        if (!mergedParse.success) {
-          throw new Error(
-            `Bulk patch failed. Item ${update.id} merged data is invalid.`,
-          );
-        }
-
-        const info = updateItem.run(
-          JSON.stringify(mergedParse.data),
-          update.id,
-          payload.collectionId,
-        );
-        if (toNumber(info.changes) !== 1) {
-          throw new Error(
-            `Bulk patch failed. Unable to update item ${update.id} in collection ${payload.collectionId}.`,
-          );
-        }
-      }
-
-      return { affectedCount: payload.updates.length };
-    },
-  );
-
-  return bulkPatchTransaction(input);
-}
-
-function tokenizeSearch(search: string | undefined): string[] {
-  if (!search) return [];
-  return search
-    .trim()
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 0);
-}
-
-function escapeLikePattern(token: string): string {
-  return token.replace(/([\\%_])/g, "\\$1");
-}
-
-function buildFtsMatchQuery(tokens: string[]): string {
-  return tokens.map((token) => `"${token.replace(/"/g, '""')}"`).join(" AND ");
-}
-
-function extractSortableFieldName(path: string): string | null {
-  if (!path.startsWith("data.")) return null;
-  const fieldName = path.slice(5).trim();
-  if (!fieldName) return null;
-  return fieldName;
-}
-
-function getFieldTypeMap(
-  database: Database.Database,
-  collectionId: number,
-): Map<string, string> {
-  const rows = database
-    .prepare("SELECT name, type FROM fields WHERE collection_id = ?")
-    .all(collectionId) as { name: string; type: string }[];
-  return new Map(rows.map((row) => [row.name, row.type]));
-}
-
-function getItemSortClause(
-  sort: ItemSortSpec[] | undefined,
-  fieldTypeMap: Map<string, string>,
-): string[] {
-  if (!sort || sort.length === 0) {
-    return [];
-  }
-
-  const clauses: string[] = [];
-
-  for (const spec of sort) {
-    const fieldName = extractSortableFieldName(spec.field);
-    if (!fieldName) {
-      continue;
-    }
-
-    const direction = spec.order === -1 ? "DESC" : "ASC";
-    const jsonPath = `$."${fieldName.replace(/"/g, '""')}"`;
-    const fieldType = fieldTypeMap.get(fieldName);
-
-    if (fieldType === "multiselect") {
-      clauses.push(
-        `json_extract(json_extract(i.data, '${jsonPath}'), '$[0]') COLLATE NOCASE ${direction}`,
-      );
-      continue;
-    }
-
-    if (fieldType === "boolean") {
-      clauses.push(
-        `CASE WHEN json_extract(i.data, '${jsonPath}') IN ('1', 1, true) THEN 1 ELSE 0 END ${direction}`,
-      );
-      continue;
-    }
-
-    if (fieldType === "rating") {
-      clauses.push(
-        `CASE WHEN json_extract(i.data, '${jsonPath}') IS NULL OR json_extract(i.data, '${jsonPath}') = '' THEN 1 ELSE 0 END ASC`,
-      );
-      clauses.push(
-        `CAST(json_extract(i.data, '${jsonPath}') AS REAL) ${direction}`,
-      );
-      continue;
-    }
-
-    clauses.push(
-      `json_extract(i.data, '${jsonPath}') COLLATE NOCASE ${direction}`,
-    );
-  }
-
-  return clauses;
-}
-
-function rebuildItemFtsIndex(database: Database.Database) {
-  const rebuildTransaction = database.transaction(() => {
-    database.prepare("DELETE FROM items_fts").run();
-    database
-      .prepare(
-        `
-        INSERT INTO items_fts(rowid, content)
-        SELECT
-          i.id,
-          COALESCE(
-            (
-              SELECT group_concat(CAST(value AS TEXT), ' ')
-              FROM json_each(i.data)
-              WHERE json_each.type IN ('text', 'integer', 'real')
-            ),
-            ''
-          )
-        FROM items i
-        `,
-      )
-      .run();
-  });
-
-  rebuildTransaction();
-}
-
-function syncItemFtsIndex(database: Database.Database) {
-  const itemCountRow = database
-    .prepare("SELECT COUNT(*) AS count FROM items")
-    .get() as CountRow;
-  const ftsCountRow = database
-    .prepare("SELECT COUNT(*) AS count FROM items_fts")
-    .get() as CountRow;
-
-  if (toNumber(itemCountRow.count) !== toNumber(ftsCountRow.count)) {
-    rebuildItemFtsIndex(database);
-  }
-}
-
-function tryEnableFts(database: Database.Database): boolean {
-  try {
-    database.exec(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
-        content,
-        tokenize = 'unicode61'
-      )
-    `);
-
-    database.exec(`
-      CREATE TRIGGER IF NOT EXISTS items_fts_ai AFTER INSERT ON items BEGIN
-        INSERT INTO items_fts(rowid, content)
-        VALUES (
-          new.id,
-          COALESCE(
-            (
-              SELECT group_concat(CAST(value AS TEXT), ' ')
-              FROM json_each(new.data)
-              WHERE json_each.type IN ('text', 'integer', 'real')
-            ),
-            ''
-          )
-        );
-      END;
-    `);
-
-    database.exec(`
-      CREATE TRIGGER IF NOT EXISTS items_fts_au AFTER UPDATE OF data ON items BEGIN
-        DELETE FROM items_fts WHERE rowid = old.id;
-        INSERT INTO items_fts(rowid, content)
-        VALUES (
-          new.id,
-          COALESCE(
-            (
-              SELECT group_concat(CAST(value AS TEXT), ' ')
-              FROM json_each(new.data)
-              WHERE json_each.type IN ('text', 'integer', 'real')
-            ),
-            ''
-          )
-        );
-      END;
-    `);
-
-    database.exec(`
-      CREATE TRIGGER IF NOT EXISTS items_fts_ad AFTER DELETE ON items BEGIN
-        DELETE FROM items_fts WHERE rowid = old.id;
-      END;
-    `);
-
-    syncItemFtsIndex(database);
-    return true;
-  } catch (error) {
-    console.error(
-      "[DB Worker] FTS unavailable. Falling back to LIKE search.",
-      error,
-    );
-    return false;
-  }
-}
-
-function buildSearchQueryContext(
-  input: GetItemsInput,
-  fieldTypeMap: Map<string, string>,
-): {
-  joinClause: string;
-  whereClause: string;
-  params: unknown[];
-  defaultOrderClause: string;
-} {
-  const whereParts: string[] = ["i.collection_id = ?"];
-  const params: unknown[] = [input.collectionId];
-  let joinClause = "";
-  let defaultOrderClause = 'i."order" ASC, i.id ASC';
-  const searchTokens = tokenizeSearch(input.search);
-  const multiselectFields = [...fieldTypeMap.entries()]
-    .filter(([, type]) => type === "multiselect")
-    .map(([name]) => name);
-
-  if (searchTokens.length === 0) {
-    return {
-      joinClause,
-      whereClause: whereParts.join(" AND "),
-      params,
-      defaultOrderClause,
-    };
-  }
-
-  if (ftsEnabled) {
-    joinClause = "JOIN items_fts fts ON fts.rowid = i.id";
-    whereParts.push("fts.content MATCH ?");
-    params.push(buildFtsMatchQuery(searchTokens));
-    defaultOrderClause = 'bm25(items_fts) ASC, i."order" ASC, i.id ASC';
-    return {
-      joinClause,
-      whereClause: whereParts.join(" AND "),
-      params,
-      defaultOrderClause,
-    };
-  }
-
-  for (const token of searchTokens) {
-    const likeToken = `%${escapeLikePattern(token.toLowerCase())}%`;
-    const multiselectToken = `%\"${escapeLikePattern(token.toLowerCase())}%`;
-
-    const multiselectClause =
-      multiselectFields.length > 0
-        ? ` OR (${multiselectFields
-            .map((fieldName) => {
-              const jsonPath = `$."${fieldName.replace(/"/g, '""')}"`;
-              return `LOWER(json_extract(i.data, '${jsonPath}')) LIKE ? ESCAPE '\\'`;
-            })
-            .join(" OR ")})`
-        : "";
-
-    whereParts.push(`
-      (
-        EXISTS (
-          SELECT 1
-          FROM json_each(i.data) je
-          WHERE je.type IN ('text', 'integer', 'real')
-            AND LOWER(CAST(je.value AS TEXT)) LIKE ? ESCAPE '\\'
-        )
-        ${multiselectClause}
-      )
-    `);
-    params.push(likeToken);
-    if (multiselectFields.length > 0) {
-      for (let i = 0; i < multiselectFields.length; i += 1) {
-        params.push(multiselectToken);
-      }
-    }
-  }
-
-  return {
-    joinClause,
-    whereClause: whereParts.join(" AND "),
-    params,
-    defaultOrderClause,
-  };
-}
-
-function getItems(database: Database.Database, input: GetItemsInput) {
-  const fieldTypeMap = getFieldTypeMap(database, input.collectionId);
-  const { joinClause, whereClause, params, defaultOrderClause } =
-    buildSearchQueryContext(input, fieldTypeMap);
-  const sortClauses = getItemSortClause(input.sort, fieldTypeMap);
-  const orderByClause =
-    sortClauses.length > 0
-      ? `${sortClauses.join(", ")}, i."order" ASC, i.id ASC`
-      : defaultOrderClause;
-
-  const rowsSql = `
-    SELECT i.*
-    FROM items i
-    ${joinClause}
-    WHERE ${whereClause}
-    ORDER BY ${orderByClause}
-    LIMIT ? OFFSET ?
-  `;
-
-  const items = database
-    .prepare(rowsSql)
-    .all(...params, input.limit, input.offset);
-
-  const countSql = `
-    SELECT COUNT(*) AS total
-    FROM items i
-    ${joinClause}
-    WHERE ${whereClause}
-  `;
-
-  const totalRow = database.prepare(countSql).get(...params) as TotalRow;
-
-  return {
-    items,
-    total: toNumber(totalRow.total),
-    limit: input.limit,
-    offset: input.offset,
-  };
-}
-
 export function initDatabase(dbPath: string): boolean {
   if (db) {
     db.close();
   }
-
-  db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  db.pragma("busy_timeout = 5000");
-
-  // 1. Collections Table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS collections (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      icon TEXT DEFAULT 'folder',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // 2. Fields Table + Unique Order Index
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS fields (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      collection_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      options TEXT,
-      order_index INTEGER DEFAULT 0,
-      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-    )
-  `);
-  db.exec(`
-    CREATE UNIQUE INDEX IF NOT EXISTS ${FIELD_ORDER_UNIQUE_INDEX}
-    ON fields(collection_id, order_index)
-  `);
-
-  // 3. Views Table (must be created here)
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS views (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      collection_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL DEFAULT 'grid',
-      is_default INTEGER NOT NULL DEFAULT 0,
-      "order" INTEGER NOT NULL DEFAULT 0,
-      config TEXT DEFAULT NULL,
-      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-    )
-  `);
-
-  // 4. Items Table (must include "order" column)
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      collection_id INTEGER NOT NULL,
-      data TEXT NOT NULL,
-      "order" INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-    )
-  `);
-  // Add necessary item indexes (order index)
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_items_collection_order
-    ON items (collection_id, "order" ASC)
-  `);
-  
-  // Keep existing created_at index
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_items_collection_created_at_id
-    ON items (collection_id, created_at DESC, id DESC)
-  `);
-
-  // 5. Set final user version (must be set unconditionally)
-  db.exec("PRAGMA user_version = 1");
-
-  // 6. FTS setup
-  ftsEnabled = tryEnableFts(db);
-
-  return true;
-}
-
-function runImport(database: Database.Database, input: ImportCollectionInput) {
-  const importTransaction = database.transaction(
-    (data: ImportCollectionInput) => {
-      if (data.mode === "replace") {
-        database
-          .prepare("DELETE FROM items WHERE collection_id = ?")
-          .run(data.collectionId);
-      }
-
-      if (data.newFields.length > 0) {
-        const insertField = database.prepare(
-          "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
-        );
-        for (const field of data.newFields) {
-          insertField.run(
-            field.collectionId,
-            field.name,
-            field.type,
-            field.options ?? null,
-            field.orderIndex ?? 0,
-          );
-        }
-      }
-
-      if (data.items.length > 0) {
-        let nextOrder = getNextItemOrderIndex(database, data.collectionId);
-        const insertItem = database.prepare(
-          'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
-        );
-        for (const item of data.items) {
-          insertItem.run(
-            item.collectionId,
-            JSON.stringify(item.data),
-            nextOrder,
-          );
-          nextOrder += 1;
-        }
-      }
-    },
-  );
-
-  importTransaction(input);
-}
-
-function parseStoredViewConfig(config: string | null): ViewConfig | null {
-  if (!config) {
-    return null;
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(config);
-  } catch {
-    return null;
-  }
-
-  const validated = ViewConfigSchema.safeParse(parsed);
-  if (!validated.success) {
-    return null;
-  }
-
-  const columnWidths = Object.fromEntries(
-    Object.entries(validated.data.columnWidths).map(([fieldId, width]) => [
-      Number(fieldId),
-      width,
-    ]),
-  ) as Record<number, number>;
-
-  return {
-    columnWidths,
-    sort: validated.data.sort.map((entry) => ({
-      field: entry.field,
-      order: entry.order,
-    })),
-    calendarDateField: validated.data.calendarDateField,
-    calendarDateFieldId: validated.data.calendarDateFieldId,
-    groupingFieldId: validated.data.groupingFieldId,
-    kanbanColumnOrder: validated.data.kanbanColumnOrder,
-    selectedFieldIds: validated.data.selectedFieldIds,
-  };
-}
-
-function assertNotSourceView(
-  database: Database.Database,
-  viewId: number,
-  action: string,
-) {
-  const row = database
-    .prepare("SELECT is_default FROM views WHERE id = ?")
-    .get(viewId) as { is_default: number | bigint } | undefined;
-
-  if (!row) {
-    throw new Error(`View ${viewId} not found.`);
-  }
-
-  if (toNumber(row.is_default) === 1) {
-    throw new Error(`Cannot ${action} source view ${viewId}.`);
-  }
-}
-
-function ensureViewReorderPayloadMatchesCollection(
-  database: Database.Database,
-  input: ReorderViewsInput,
-) {
-  const sourceRow = database
-    .prepare(
-      "SELECT id FROM views WHERE collection_id = ? AND is_default = 1 LIMIT 1",
-    )
-    .get(input.collectionId) as IdRow | undefined;
-
-  if (sourceRow) {
-    const includesSource = input.viewOrders.some(
-      (entry) => entry.id === sourceRow.id,
-    );
-    if (includesSource) {
-      throw new Error(
-        `View reorder payload includes source view ${sourceRow.id} for collection ${input.collectionId}.`,
-      );
-    }
-  }
-
-  const viewRows = database
-    .prepare(
-      'SELECT id FROM views WHERE collection_id = ? AND is_default = 0 ORDER BY "order" ASC, id ASC',
-    )
-    .all(input.collectionId) as IdRow[];
-
-  if (viewRows.length !== input.viewOrders.length) {
-    throw new Error(
-      `View reorder payload must include every non-source view in collection ${input.collectionId} exactly once.`,
-    );
-  }
-
-  const existingIds = new Set(viewRows.map((row) => row.id));
-  const payloadIds = input.viewOrders.map((entry) => entry.id);
-  const payloadUniqueIds = new Set(payloadIds);
-  if (payloadUniqueIds.size !== payloadIds.length) {
-    throw new Error(
-      `View reorder payload contains duplicate view IDs for collection ${input.collectionId}.`,
-    );
-  }
-
-  const invalidIds: number[] = [];
-  for (const payloadId of payloadUniqueIds) {
-    if (!existingIds.has(payloadId)) {
-      invalidIds.push(payloadId);
-    }
-  }
-
-  if (invalidIds.length > 0) {
-    throw new Error(
-      `View reorder payload contains IDs outside collection ${input.collectionId}: ${invalidIds.join(", ")}`,
-    );
-  }
-
-  const missingIds: number[] = [];
-  for (const existingId of existingIds) {
-    if (!payloadUniqueIds.has(existingId)) {
-      missingIds.push(existingId);
-    }
-  }
-
-  if (missingIds.length > 0) {
-    throw new Error(
-      `View reorder payload is missing IDs from collection ${input.collectionId}: ${missingIds.join(", ")}`,
-    );
-  }
-}
-
-function reorderViews(
-  database: Database.Database,
-  input: ReorderViewsInput,
-): boolean {
-  const reorderViewsTransaction = database.transaction(
-    (payload: ReorderViewsInput) => {
-      ensureViewReorderPayloadMatchesCollection(database, payload);
-
-      const shiftAmount = payload.viewOrders.length + 1;
-      database
-        .prepare(
-          'UPDATE views SET "order" = "order" + ? WHERE collection_id = ?',
-        )
-        .run(shiftAmount, payload.collectionId);
-
-      database
-        .prepare(
-          'UPDATE views SET "order" = 0 WHERE collection_id = ? AND is_default = 1',
-        )
-        .run(payload.collectionId);
-
-      const updateViewOrder = database.prepare(
-        'UPDATE views SET "order" = ? WHERE id = ? AND collection_id = ? AND is_default = 0',
-      );
-
-      for (const entry of payload.viewOrders) {
-        const info = updateViewOrder.run(
-          entry.order,
-          entry.id,
-          payload.collectionId,
-        );
-        if (toNumber(info.changes) !== 1) {
-          throw new Error(
-            `Failed to reorder view ${entry.id} in collection ${payload.collectionId}.`,
-          );
-        }
-      }
-    },
-  );
-
-  reorderViewsTransaction(input);
+  const initResult = initDatabaseConnection(dbPath);
+  db = initResult.db;
+  ftsEnabled = initResult.ftsEnabled;
   return true;
 }
 
@@ -1083,454 +101,98 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
       return initDatabase(operation.dbPath);
     }
     case "getCollections": {
-      const database = requireDb();
-      return database
-        .prepare("SELECT * FROM collections ORDER BY created_at ASC, id ASC")
-        .all();
+      return getCollections(requireDb());
     }
     case "getCollectionItemCounts": {
-      const database = requireDb();
-      return database
-        .prepare(
-          "SELECT collection_id AS collectionId, COUNT(*) AS itemCount FROM items GROUP BY collection_id",
-        )
-        .all();
+      return getCollectionItemCounts(requireDb());
     }
     case "addCollection": {
-      const database = requireDb();
-      const createCollection = database.transaction(() => {
-        const stmt = database.prepare(
-          "INSERT INTO collections (name, icon) VALUES (?, ?)",
-        );
-        const info = stmt.run(
-          operation.input.name,
-          operation.input.icon || "folder",
-        );
-        const collectionId = Number(info.lastInsertRowid);
-
-        database
-          .prepare(
-            'INSERT INTO views (collection_id, name, type, is_default, "order") VALUES (?, ?, ?, ?, ?)',
-          )
-          .run(collectionId, "Source", "grid", 1, 0);
-
-        return {
-          id: collectionId,
-          name: operation.input.name,
-        };
-      });
-
-      return createCollection();
+      return addCollection(requireDb(), operation.input);
     }
     case "updateCollection": {
-      const database = requireDb();
-      database
-        .prepare("UPDATE collections SET name = ?, icon = ? WHERE id = ?")
-        .run(operation.input.name, operation.input.icon, operation.input.id);
-
-      return true;
+      return updateCollection(requireDb(), operation.input);
     }
     case "deleteCollection": {
-      const database = requireDb();
-      const deleteCollection = database.transaction((collectionId: number) => {
-        database
-          .prepare("DELETE FROM collections WHERE id = ?")
-          .run(collectionId);
-      });
-
-      deleteCollection(operation.id);
-      return true;
+      return deleteCollection(requireDb(), operation.id);
     }
     case "getViews": {
-      const database = requireDb();
-      return database
-        .prepare(
-          'SELECT * FROM views WHERE collection_id = ? ORDER BY "order" ASC, id ASC',
-        )
-        .all(operation.collectionId);
+      return getViews(requireDb(), operation.collectionId);
     }
     case "addView": {
-      const database = requireDb();
-      const type = operation.input.type ?? "grid";
-      const isDefault = operation.input.isDefault ?? 0;
-      const order =
-        operation.input.order ??
-        getNextViewOrderIndex(database, operation.input.collectionId);
-      const info = database
-        .prepare(
-          'INSERT INTO views (collection_id, name, type, is_default, "order") VALUES (?, ?, ?, ?, ?)',
-        )
-        .run(
-          operation.input.collectionId,
-          operation.input.name,
-          type,
-          isDefault,
-          order,
-        );
-
-      return {
-        id: Number(info.lastInsertRowid),
-        collection_id: operation.input.collectionId,
-        name: operation.input.name,
-        type,
-        is_default: isDefault,
-        order,
-      };
+      return addView(requireDb(), operation.input);
     }
     case "updateView": {
-      const database = requireDb();
-      assertNotSourceView(database, operation.input.id, "rename");
-      const info = database
-        .prepare("UPDATE views SET name = ? WHERE id = ?")
-        .run(operation.input.name, operation.input.id);
-
-      if (toNumber(info.changes) !== 1) {
-        throw new Error(`Failed to update view ${operation.input.id}.`);
-      }
-
-      return true;
+      return updateView(requireDb(), operation.input);
     }
     case "deleteView": {
-      const database = requireDb();
-      assertNotSourceView(database, operation.id, "delete");
-      const info = database
-        .prepare("DELETE FROM views WHERE id = ?")
-        .run(operation.id);
-
-      if (toNumber(info.changes) !== 1) {
-        throw new Error(`Failed to delete view ${operation.id}.`);
-      }
-
-      return true;
+      return deleteView(requireDb(), operation.id);
     }
     case "getViewConfig": {
-      const database = requireDb();
-      const row = database
-        .prepare("SELECT config FROM views WHERE id = ?")
-        .get(operation.viewId) as ViewConfigRow | undefined;
-
-      if (!row) {
-        return null;
-      }
-
-      return parseStoredViewConfig(row.config);
+      return getViewConfig(requireDb(), operation.viewId);
     }
     case "updateViewConfig": {
-      const database = requireDb();
-      const payload: ViewConfig = {
-        columnWidths: Object.fromEntries(
-          Object.entries(operation.input.config.columnWidths).map(
-            ([fieldId, width]) => [Number(fieldId), width],
-          ),
-        ) as Record<number, number>,
-        sort: operation.input.config.sort.map((entry) => ({
-          field: entry.field,
-          order: entry.order,
-        })),
-        calendarDateField: operation.input.config.calendarDateField,
-        calendarDateFieldId: operation.input.config.calendarDateFieldId,
-        groupingFieldId: operation.input.config.groupingFieldId,
-        kanbanColumnOrder: operation.input.config.kanbanColumnOrder,
-        selectedFieldIds: operation.input.config.selectedFieldIds,
-      };
-      const info = database
-        .prepare("UPDATE views SET config = ? WHERE id = ?")
-        .run(JSON.stringify(payload), operation.input.viewId);
-
-      if (toNumber(info.changes) !== 1) {
-        throw new Error(
-          `Failed to update view config for view ${operation.input.viewId}.`,
-        );
-      }
-
-      return true;
-    }
-    case "getFields": {
-      const database = requireDb();
-      return database
-        .prepare(
-          "SELECT * FROM fields WHERE collection_id = ? ORDER BY order_index ASC",
-        )
-        .all(operation.collectionId);
-    }
-    case "addField": {
-      const database = requireDb();
-      const orderIndex =
-        operation.input.orderIndex ??
-        getNextFieldOrderIndex(database, operation.input.collectionId);
-      const info = database
-        .prepare(
-          "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
-        )
-        .run(
-          operation.input.collectionId,
-          operation.input.name,
-          operation.input.type,
-          operation.input.options || null,
-          orderIndex,
-        );
-
-      return {
-        id: Number(info.lastInsertRowid),
-        ...operation.input,
-        orderIndex,
-      };
-    }
-    case "updateField": {
-      const database = requireDb();
-
-      // Get current field to detect name changes
-      const currentField = database
-        .prepare("SELECT name, collection_id FROM fields WHERE id = ?")
-        .get(operation.input.id) as
-        | { name: string; collection_id: number }
-        | undefined;
-
-      if (!currentField) {
-        throw new Error(`Field ${operation.input.id} not found.`);
-      }
-
-      const oldName = currentField.name;
-      const newName = operation.input.name;
-      const collectionId = currentField.collection_id;
-      const nameChanged = oldName !== newName;
-
-      // Use transaction to ensure atomicity: field rename + data migration
-      const updateFieldTransaction = database.transaction(() => {
-        // Update the field
-        database
-          .prepare(
-            "UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?",
-          )
-          .run(
-            newName,
-            operation.input.type,
-            operation.input.options || null,
-            operation.input.orderIndex || 0,
-            operation.input.id,
-          );
-
-        // If name changed, migrate all item data in the collection
-        if (nameChanged) {
-          database
-            .prepare(
-              `
-              UPDATE items
-              SET data = json_set(
-                json_remove(data, '$."${oldName}"'),
-                '$."${newName}"',
-                json_extract(data, '$."${oldName}"')
-              )
-              WHERE collection_id = ?
-                AND json_type(data, '$."${oldName}"') IS NOT NULL
-            `,
-            )
-            .run(collectionId);
-        }
-      });
-
-      updateFieldTransaction();
-      return true;
-    }
-    case "reorderFields": {
-      const database = requireDb();
-      return reorderFields(database, operation.input);
+      return updateViewConfig(requireDb(), operation.input);
     }
     case "reorderViews": {
-      const database = requireDb();
-      return reorderViews(database, operation.input);
+      return reorderViews(requireDb(), operation.input);
+    }
+    case "getFields": {
+      return getFields(requireDb(), operation.collectionId);
+    }
+    case "addField": {
+      return addField(requireDb(), operation.input);
+    }
+    case "updateField": {
+      return updateField(requireDb(), operation.input);
+    }
+    case "reorderFields": {
+      return reorderFields(requireDb(), operation.input);
     }
     case "deleteField": {
-      const database = requireDb();
-      database.prepare("DELETE FROM fields WHERE id = ?").run(operation.id);
-      return true;
+      return deleteField(requireDb(), operation.id);
     }
     case "getItems": {
-      const database = requireDb();
-      return getItems(database, operation.input);
+      return getItems(requireDb(), operation.input, ftsEnabled);
     }
     case "addItem": {
-      const database = requireDb();
-      const dataJson = JSON.stringify(operation.input.data);
-      const info = database
-        .prepare(
-          'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, (SELECT COALESCE(MAX("order"), 0) + 1 FROM items WHERE collection_id = ?))',
-        )
-        .run(
-          operation.input.collectionId,
-          dataJson,
-          operation.input.collectionId,
-        );
-
-      return {
-        id: Number(info.lastInsertRowid),
-        collection_id: operation.input.collectionId,
-        order:
-          getNextItemOrderIndex(database, operation.input.collectionId) - 1,
-        data: operation.input.data,
-      };
+      return addItem(requireDb(), operation.input);
     }
     case "insertItemAt": {
-      const database = requireDb();
-      const insertItem = database.transaction((input: InsertItemAtInput) => {
-        const targetOrder =
-          input.afterOrder === null ? 0 : input.afterOrder + 1;
-        database
-          .prepare(
-            'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
-          )
-          .run(input.collectionId, targetOrder);
-
-        const info = database
-          .prepare(
-            'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
-          )
-          .run(input.collectionId, JSON.stringify({}), targetOrder);
-
-        return {
-          id: Number(info.lastInsertRowid),
-          collection_id: input.collectionId,
-          order: targetOrder,
-          data: {},
-        };
-      });
-
-      return insertItem(operation.input);
+      return insertItemAt(requireDb(), operation.input);
     }
     case "duplicateItem": {
-      const database = requireDb();
-      const duplicateItem = database.transaction(
-        (input: DuplicateItemInput) => {
-          const source = database
-            .prepare(
-              'SELECT id, collection_id, data, "order" FROM items WHERE id = ? AND collection_id = ?',
-            )
-            .get(input.itemId, input.collectionId) as ItemRow | undefined;
-
-          if (!source) {
-            throw new Error(
-              `Duplicate failed. Item ${input.itemId} not found in collection ${input.collectionId}.`,
-            );
-          }
-
-          const targetOrder = toNumber(source.order) + 1;
-          database
-            .prepare(
-              'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
-            )
-            .run(input.collectionId, targetOrder);
-
-          const info = database
-            .prepare(
-              'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
-            )
-            .run(input.collectionId, source.data, targetOrder);
-
-          return {
-            id: Number(info.lastInsertRowid),
-            collection_id: input.collectionId,
-            order: targetOrder,
-            data: JSON.parse(source.data) as ItemData,
-          };
-        },
-      );
-
-      return duplicateItem(operation.input);
+      return duplicateItem(requireDb(), operation.input);
     }
     case "moveItem": {
-      const database = requireDb();
-      const moveItem = database.transaction((input: MoveItemInput) => {
-        const source = database
-          .prepare(
-            'SELECT id, "order" FROM items WHERE id = ? AND collection_id = ?',
-          )
-          .get(input.itemId, input.collectionId) as ItemOrderRow | undefined;
-
-        if (!source) {
-          throw new Error(
-            `Move failed. Item ${input.itemId} not found in collection ${input.collectionId}.`,
-          );
-        }
-
-        const sourceOrder = toNumber(source.order);
-        const neighbor = database
-          .prepare(
-            input.direction === "up"
-              ? 'SELECT id, "order" FROM items WHERE collection_id = ? AND "order" < ? ORDER BY "order" DESC, id DESC LIMIT 1'
-              : 'SELECT id, "order" FROM items WHERE collection_id = ? AND "order" > ? ORDER BY "order" ASC, id ASC LIMIT 1',
-          )
-          .get(input.collectionId, sourceOrder) as ItemOrderRow | undefined;
-
-        if (!neighbor) {
-          throw new Error(
-            `Move failed. Item ${input.itemId} is already at the ${input.direction === "up" ? "top" : "bottom"} of collection ${input.collectionId}.`,
-          );
-        }
-
-        const neighborOrder = toNumber(neighbor.order);
-        database
-          .prepare(
-            'UPDATE items SET "order" = CASE WHEN id = ? THEN ? WHEN id = ? THEN ? ELSE "order" END WHERE collection_id = ? AND id IN (?, ?)',
-          )
-          .run(
-            source.id,
-            neighborOrder,
-            neighbor.id,
-            sourceOrder,
-            input.collectionId,
-            source.id,
-            neighbor.id,
-          );
-
-        return true;
-      });
-
-      return moveItem(operation.input);
+      return moveItem(requireDb(), operation.input);
     }
     case "updateItem": {
-      const database = requireDb();
-      const dataJson = JSON.stringify(operation.input.data);
-      database
-        .prepare(
-          "UPDATE items SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        )
-        .run(dataJson, operation.input.id);
-
-      return true;
+      return updateItem(requireDb(), operation.input);
     }
     case "deleteItem": {
-      const database = requireDb();
-      database.prepare("DELETE FROM items WHERE id = ?").run(operation.id);
-      return true;
+      return deleteItem(requireDb(), operation.id);
     }
     case "reorderItems": {
-      const database = requireDb();
-      return reorderItems(database, operation.input);
+      return reorderItems(requireDb(), operation.input);
     }
     case "bulkDeleteItems": {
-      const database = requireDb();
-      return bulkDeleteItems(database, operation.input);
+      return bulkDeleteItems(requireDb(), operation.input);
     }
     case "bulkPatchItems": {
-      const database = requireDb();
-      return bulkPatchItems(database, operation.input);
+      return bulkPatchItems(requireDb(), operation.input);
     }
     case "importCollection": {
-      const database = requireDb();
-      runImport(database, operation.input);
+      runImport(requireDb(), operation.input);
       return true;
     }
     case "getArchiveDatabaseSummary": {
-      const database = requireDb();
-      return getArchiveDatabaseSummary(database);
+      return getArchiveDatabaseSummary(requireDb());
     }
     case "exportFullArchive": {
-      const database = requireDb();
-      return buildFullArchiveExport(database, operation.input);
+      return buildFullArchiveExport(requireDb(), operation.input);
     }
     case "restoreFullArchive": {
-      const database = requireDb();
-      return runFullArchiveRestore(database, operation.input, ftsEnabled);
+      return runFullArchiveRestore(requireDb(), operation.input, ftsEnabled);
     }
     default: {
       const exhaustiveCheck: never = operation;
