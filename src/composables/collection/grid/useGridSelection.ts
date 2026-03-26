@@ -1,5 +1,5 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import type { GridCellKey } from '../../../components/views/collection/grid/types'
+import type { GridCellKey } from '../../../components/collections/grid/types'
 
 const CELL_KEY_SEPARATOR = '::'
 

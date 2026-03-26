@@ -9,7 +9,7 @@ import {
   parseRatingValue,
   serializeRatingValue
 } from '../../../utils/fieldValues'
-import type { GridCellKey, GridSelectionContext } from '../../../components/views/collection/grid/types'
+import type { GridCellKey, GridSelectionContext } from '../../../components/collections/grid/types'
 import { buildGridCellKey, parseGridCellKey } from './useGridSelection'
 
 type UseGridEditingParams = {

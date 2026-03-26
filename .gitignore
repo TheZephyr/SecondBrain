@@ -20,8 +20,7 @@ release/
 *.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode
 .idea
 .DS_Store
 Thumbs.db
@@ -37,3 +36,14 @@ docs/.vitepress/cache
 
 # Test coverage
 coverage/
+
+# Agent files and directories
+AGENTS.md
+AGENTS.*.md
+CLAUDE.md
+CLAUDE.*.md
+GEMINI.md
+GEMINI.*.md
+.codex
+.claude
+.gemini

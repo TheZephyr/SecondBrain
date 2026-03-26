@@ -657,6 +657,76 @@ describe("field CRUD", () => {
       expect(match?.options).toBe(input.options);
     }
   });
+
+  it("migrates item data when a field is renamed", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Books" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Title",
+      type: "text",
+      options: null,
+      orderIndex: 0,
+    });
+    addItem({ collectionId: col.id, data: { Title: "Dune" } });
+
+    updateField({ id: field.id, name: "Name", type: "text", options: null });
+
+    const fields = getFields(col.id);
+    expect(fields[0].name).toBe("Name");
+
+    const result = getItems(col.id);
+    const data = JSON.parse(result.items[0].data) as Record<string, unknown>;
+    expect(data.Name).toBe("Dune");
+    expect(data.Title).toBeUndefined();
+  });
+
+  it("does not migrate item data when field name is unchanged", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Books" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Title",
+      type: "text",
+      options: null,
+      orderIndex: 0,
+    });
+    addItem({ collectionId: col.id, data: { Title: "Dune" } });
+
+    updateField({
+      id: field.id,
+      name: "Title",
+      type: "longtext",
+      options: null,
+    });
+
+    const result = getItems(col.id);
+    const data = JSON.parse(result.items[0].data) as Record<string, unknown>;
+    expect(data.Title).toBe("Dune");
+  });
+
+  it("only migrates items that have the renamed field", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Books" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Title",
+      type: "text",
+      options: null,
+      orderIndex: 0,
+    });
+    addItem({ collectionId: col.id, data: { Title: "Dune" } });
+    addItem({ collectionId: col.id, data: {} });
+
+    updateField({ id: field.id, name: "Name", type: "text", options: null });
+
+    const result = getItems(col.id);
+    const first = JSON.parse(result.items[0].data) as Record<string, unknown>;
+    const second = JSON.parse(result.items[1].data) as Record<string, unknown>;
+    expect(first.Name).toBe("Dune");
+    expect(second.Name).toBeUndefined();
+  });
+
 });
 
 // ======================== ITEMS ========================

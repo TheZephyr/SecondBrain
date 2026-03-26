@@ -4,7 +4,7 @@ import type { Field, Item, ItemSortSpec, ViewConfig, ViewType } from '../../type
 import type {
   MultiSortMeta,
   RawSortMeta
-} from '../../components/views/collection/types'
+} from '../../components/collections/types'
 
 export type LoadItemsOptions = {
   page?: number
