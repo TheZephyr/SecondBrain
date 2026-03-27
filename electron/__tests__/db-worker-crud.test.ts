@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
+import { closeDatabase, handleOperation, initDatabase } from "../db/worker";
 import type {
   Collection,
   View,
@@ -64,7 +64,10 @@ function addView(input: NewViewInput): View {
 }
 
 function getViewConfig(viewId: number): ViewConfig | null {
-  return handleOperation({ type: "getViewConfig", viewId }) as ViewConfig | null;
+  return handleOperation({
+    type: "getViewConfig",
+    viewId,
+  }) as ViewConfig | null;
 }
 
 function updateViewConfig(viewId: number, config: ViewConfig): boolean {
@@ -88,9 +91,7 @@ function getCollectionItemCounts(): CollectionItemCount[] {
   }) as CollectionItemCount[];
 }
 
-function addField(
-  input: NewFieldInput,
-): { id: number } & NewFieldInput {
+function addField(input: NewFieldInput): { id: number } & NewFieldInput {
   return handleOperation({ type: "addField", input }) as {
     id: number;
   } & NewFieldInput;
@@ -108,9 +109,11 @@ function deleteField(id: number): boolean {
   return handleOperation({ type: "deleteField", id }) as boolean;
 }
 
-function addItem(
-  input: NewItemInput,
-): { id: number; collection_id: number; data: Record<string, unknown> } {
+function addItem(input: NewItemInput): {
+  id: number;
+  collection_id: number;
+  data: Record<string, unknown>;
+} {
   return handleOperation({ type: "addItem", input }) as {
     id: number;
     collection_id: number;
@@ -383,11 +386,7 @@ describe("view CRUD", () => {
     const views = getViews(col.id);
     const source = views.find((view) => view.is_default === 1);
     expect(source?.order).toBe(0);
-    expect(views.map((view) => view.name)).toEqual([
-      "Source",
-      "Beta",
-      "Alpha",
-    ]);
+    expect(views.map((view) => view.name)).toEqual(["Source", "Beta", "Alpha"]);
   });
 });
 
@@ -726,7 +725,6 @@ describe("field CRUD", () => {
     expect(first.Name).toBe("Dune");
     expect(second.Name).toBeUndefined();
   });
-
 });
 
 // ======================== ITEMS ========================

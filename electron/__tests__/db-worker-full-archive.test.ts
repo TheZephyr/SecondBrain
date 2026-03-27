@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
+import { closeDatabase, handleOperation, initDatabase } from "../db/worker";
 import type {
   Collection,
   Field,
@@ -79,7 +79,10 @@ function getViews(collectionId: number): View[] {
 }
 
 function getViewConfig(viewId: number): ViewConfig | null {
-  return handleOperation({ type: "getViewConfig", viewId }) as ViewConfig | null;
+  return handleOperation({
+    type: "getViewConfig",
+    viewId,
+  }) as ViewConfig | null;
 }
 
 function exportArchive(): FullArchiveFile {
@@ -452,7 +455,9 @@ describe("full archive restore", () => {
       ],
     });
 
-    expect(getCollections().map((collection) => collection.name)).toEqual(["Good"]);
+    expect(getCollections().map((collection) => collection.name)).toEqual([
+      "Good",
+    ]);
     expect(report.restoredCollections).toEqual(["Good"]);
     expect(report.failedCollections).toHaveLength(1);
     expect(report.failedCollections[0]?.collectionName).toBe("Broken");

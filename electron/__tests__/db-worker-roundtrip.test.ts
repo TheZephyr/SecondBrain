@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
+import { closeDatabase, handleOperation, initDatabase } from "../db/worker";
 import {
   serializeItemsToCsv,
   serializeItemsToJson,
   parseImportContent,
   buildImportPreview,
 } from "../../src/utils/collectionImportExport";
-import { isSafeFieldName } from "../../src/validation/fieldNames";
 import type {
   Collection,
   Field,

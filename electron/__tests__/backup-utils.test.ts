@@ -14,7 +14,7 @@ import {
   pruneBackupSet,
   saveBackupSettings,
   tryCreateStartupBackup,
-} from "../backup-utils";
+} from "../lib/backup-utils";
 
 const tempDirs: string[] = [];
 
@@ -46,7 +46,11 @@ describe("backup utils", () => {
 
   it("falls back to defaults when sidecar JSON is invalid", async () => {
     const dir = makeTempDir();
-    fs.writeFileSync(path.join(dir, "backup-settings.json"), "{bad json", "utf-8");
+    fs.writeFileSync(
+      path.join(dir, "backup-settings.json"),
+      "{bad json",
+      "utf-8",
+    );
 
     const settings = await loadBackupSettings(dir);
 
@@ -75,8 +79,14 @@ describe("backup utils", () => {
   it("lists valid backups newest first", async () => {
     const dir = makeTempDir();
     const backupDir = await ensureBackupDirectory(dir);
-    const older = buildBackupFileName("startup", new Date("2026-03-22T14:30:00"));
-    const newer = buildBackupFileName("manual", new Date("2026-03-22T15:45:12"));
+    const older = buildBackupFileName(
+      "startup",
+      new Date("2026-03-22T14:30:00"),
+    );
+    const newer = buildBackupFileName(
+      "manual",
+      new Date("2026-03-22T15:45:12"),
+    );
 
     fs.writeFileSync(path.join(backupDir, older), "old");
     fs.writeFileSync(path.join(backupDir, newer), "new");
@@ -101,7 +111,10 @@ describe("backup utils", () => {
     }
 
     const backups = await listBackups(dir);
-    const deleted = await pruneBackupSet(partitionBackups(backups).automatic, 2);
+    const deleted = await pruneBackupSet(
+      partitionBackups(backups).automatic,
+      2,
+    );
 
     expect(deleted).toEqual([names[0]]);
     expect(fs.existsSync(path.join(backupDir, names[0]))).toBe(false);
@@ -145,9 +158,9 @@ describe("backup utils", () => {
   });
 
   it("returns true when startup backup succeeds", async () => {
-    await expect(
-      tryCreateStartupBackup(async () => undefined),
-    ).resolves.toBe(true);
+    await expect(tryCreateStartupBackup(async () => undefined)).resolves.toBe(
+      true,
+    );
   });
 
   it("logs and returns false when startup backup fails", async () => {
