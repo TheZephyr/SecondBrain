@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import type { ItemSortSpec } from "../src/types/models";
+import type { ItemSortSpec } from "../../src/types/models";
 
 export function toNumber(value: number | bigint | undefined): number {
   if (value === undefined) return 0;
@@ -95,7 +95,7 @@ export function getItemSortClause(
 export function buildSearchQueryContext(
   input: { collectionId: number; search?: string },
   fieldTypeMap: Map<string, string>,
-  ftsEnabled: boolean
+  ftsEnabled: boolean,
 ): {
   joinClause: string;
   whereClause: string;

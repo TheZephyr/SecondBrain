@@ -1,11 +1,11 @@
 import { Worker } from "worker_threads";
 import { app } from "electron";
-import { IpcErrorCode } from "../src/types/ipc";
+import { IpcErrorCode } from "../../src/types/ipc";
 import {
   DbWorkerOperation,
   DbWorkerRequest,
   DbWorkerResponse,
-} from "./db-worker-protocol";
+} from "./worker-protocol";
 import path from "path";
 
 // AppError is defined here since it's used by the manager

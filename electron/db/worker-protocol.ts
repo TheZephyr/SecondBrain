@@ -19,7 +19,7 @@ import type {
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
   FullArchiveFile,
-} from "../src/types/models";
+} from "../../src/types/models";
 
 export type DbWorkerOperation =
   | { type: "init"; dbPath: string }
@@ -52,7 +52,10 @@ export type DbWorkerOperation =
   | { type: "bulkPatchItems"; input: BulkPatchItemsInput }
   | { type: "importCollection"; input: ImportCollectionInput }
   | { type: "getArchiveDatabaseSummary" }
-  | { type: "exportFullArchive"; input: { appVersion: string; description: string } }
+  | {
+      type: "exportFullArchive";
+      input: { appVersion: string; description: string };
+    }
   | { type: "restoreFullArchive"; input: FullArchiveFile };
 
 export type DbWorkerRequest = {

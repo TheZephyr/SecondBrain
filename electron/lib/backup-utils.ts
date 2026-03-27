@@ -5,7 +5,7 @@ import type {
   BackupLabel,
   BackupSettings,
   UpdateBackupSettingsInput,
-} from "../src/types/models";
+} from "../../src/types/models";
 
 export const BACKUP_SETTINGS_FILE = "backup-settings.json";
 export const BACKUP_DIRECTORY_NAME = "backups";
@@ -113,8 +113,10 @@ export async function ensureBackupDirectory(
 
 export async function tryCreateStartupBackup(
   createBackup: () => Promise<void>,
-  logError: (message?: unknown, ...optionalParams: unknown[]) => void =
-    console.error,
+  logError: (
+    message?: unknown,
+    ...optionalParams: unknown[]
+  ) => void = console.error,
 ): Promise<boolean> {
   try {
     await createBackup();

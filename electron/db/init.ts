@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { toNumber } from "./db-query-utils";
+import { toNumber } from "./query-utils";
 
 type CountRow = { count: number | bigint };
 
@@ -105,13 +105,16 @@ export function tryEnableFts(database: Database.Database): boolean {
   }
 }
 
-export function initDatabaseConnection(dbPath: string): { db: Database.Database, ftsEnabled: boolean } {
+export function initDatabaseConnection(dbPath: string): {
+  db: Database.Database;
+  ftsEnabled: boolean;
+} {
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
 
-  // 1. Collections Table
+  // Collections Table
   db.exec(`
     CREATE TABLE IF NOT EXISTS collections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,7 +124,7 @@ export function initDatabaseConnection(dbPath: string): { db: Database.Database,
     )
   `);
 
-  // 2. Fields Table + Unique Order Index
+  // Fields Table + Unique Order Index
   db.exec(`
     CREATE TABLE IF NOT EXISTS fields (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,7 +141,7 @@ export function initDatabaseConnection(dbPath: string): { db: Database.Database,
     ON fields(collection_id, order_index)
   `);
 
-  // 3. Views Table (must be created here)
+  // Views Table
   db.exec(`
     CREATE TABLE IF NOT EXISTS views (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,7 +155,7 @@ export function initDatabaseConnection(dbPath: string): { db: Database.Database,
     )
   `);
 
-  // 4. Items Table (must include "order" column)
+  // Items Table (must include "order" column)
   db.exec(`
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,17 +172,14 @@ export function initDatabaseConnection(dbPath: string): { db: Database.Database,
     CREATE INDEX IF NOT EXISTS idx_items_collection_order
     ON items (collection_id, "order" ASC)
   `);
-  
+
   // Keep existing created_at index
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_items_collection_created_at_id
     ON items (collection_id, created_at DESC, id DESC)
   `);
 
-  // 5. Set final user version (must be set unconditionally)
-  db.exec("PRAGMA user_version = 1");
-
-  // 6. FTS setup
+  // FTS setup
   const ftsEnabled = tryEnableFts(db);
 
   return { db, ftsEnabled };

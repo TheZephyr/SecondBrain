@@ -14,15 +14,15 @@ export function getCollectionItemCounts(database: Database.Database) {
     .all();
 }
 
-export function addCollection(database: Database.Database, input: { name: string; icon?: string | null }) {
+export function addCollection(
+  database: Database.Database,
+  input: { name: string; icon?: string | null },
+) {
   const createCollection = database.transaction(() => {
     const stmt = database.prepare(
       "INSERT INTO collections (name, icon) VALUES (?, ?)",
     );
-    const info = stmt.run(
-      input.name,
-      input.icon || "folder",
-    );
+    const info = stmt.run(input.name, input.icon || "folder");
     const collectionId = Number(info.lastInsertRowid);
 
     database
@@ -40,18 +40,22 @@ export function addCollection(database: Database.Database, input: { name: string
   return createCollection();
 }
 
-export function updateCollection(database: Database.Database, input: { id: number; name: string; icon?: string | null }) {
+export function updateCollection(
+  database: Database.Database,
+  input: { id: number; name: string; icon?: string | null },
+) {
   database
     .prepare("UPDATE collections SET name = ?, icon = ? WHERE id = ?")
     .run(input.name, input.icon, input.id);
   return true;
 }
 
-export function deleteCollection(database: Database.Database, collectionId: number) {
+export function deleteCollection(
+  database: Database.Database,
+  collectionId: number,
+) {
   const deleteTx = database.transaction((id: number) => {
-    database
-      .prepare("DELETE FROM collections WHERE id = ?")
-      .run(id);
+    database.prepare("DELETE FROM collections WHERE id = ?").run(id);
   });
 
   deleteTx(collectionId);

@@ -10,14 +10,14 @@ import type {
   DuplicateItemInput,
   MoveItemInput,
   ReorderItemsInput,
-} from "../src/types/models";
-import { itemDataSchema } from "../src/validation/schemas";
+} from "../../src/types/models";
+import { itemDataSchema } from "../../src/validation/schemas";
 import {
   buildSearchQueryContext,
   getFieldTypeMap,
   getItemSortClause,
   toNumber,
-} from "./db-query-utils";
+} from "./query-utils";
 
 type TotalRow = { total: number | bigint };
 type MaxItemOrderRow = { maxOrder: number | bigint | null };
@@ -66,7 +66,10 @@ export function getNextItemOrderIndex(
   return toNumber(maxOrder) + 1;
 }
 
-export function runImport(database: Database.Database, input: ImportCollectionInput) {
+export function runImport(
+  database: Database.Database,
+  input: ImportCollectionInput,
+) {
   const importTransaction = database.transaction(
     (data: ImportCollectionInput) => {
       if (data.mode === "replace") {
@@ -239,7 +242,10 @@ export function getItemsDataByIds(
   return itemDataById;
 }
 
-export function parseStoredItemDataOrThrow(rawData: string, itemId: number): ItemData {
+export function parseStoredItemDataOrThrow(
+  rawData: string,
+  itemId: number,
+): ItemData {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(rawData);
@@ -368,28 +374,29 @@ export function getItems(
   };
 }
 
-export function addItem(database: Database.Database, input: { collectionId: number; data: ItemData }) {
+export function addItem(
+  database: Database.Database,
+  input: { collectionId: number; data: ItemData },
+) {
   const dataJson = JSON.stringify(input.data);
   const info = database
     .prepare(
       'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, (SELECT COALESCE(MAX("order"), 0) + 1 FROM items WHERE collection_id = ?))',
     )
-    .run(
-      input.collectionId,
-      dataJson,
-      input.collectionId,
-    );
+    .run(input.collectionId, dataJson, input.collectionId);
 
   return {
     id: Number(info.lastInsertRowid),
     collection_id: input.collectionId,
-    order:
-      getNextItemOrderIndex(database, input.collectionId) - 1,
+    order: getNextItemOrderIndex(database, input.collectionId) - 1,
     data: input.data,
   };
 }
 
-export function insertItemAt(database: Database.Database, input: InsertItemAtInput) {
+export function insertItemAt(
+  database: Database.Database,
+  input: InsertItemAtInput,
+) {
   const tx = database.transaction((payload: InsertItemAtInput) => {
     const targetOrder =
       payload.afterOrder === null ? 0 : payload.afterOrder + 1;
@@ -416,42 +423,43 @@ export function insertItemAt(database: Database.Database, input: InsertItemAtInp
   return tx(input);
 }
 
-export function duplicateItem(database: Database.Database, input: DuplicateItemInput) {
-  const tx = database.transaction(
-    (payload: DuplicateItemInput) => {
-      const source = database
-        .prepare(
-          'SELECT id, collection_id, data, "order" FROM items WHERE id = ? AND collection_id = ?',
-        )
-        .get(payload.itemId, payload.collectionId) as ItemRow | undefined;
+export function duplicateItem(
+  database: Database.Database,
+  input: DuplicateItemInput,
+) {
+  const tx = database.transaction((payload: DuplicateItemInput) => {
+    const source = database
+      .prepare(
+        'SELECT id, collection_id, data, "order" FROM items WHERE id = ? AND collection_id = ?',
+      )
+      .get(payload.itemId, payload.collectionId) as ItemRow | undefined;
 
-      if (!source) {
-        throw new Error(
-          `Duplicate failed. Item ${payload.itemId} not found in collection ${payload.collectionId}.`,
-        );
-      }
+    if (!source) {
+      throw new Error(
+        `Duplicate failed. Item ${payload.itemId} not found in collection ${payload.collectionId}.`,
+      );
+    }
 
-      const targetOrder = toNumber(source.order) + 1;
-      database
-        .prepare(
-          'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
-        )
-        .run(payload.collectionId, targetOrder);
+    const targetOrder = toNumber(source.order) + 1;
+    database
+      .prepare(
+        'UPDATE items SET "order" = "order" + 1 WHERE collection_id = ? AND "order" >= ?',
+      )
+      .run(payload.collectionId, targetOrder);
 
-      const info = database
-        .prepare(
-          'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
-        )
-        .run(payload.collectionId, source.data, targetOrder);
+    const info = database
+      .prepare(
+        'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
+      )
+      .run(payload.collectionId, source.data, targetOrder);
 
-      return {
-        id: Number(info.lastInsertRowid),
-        collection_id: payload.collectionId,
-        order: targetOrder,
-        data: JSON.parse(source.data) as ItemData,
-      };
-    },
-  );
+    return {
+      id: Number(info.lastInsertRowid),
+      collection_id: payload.collectionId,
+      order: targetOrder,
+      data: JSON.parse(source.data) as ItemData,
+    };
+  });
 
   return tx(input);
 }
@@ -506,7 +514,10 @@ export function moveItem(database: Database.Database, input: MoveItemInput) {
   return tx(input);
 }
 
-export function updateItem(database: Database.Database, input: { id: number; data: ItemData }) {
+export function updateItem(
+  database: Database.Database,
+  input: { id: number; data: ItemData },
+) {
   const dataJson = JSON.stringify(input.data);
   database
     .prepare(
