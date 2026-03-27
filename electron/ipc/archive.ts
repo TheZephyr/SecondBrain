@@ -1,6 +1,5 @@
 import { ipcMain, dialog, app } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
-import path from "path";
 import fs from "fs";
 import { ZodType } from "zod";
 import type {
@@ -9,26 +8,20 @@ import type {
   FullArchivePreview,
   FullArchiveRestoreReport,
   FullArchiveDatabaseSummary,
-} from "../src/types/models";
-import type { IpcResult, IpcError } from "../src/types/ipc";
-import { AppError } from "./db-worker-manager";
+} from "../../src/types/models";
+import type { IpcResult, IpcError } from "../../src/types/ipc";
+import { AppError } from "../db/worker-manager";
 import {
   buildFullArchiveFileName,
   parseFullArchiveContent,
   buildFullArchivePreviewSummary,
-} from "../src/utils/fullArchive";
+} from "../../src/utils/fullArchive";
 import {
   archiveFilePathSchema,
   FullArchiveExportInputSchema,
-} from "../src/validation/schemas";
-import { invokeDbWorker, restartDbWorker } from "./db-worker-manager";
-
-// Import worker manager functions
-import {
-  stopDbWorker,
-  startDbWorker,
-  requireDbPath,
-} from "./db-worker-manager";
+} from "../../src/validation/schemas";
+import { invokeDbWorker, restartDbWorker } from "../db/worker-manager";
+import { stopDbWorker } from "../db/worker-manager";
 
 // Helper: parse or throw
 function parseOrThrow<T>(
@@ -207,31 +200,8 @@ async function restoreFullArchiveFromFilePath(
   }
 }
 
-// Checkpoint and sidecar helpers (moved from main.ts)
-async function checkpointDatabaseFile(targetDbPath: string): Promise<void> {
-  if (!(await fs.promises.stat(targetDbPath).catch(() => null))) {
-    return;
-  }
-
-  const tempDb = new (require("better-sqlite3").default)(targetDbPath);
-  try {
-    tempDb.pragma("busy_timeout = 5000");
-    tempDb.pragma("wal_checkpoint(TRUNCATE)");
-  } finally {
-    tempDb.close();
-  }
-}
-
-async function removeDbSidecars(targetDbPath: string): Promise<void> {
-  await Promise.all(
-    [`${targetDbPath}-wal`, `${targetDbPath}-shm`].map((filePath) =>
-      fs.promises.unlink(filePath).catch(() => undefined),
-    ),
-  );
-}
-
 // Import backup module for copyDatabaseToBackup
-import { copyDatabaseToBackup } from "./ipc-backup";
+import { copyDatabaseToBackup } from "./backup";
 
 // Main window reference (will be set by main.ts)
 let mainWindow: any = null;

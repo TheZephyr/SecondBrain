@@ -1,7 +1,6 @@
 import { ipcMain, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { ZodType } from "zod";
-import Database from "better-sqlite3";
 import type {
   ItemData,
   GetItemsInput,
@@ -23,9 +22,9 @@ import type {
   BulkPatchItemsInput,
   ImportCollectionInput,
   ReorderItemsInput,
-} from "../src/types/models";
-import type { IpcResult, IpcError } from "../src/types/ipc";
-import { AppError } from "./db-worker-manager";
+} from "../../src/types/models";
+import type { IpcResult, IpcError } from "../../src/types/ipc";
+import { AppError } from "../db/worker-manager";
 import {
   NewCollectionInputSchema,
   NewViewInputSchema,
@@ -48,13 +47,20 @@ import {
   itemDataSchema,
   ReorderItemsInputSchema,
   positiveIntSchema,
-} from "../src/validation/schemas";
-import { invokeDbWorker, requireDbPath, DB_BULK_TIMEOUT_MS, DB_IMPORT_TIMEOUT_MS } from "./db-worker-manager";
+} from "../../src/validation/schemas";
+import {
+  invokeDbWorker,
+  DB_BULK_TIMEOUT_MS,
+  DB_IMPORT_TIMEOUT_MS,
+} from "../db/worker-manager";
 import fs from "fs";
-import path from "path";
 
 // Helper: parse or throw
-function parseOrThrow<T>(schema: ZodType<T>, data: unknown, context: string): T {
+function parseOrThrow<T>(
+  schema: ZodType<T>,
+  data: unknown,
+  context: string,
+): T {
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
     throw new AppError(
@@ -88,28 +94,14 @@ function handleIpc<T, A extends unknown[]>(
       const data = await handler(event, ...args);
       return { ok: true, data } satisfies IpcResult<T>;
     } catch (error) {
-      const ipcError: IpcError = error instanceof AppError
-        ? { code: error.code, message: error.message, details: error.details }
-        : { code: "UNKNOWN", message: "Unknown error." };
+      const ipcError: IpcError =
+        error instanceof AppError
+          ? { code: error.code, message: error.message, details: error.details }
+          : { code: "UNKNOWN", message: "Unknown error." };
       console.error(`[IPC:${channel}]`, error);
       return { ok: false, error: ipcError } satisfies IpcResult<T>;
     }
   });
-}
-
-// Checkpoint helper (used by backup module, but needed here for consistency)
-async function checkpointDatabaseFile(targetDbPath: string): Promise<void> {
-  if (!(await fs.promises.stat(targetDbPath).catch(() => null))) {
-    return;
-  }
-
-  const tempDb = new Database(targetDbPath);
-  try {
-    tempDb.pragma("busy_timeout = 5000");
-    tempDb.pragma("wal_checkpoint(TRUNCATE)");
-  } finally {
-    tempDb.close();
-  }
 }
 
 // ==================== COLLECTIONS ====================

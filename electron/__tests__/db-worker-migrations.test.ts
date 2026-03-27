@@ -3,7 +3,7 @@ import os from "os";
 import path from "path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
-import { closeDatabase, initDatabase } from "../db-worker";
+import { closeDatabase, initDatabase } from "../db/worker";
 
 type TempDb = { dbPath: string; dir: string };
 

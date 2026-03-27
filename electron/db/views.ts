@@ -1,13 +1,15 @@
 import Database from "better-sqlite3";
-import type { ReorderViewsInput, ViewConfig } from "../src/types/models";
-import { ViewConfigSchema } from "../src/validation/schemas";
-import { toNumber } from "./db-query-utils";
+import type { ReorderViewsInput, ViewConfig } from "../../src/types/models";
+import { ViewConfigSchema } from "../../src/validation/schemas";
+import { toNumber } from "./query-utils";
 
 type MaxViewOrderRow = { maxOrder: number | bigint | null };
 type ViewConfigRow = { config: string | null };
 type IdRow = { id: number };
 
-export function parseStoredViewConfig(config: string | null): ViewConfig | null {
+export function parseStoredViewConfig(
+  config: string | null,
+): ViewConfig | null {
   if (!config) {
     return null;
   }
@@ -170,19 +172,12 @@ export function addView(
   const type = input.type ?? "grid";
   const isDefault = input.isDefault ?? 0;
   const order =
-    input.order ??
-    getNextViewOrderIndex(database, input.collectionId);
+    input.order ?? getNextViewOrderIndex(database, input.collectionId);
   const info = database
     .prepare(
       'INSERT INTO views (collection_id, name, type, is_default, "order") VALUES (?, ?, ?, ?, ?)',
     )
-    .run(
-      input.collectionId,
-      input.name,
-      type,
-      isDefault,
-      order,
-    );
+    .run(input.collectionId, input.name, type, isDefault, order);
 
   return {
     id: Number(info.lastInsertRowid),
@@ -194,7 +189,10 @@ export function addView(
   };
 }
 
-export function updateView(database: Database.Database, input: { id: number; name: string }) {
+export function updateView(
+  database: Database.Database,
+  input: { id: number; name: string },
+) {
   assertNotSourceView(database, input.id, "rename");
   const info = database
     .prepare("UPDATE views SET name = ? WHERE id = ?")
@@ -209,9 +207,7 @@ export function updateView(database: Database.Database, input: { id: number; nam
 
 export function deleteView(database: Database.Database, viewId: number) {
   assertNotSourceView(database, viewId, "delete");
-  const info = database
-    .prepare("DELETE FROM views WHERE id = ?")
-    .run(viewId);
+  const info = database.prepare("DELETE FROM views WHERE id = ?").run(viewId);
 
   if (toNumber(info.changes) !== 1) {
     throw new Error(`Failed to delete view ${viewId}.`);
@@ -238,9 +234,10 @@ export function updateViewConfig(
 ) {
   const payload: ViewConfig = {
     columnWidths: Object.fromEntries(
-      Object.entries(input.config.columnWidths).map(
-        ([fieldId, width]) => [Number(fieldId), width],
-      ),
+      Object.entries(input.config.columnWidths).map(([fieldId, width]) => [
+        Number(fieldId),
+        width,
+      ]),
     ) as Record<number, number>,
     sort: input.config.sort.map((entry) => ({
       field: entry.field,
@@ -257,9 +254,7 @@ export function updateViewConfig(
     .run(JSON.stringify(payload), input.viewId);
 
   if (toNumber(info.changes) !== 1) {
-    throw new Error(
-      `Failed to update view config for view ${input.viewId}.`,
-    );
+    throw new Error(`Failed to update view config for view ${input.viewId}.`);
   }
 
   return true;

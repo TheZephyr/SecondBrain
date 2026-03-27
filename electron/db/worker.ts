@@ -5,28 +5,28 @@ import type {
   DbWorkerOperation,
   DbWorkerRequest,
   DbWorkerResponse,
-} from "./db-worker-protocol";
+} from "./worker-protocol";
 import {
   exportFullArchive as buildFullArchiveExport,
   getArchiveDatabaseSummary,
   restoreFullArchive as runFullArchiveRestore,
-} from "./full-archive";
+} from "../lib/full-archive";
 
-import { initDatabaseConnection } from "./db-init";
+import { initDatabaseConnection } from "./init";
 import {
   getCollections,
   getCollectionItemCounts,
   addCollection,
   updateCollection,
   deleteCollection,
-} from "./db-collections";
+} from "./collections";
 import {
   getFields,
   addField,
   updateField,
   reorderFields,
   deleteField,
-} from "./db-fields";
+} from "./fields";
 import {
   getItems,
   addItem,
@@ -39,7 +39,7 @@ import {
   bulkDeleteItems,
   bulkPatchItems,
   runImport,
-} from "./db-items";
+} from "./items";
 import {
   getViews,
   addView,
@@ -48,7 +48,7 @@ import {
   getViewConfig,
   updateViewConfig,
   reorderViews,
-} from "./db-views";
+} from "./views";
 
 let db: Database.Database | null = null;
 let ftsEnabled = false;

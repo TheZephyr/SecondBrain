@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
-import type { ReorderFieldsInput } from "../src/types/models";
-import { toNumber } from "./db-query-utils";
+import type { ReorderFieldsInput } from "../../src/types/models";
+import { toNumber } from "./query-utils";
 
 type MaxOrderRow = { maxOrderIndex: number | bigint | null };
 type IdRow = { id: number };
@@ -30,10 +30,18 @@ export function getFields(database: Database.Database, collectionId: number) {
     .all(collectionId);
 }
 
-export function addField(database: Database.Database, input: { collectionId: number; name: string; type: string; options?: string | null; orderIndex?: number }) {
+export function addField(
+  database: Database.Database,
+  input: {
+    collectionId: number;
+    name: string;
+    type: string;
+    options?: string | null;
+    orderIndex?: number;
+  },
+) {
   const orderIndex =
-    input.orderIndex ??
-    getNextFieldOrderIndex(database, input.collectionId);
+    input.orderIndex ?? getNextFieldOrderIndex(database, input.collectionId);
   const info = database
     .prepare(
       "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
@@ -53,13 +61,20 @@ export function addField(database: Database.Database, input: { collectionId: num
   };
 }
 
-export function updateField(database: Database.Database, input: { id: number; name: string; type: string; options?: string | null; orderIndex?: number }) {
+export function updateField(
+  database: Database.Database,
+  input: {
+    id: number;
+    name: string;
+    type: string;
+    options?: string | null;
+    orderIndex?: number;
+  },
+) {
   // Get current field to detect name changes
   const currentField = database
     .prepare("SELECT name, collection_id FROM fields WHERE id = ?")
-    .get(input.id) as
-    | { name: string; collection_id: number }
-    | undefined;
+    .get(input.id) as { name: string; collection_id: number } | undefined;
 
   if (!currentField) {
     throw new Error(`Field ${input.id} not found.`);

@@ -8,9 +8,9 @@ import type {
   BackupEntry,
   BackupLabel,
   UpdateBackupSettingsInput,
-} from "../src/types/models";
-import type { IpcResult, IpcError } from "../src/types/ipc";
-import { AppError } from "./db-worker-manager";
+} from "../../src/types/models";
+import type { IpcResult, IpcError } from "../../src/types/ipc";
+import { AppError } from "../db/worker-manager";
 import {
   buildBackupFileName,
   ensureBackupDirectory,
@@ -20,12 +20,12 @@ import {
   partitionBackups,
   pruneBackupSet,
   saveBackupSettings,
-} from "./backup-utils";
+} from "../lib/backup-utils";
 import {
   positiveIntSchema,
   backupFileNameSchema,
   UpdateBackupSettingsInputSchema,
-} from "../src/validation/schemas";
+} from "../../src/validation/schemas";
 
 // Import worker manager functions (must be after AppError definition)
 import {
@@ -33,7 +33,7 @@ import {
   startDbWorker,
   requireDbPath,
   requireUserDataPath,
-} from "./db-worker-manager";
+} from "../db/worker-manager";
 
 // Helper: parse or throw
 function parseOrThrow<T>(

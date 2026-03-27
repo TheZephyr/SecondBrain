@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
+import { closeDatabase, handleOperation, initDatabase } from "../db/worker";
 import type {
   Collection,
   Field,
@@ -24,7 +24,9 @@ function addCollection(input: NewCollectionInput): Collection {
 }
 
 function addField(input: NewFieldInput): { id: number } & NewFieldInput {
-  return handleOperation({ type: "addField", input }) as { id: number } & NewFieldInput;
+  return handleOperation({ type: "addField", input }) as {
+    id: number;
+  } & NewFieldInput;
 }
 
 function addItem(input: NewItemInput): { id: number } {
@@ -114,9 +116,18 @@ describe("db-worker transactional multi-step operations", () => {
   it("rolls back bulkDeleteItems when request includes IDs outside the collection", () => {
     setupInMemoryDb();
     const collection = addCollection({ name: "Movies" });
-    const item1 = addItem({ collectionId: collection.id, data: { Title: "A" } });
-    const item2 = addItem({ collectionId: collection.id, data: { Title: "B" } });
-    const item3 = addItem({ collectionId: collection.id, data: { Title: "C" } });
+    const item1 = addItem({
+      collectionId: collection.id,
+      data: { Title: "A" },
+    });
+    const item2 = addItem({
+      collectionId: collection.id,
+      data: { Title: "B" },
+    });
+    const item3 = addItem({
+      collectionId: collection.id,
+      data: { Title: "C" },
+    });
 
     expect(() =>
       handleOperation({
@@ -129,9 +140,9 @@ describe("db-worker transactional multi-step operations", () => {
     ).toThrow();
 
     const itemsAfterFailure = getRawItems(collection.id);
-    expect(itemsAfterFailure.map((item) => item.id).sort((a, b) => a - b)).toEqual(
-      [item1.id, item2.id, item3.id].sort((a, b) => a - b),
-    );
+    expect(
+      itemsAfterFailure.map((item) => item.id).sort((a, b) => a - b),
+    ).toEqual([item1.id, item2.id, item3.id].sort((a, b) => a - b));
   });
 
   it("rolls back bulkPatchItems when one requested ID is invalid", () => {
@@ -160,8 +171,12 @@ describe("db-worker transactional multi-step operations", () => {
     ).toThrow();
 
     const itemsAfterFailure = getRawItems(collection.id);
-    const item1AfterFailure = itemsAfterFailure.find((item) => item.id === item1.id);
-    const item2AfterFailure = itemsAfterFailure.find((item) => item.id === item2.id);
+    const item1AfterFailure = itemsAfterFailure.find(
+      (item) => item.id === item1.id,
+    );
+    const item2AfterFailure = itemsAfterFailure.find(
+      (item) => item.id === item2.id,
+    );
 
     expect(item1AfterFailure).toBeDefined();
     expect(item2AfterFailure).toBeDefined();
@@ -213,7 +228,9 @@ describe("db-worker transactional multi-step operations", () => {
       type: "getViews",
       collectionId: collection.id,
     }) as Array<{ id: number; order: number }>;
-    const orders = new Map(viewsAfterFailure.map((view) => [view.id, view.order]));
+    const orders = new Map(
+      viewsAfterFailure.map((view) => [view.id, view.order]),
+    );
 
     expect(orders.get(viewA.id)).toBe(1);
     expect(orders.get(viewB.id)).toBe(2);

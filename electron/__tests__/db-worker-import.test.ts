@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { closeDatabase, handleOperation, initDatabase } from "../db-worker";
+import { closeDatabase, handleOperation, initDatabase } from "../db/worker";
 import type {
   Collection,
   Field,

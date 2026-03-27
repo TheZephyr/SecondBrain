@@ -1,20 +1,24 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
-import type { IpcMainInvokeEvent, SaveDialogOptions, OpenDialogOptions } from "electron";
+import type {
+  IpcMainInvokeEvent,
+  SaveDialogOptions,
+  OpenDialogOptions,
+} from "electron";
 import path from "path";
-import { tryCreateStartupBackup } from "./backup-utils";
+import { tryCreateStartupBackup } from "./lib/backup-utils";
 import {
   registerBackupIpcHandlers,
   maybeCreateStartupBackup,
-} from "./ipc-backup";
-import { registerArchiveIpcHandlers } from "./ipc-archive";
-import { setMainWindow as setArchiveMainWindow } from "./ipc-archive";
+} from "./ipc/backup";
+import { registerArchiveIpcHandlers } from "./ipc/archive";
+import { setMainWindow as setArchiveMainWindow } from "./ipc/archive";
 import {
   setDbPath,
   startDbWorker,
   stopDbWorker,
   setAppIsQuitting,
-} from "./db-worker-manager";
-import { registerDbIpcHandlers } from "./ipc-db";
+} from "./db/worker-manager";
+import { registerDbIpcHandlers } from "./ipc/db";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -84,27 +88,33 @@ app.whenReady().then(async () => {
   registerArchiveIpcHandlers();
 
   // Register main-window-specific handlers that need dialog access
-  ipcMain.handle("export:showSaveDialog", async (event: IpcMainInvokeEvent, options: SaveDialogOptions) => {
-    if (!mainWindow) {
-      throw new Error("Main window not available");
-    }
-    const result = await dialog.showSaveDialog(mainWindow, options);
-    if (result.canceled || !result.filePath) {
-      return null;
-    }
-    return result.filePath;
-  });
+  ipcMain.handle(
+    "export:showSaveDialog",
+    async (event: IpcMainInvokeEvent, options: SaveDialogOptions) => {
+      if (!mainWindow) {
+        throw new Error("Main window not available");
+      }
+      const result = await dialog.showSaveDialog(mainWindow, options);
+      if (result.canceled || !result.filePath) {
+        return null;
+      }
+      return result.filePath;
+    },
+  );
 
-  ipcMain.handle("import:showOpenDialog", async (event: IpcMainInvokeEvent, options: OpenDialogOptions) => {
-    if (!mainWindow) {
-      throw new Error("Main window not available");
-    }
-    const result = await dialog.showOpenDialog(mainWindow, options);
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-    return result.filePaths[0];
-  });
+  ipcMain.handle(
+    "import:showOpenDialog",
+    async (event: IpcMainInvokeEvent, options: OpenDialogOptions) => {
+      if (!mainWindow) {
+        throw new Error("Main window not available");
+      }
+      const result = await dialog.showOpenDialog(mainWindow, options);
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+      return result.filePaths[0];
+    },
+  );
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -26,22 +26,20 @@ import type {
   UrlFieldOptions,
   ViewConfig,
   ViewType,
-} from "../src/types/models";
-import {
-  parseFieldOptions,
-} from "../src/utils/fieldOptions";
+} from "../../src/types/models";
+import { parseFieldOptions } from "../../src/utils/fieldOptions";
 import {
   parseBooleanValue,
   parseMultiselectValue,
   parseRatingValue,
-} from "../src/utils/fieldValues";
+} from "../../src/utils/fieldValues";
 import {
   FullArchiveCalendarViewConfigSchema,
   FullArchiveGridViewConfigSchema,
   FullArchiveKanbanViewConfigSchema,
   ViewConfigSchema,
-} from "../src/validation/schemas";
-import { isSafeFieldName } from "../src/validation/fieldNames";
+} from "../../src/validation/schemas";
+import { isSafeFieldName } from "../../src/validation/fieldNames";
 
 type CollectionRow = {
   id: number;
@@ -82,11 +80,7 @@ const SUPPORTED_FIELD_TYPES = new Set<FieldType>([
   "rating",
 ]);
 
-const SUPPORTED_VIEW_TYPES = new Set<ViewType>([
-  "grid",
-  "kanban",
-  "calendar",
-]);
+const SUPPORTED_VIEW_TYPES = new Set<ViewType>(["grid", "kanban", "calendar"]);
 
 function toNumber(value: number | bigint | null | undefined): number {
   if (value === null || value === undefined) {
@@ -235,9 +229,10 @@ function normalizeArchiveFieldOptions(
     case "boolean": {
       const booleanOptions = parsed as BooleanFieldOptions;
       return {
-        icon: typeof booleanOptions.icon === "string"
-          ? booleanOptions.icon
-          : "square",
+        icon:
+          typeof booleanOptions.icon === "string"
+            ? booleanOptions.icon
+            : "square",
       };
     }
     case "url": {
@@ -253,9 +248,8 @@ function normalizeArchiveFieldOptions(
     case "rating": {
       const ratingOptions = parsed as RatingFieldOptions;
       return {
-        icon: typeof ratingOptions.icon === "string"
-          ? ratingOptions.icon
-          : "star",
+        icon:
+          typeof ratingOptions.icon === "string" ? ratingOptions.icon : "star",
         color:
           typeof ratingOptions.color === "string"
             ? ratingOptions.color
@@ -375,13 +369,18 @@ function buildArchiveViewConfig(
   config: ViewConfig | null,
   orderedFields: Field[],
 ): FullArchiveView["config"] {
-  const fieldNameById = new Map(orderedFields.map((field) => [field.id, field.name]));
+  const fieldNameById = new Map(
+    orderedFields.map((field) => [field.id, field.name]),
+  );
   const orderedFieldNames = orderedFields.map((field) => field.name);
   const selectedFields =
-    Array.isArray(config?.selectedFieldIds) && config.selectedFieldIds.length > 0
+    Array.isArray(config?.selectedFieldIds) &&
+    config.selectedFieldIds.length > 0
       ? config.selectedFieldIds
           .map((fieldId) => fieldNameById.get(fieldId))
-          .filter((fieldName): fieldName is string => typeof fieldName === "string")
+          .filter(
+            (fieldName): fieldName is string => typeof fieldName === "string",
+          )
       : orderedFieldNames;
 
   if (viewType === "grid") {
@@ -424,7 +423,7 @@ function buildArchiveViewConfig(
     return {
       groupingField:
         typeof config?.groupingFieldId === "number"
-          ? fieldNameById.get(config.groupingFieldId) ?? null
+          ? (fieldNameById.get(config.groupingFieldId) ?? null)
           : null,
       columnOrder: [...(config?.kanbanColumnOrder ?? [])],
       selectedFields,
@@ -440,7 +439,10 @@ function buildArchiveViewConfig(
         }
       }
 
-      if (typeof config?.calendarDateField === "string" && config.calendarDateField.trim()) {
+      if (
+        typeof config?.calendarDateField === "string" &&
+        config.calendarDateField.trim()
+      ) {
         return config.calendarDateField.trim();
       }
 
@@ -450,7 +452,10 @@ function buildArchiveViewConfig(
   };
 }
 
-function buildArchiveItems(fields: Field[], itemRows: ItemRow[]): FullArchiveItem[] {
+function buildArchiveItems(
+  fields: Field[],
+  itemRows: ItemRow[],
+): FullArchiveItem[] {
   const orderedFields = [...fields].sort((a, b) => {
     if (a.order_index !== b.order_index) {
       return a.order_index - b.order_index;
@@ -515,44 +520,50 @@ export function exportFullArchive(
 ): FullArchiveFile {
   const exportedAt = new Date().toISOString();
   const collectionRows = selectCollections(database);
-  const collections: FullArchiveCollection[] = collectionRows.map((collection) => {
-    const fields = selectFields(database, collection.id);
-    const views = selectViews(database, collection.id);
-    const items = selectItems(database, collection.id);
+  const collections: FullArchiveCollection[] = collectionRows.map(
+    (collection) => {
+      const fields = selectFields(database, collection.id);
+      const views = selectViews(database, collection.id);
+      const items = selectItems(database, collection.id);
 
-    const archiveFields: FullArchiveField[] = fields.map((field) => ({
-      name: field.name,
-      type: field.type,
-      orderIndex: field.order_index,
-      options: isSupportedFieldType(field.type)
-        ? normalizeArchiveFieldOptions(field.type, field.options)
-        : parseJsonObject(field.options),
-    }));
+      const archiveFields: FullArchiveField[] = fields.map((field) => ({
+        name: field.name,
+        type: field.type,
+        orderIndex: field.order_index,
+        options: isSupportedFieldType(field.type)
+          ? normalizeArchiveFieldOptions(field.type, field.options)
+          : parseJsonObject(field.options),
+      }));
 
-    const archiveViews: FullArchiveView[] = views.map((view) => ({
-      name: view.name,
-      type: view.type,
-      isDefault: toNumber(view.is_default) === 1,
-      order: toNumber(view.order),
-      config: isSupportedViewType(view.type)
-        ? buildArchiveViewConfig(view.type, parseStoredViewConfig(view.config), fields)
-        : {},
-    }));
+      const archiveViews: FullArchiveView[] = views.map((view) => ({
+        name: view.name,
+        type: view.type,
+        isDefault: toNumber(view.is_default) === 1,
+        order: toNumber(view.order),
+        config: isSupportedViewType(view.type)
+          ? buildArchiveViewConfig(
+              view.type,
+              parseStoredViewConfig(view.config),
+              fields,
+            )
+          : {},
+      }));
 
-    const archiveItems = buildArchiveItems(fields, items);
+      const archiveItems = buildArchiveItems(fields, items);
 
-    return {
-      name: collection.name,
-      exportedAt,
-      stats: {
-        fieldCount: archiveFields.length,
-        itemCount: archiveItems.length,
-      },
-      fields: archiveFields,
-      views: archiveViews,
-      items: archiveItems,
-    };
-  });
+      return {
+        name: collection.name,
+        exportedAt,
+        stats: {
+          fieldCount: archiveFields.length,
+          itemCount: archiveItems.length,
+        },
+        fields: archiveFields,
+        views: archiveViews,
+        items: archiveItems,
+      };
+    },
+  );
 
   const totalFieldCount = collections.reduce(
     (sum, collection) => sum + collection.stats.fieldCount,
@@ -658,7 +669,9 @@ function buildStoredViewConfig(
     }
 
     const columnWidths: Record<number, number> = {};
-    for (const [fieldName, width] of Object.entries(validated.data.columnWidths)) {
+    for (const [fieldName, width] of Object.entries(
+      validated.data.columnWidths,
+    )) {
       const fieldId = fieldIdByName.get(fieldName);
       if (!fieldId) {
         pushDroppedReference(droppedViewReferences, {
@@ -915,9 +928,13 @@ export function restoreFullArchive(
       const insertItem = database.prepare(
         'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
       );
-      const fieldByName = new Map(validFields.map((field) => [field.name, field]));
+      const fieldByName = new Map(
+        validFields.map((field) => [field.name, field]),
+      );
 
-      for (const item of [...collection.items].sort((a, b) => a.order - b.order)) {
+      for (const item of [...collection.items].sort(
+        (a, b) => a.order - b.order,
+      )) {
         const nextItemData: ItemData = {};
         for (const field of validFields) {
           nextItemData[field.name] = toStoredItemValue(
