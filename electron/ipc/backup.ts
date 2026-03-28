@@ -1,15 +1,12 @@
-import { ipcMain, shell, app } from "electron";
-import type { IpcMainInvokeEvent } from "electron";
+import { shell, app } from "electron";
 import path from "path";
 import fs from "fs";
-import { ZodType } from "zod";
 import Database from "better-sqlite3";
 import type {
   BackupEntry,
   BackupLabel,
   UpdateBackupSettingsInput,
 } from "../../src/types/models";
-import type { IpcResult, IpcError } from "../../src/types/ipc";
 import { AppError } from "../db/worker-manager";
 import {
   buildBackupFileName,
@@ -22,69 +19,17 @@ import {
   saveBackupSettings,
 } from "../lib/backup-utils";
 import {
-  positiveIntSchema,
   backupFileNameSchema,
   UpdateBackupSettingsInputSchema,
 } from "../../src/validation/schemas";
-
-// Import worker manager functions (must be after AppError definition)
 import {
   stopDbWorker,
   startDbWorker,
   requireDbPath,
   requireUserDataPath,
 } from "../db/worker-manager";
+import { parseOrThrow, handleIpc } from "./utils";
 
-// Helper: parse or throw
-function parseOrThrow<T>(
-  schema: ZodType<T>,
-  data: unknown,
-  context: string,
-): T {
-  const parsed = schema.safeParse(data);
-  if (!parsed.success) {
-    throw new AppError(
-      "VALIDATION_FAILED",
-      "Invalid input.",
-      JSON.stringify({ context, issues: parsed.error.issues }),
-    );
-  }
-  return parsed.data;
-}
-
-function parsePositiveInt(data: unknown, context: string): number {
-  const parsed = positiveIntSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new AppError(
-      "VALIDATION_FAILED",
-      "Invalid integer.",
-      JSON.stringify({ context, issues: parsed.error.issues }),
-    );
-  }
-  return parsed.data;
-}
-
-// Generic IPC handler wrapper
-function handleIpc<T, A extends unknown[]>(
-  channel: string,
-  handler: (event: IpcMainInvokeEvent, ...args: A) => T | Promise<T>,
-) {
-  ipcMain.handle(channel, async (event, ...args: A) => {
-    try {
-      const data = await handler(event, ...args);
-      return { ok: true, data } satisfies IpcResult<T>;
-    } catch (error) {
-      const ipcError: IpcError =
-        error instanceof AppError
-          ? { code: error.code, message: error.message, details: error.details }
-          : { code: "UNKNOWN", message: "Unknown error." };
-      console.error(`[IPC:${channel}]`, error);
-      return { ok: false, error: ipcError } satisfies IpcResult<T>;
-    }
-  });
-}
-
-// Checkpoint and sidecar helpers (moved from main.ts)
 async function checkpointDatabaseFile(targetDbPath: string): Promise<void> {
   if (!(await fs.promises.stat(targetDbPath).catch(() => null))) {
     return;
@@ -107,7 +52,6 @@ async function removeDbSidecars(targetDbPath: string): Promise<void> {
   );
 }
 
-// Backup-specific helper functions (moved from main.ts)
 export async function copyDatabaseToBackup(
   label: BackupLabel,
   excludeFromPruning?: string[],
@@ -153,7 +97,6 @@ export async function copyDatabaseToBackup(
 
     return created;
   } finally {
-    // Always attempt to restart the database worker, even if an error occurred
     try {
       await startDbWorker(liveDbPath);
     } catch (error) {
@@ -161,7 +104,6 @@ export async function copyDatabaseToBackup(
         `[Backup] Failed to restart database worker after ${label} backup:`,
         error,
       );
-      // Re-throw the original error if we had one, otherwise throw the restart error
       throw error;
     }
   }
@@ -212,7 +154,6 @@ async function restoreBackupFromFileName(fileName: string): Promise<boolean> {
   return true;
 }
 
-// Register all backup IPC handlers
 export function registerBackupIpcHandlers() {
   handleIpc("backup:getSettings", async () => {
     return loadBackupSettings(requireUserDataPath());

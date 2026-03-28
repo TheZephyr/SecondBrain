@@ -47,7 +47,7 @@ export function parseStoredViewConfig(
   };
 }
 
-export function assertNotSourceView(
+function assertNotSourceView(
   database: Database.Database,
   viewId: number,
   action: string,
@@ -65,7 +65,7 @@ export function assertNotSourceView(
   }
 }
 
-export function getNextViewOrderIndex(
+function getNextViewOrderIndex(
   database: Database.Database,
   collectionId: number,
 ): number {
@@ -82,7 +82,7 @@ export function getNextViewOrderIndex(
   return maxOrder + 1;
 }
 
-export function ensureViewReorderPayloadMatchesCollection(
+function ensureViewReorderPayloadMatchesCollection(
   database: Database.Database,
   input: ReorderViewsInput,
 ) {

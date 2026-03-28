@@ -91,6 +91,7 @@ app.whenReady().then(async () => {
   ipcMain.handle(
     "export:showSaveDialog",
     async (event: IpcMainInvokeEvent, options: SaveDialogOptions) => {
+      console.log("Saving from event sender:", event.sender.id);
       if (!mainWindow) {
         throw new Error("Main window not available");
       }
@@ -105,6 +106,7 @@ app.whenReady().then(async () => {
   ipcMain.handle(
     "import:showOpenDialog",
     async (event: IpcMainInvokeEvent, options: OpenDialogOptions) => {
+      console.log("Opening from event sender:", event.sender.id);
       if (!mainWindow) {
         throw new Error("Main window not available");
       }

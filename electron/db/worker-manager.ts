@@ -252,7 +252,6 @@ export function requireUserDataPath(): string {
   if (!appIsReady()) {
     throw new AppError("UNKNOWN", "Application is not ready.");
   }
-  // @ts-ignore - app.getPath is available after app.isReady()
   return app.getPath("userData");
 }
 
@@ -302,14 +301,6 @@ export function setAppIsQuitting(quitting: boolean) {
   appIsQuitting = quitting;
 }
 
-// Helper to check app readiness - we'll rely on main.ts to provide this context
 function appIsReady(): boolean {
-  // This is a simple check; in production we'd want a more robust way
-  // Since we're in the main process, we can try to access app
-  try {
-    // @ts-ignore
-    return typeof app !== "undefined" && app.isReady();
-  } catch {
-    return false;
-  }
+  return app.isReady();
 }

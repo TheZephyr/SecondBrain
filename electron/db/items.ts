@@ -33,7 +33,7 @@ type ItemRow = {
 
 const SQLITE_IN_CLAUSE_CHUNK_SIZE = 400;
 
-export function chunkArray<T>(values: T[], chunkSize: number): T[][] {
+function chunkArray<T>(values: T[], chunkSize: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < values.length; i += chunkSize) {
     chunks.push(values.slice(i, i + chunkSize));
@@ -41,18 +41,18 @@ export function chunkArray<T>(values: T[], chunkSize: number): T[][] {
   return chunks;
 }
 
-export function buildInClausePlaceholders(length: number): string {
+function buildInClausePlaceholders(length: number): string {
   return new Array(length).fill("?").join(", ");
 }
 
-export function getMissingIds(
+function getMissingIds(
   requestedIds: number[],
   existingIds: Set<number>,
 ): number[] {
   return requestedIds.filter((id) => !existingIds.has(id));
 }
 
-export function getNextItemOrderIndex(
+function getNextItemOrderIndex(
   database: Database.Database,
   collectionId: number,
 ): number {
@@ -113,7 +113,7 @@ export function runImport(
   importTransaction(input);
 }
 
-export function getExistingItemIds(
+function getExistingItemIds(
   database: Database.Database,
   collectionId: number,
   itemIds: number[],
@@ -218,7 +218,7 @@ export function reorderItems(
   return true;
 }
 
-export function getItemsDataByIds(
+function getItemsDataByIds(
   database: Database.Database,
   collectionId: number,
   itemIds: number[],
@@ -242,7 +242,7 @@ export function getItemsDataByIds(
   return itemDataById;
 }
 
-export function parseStoredItemDataOrThrow(
+function parseStoredItemDataOrThrow(
   rawData: string,
   itemId: number,
 ): ItemData {

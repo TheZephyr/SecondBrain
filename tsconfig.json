@@ -29,6 +29,7 @@
     "src/**/*.tsx",
     "src/**/*.vue",
     "src/types/electron.d.ts",
-    "src/types/vite-env.d.ts"
+    "src/types/vite-env.d.ts",
+    "electron/**/*.ts"
   ]
 }
