@@ -5,13 +5,17 @@ import type {
   OpenDialogOptions,
 } from "electron";
 import path from "path";
+import type { IpcResult, IpcError } from "../src/types/ipc";
+import { AppError } from "./db/worker-manager";
 import { tryCreateStartupBackup } from "./lib/backup-utils";
 import {
   registerBackupIpcHandlers,
   maybeCreateStartupBackup,
 } from "./ipc/backup";
-import { registerArchiveIpcHandlers } from "./ipc/archive";
-import { setMainWindow as setArchiveMainWindow } from "./ipc/archive";
+import {
+  registerArchiveIpcHandlers,
+  setMainWindow as setArchiveMainWindow,
+} from "./ipc/archive";
 import {
   setDbPath,
   startDbWorker,
@@ -23,6 +27,25 @@ import { registerDbIpcHandlers } from "./ipc/db";
 const isDev = process.env.NODE_ENV === "development";
 
 let mainWindow: BrowserWindow | null = null;
+
+function handleIpc<T, A extends unknown[]>(
+  channel: string,
+  handler: (event: IpcMainInvokeEvent, ...args: A) => T | Promise<T>,
+) {
+  ipcMain.handle(channel, async (event, ...args: A) => {
+    try {
+      const data = await handler(event, ...args);
+      return { ok: true, data } satisfies IpcResult<T>;
+    } catch (error) {
+      const ipcError: IpcError =
+        error instanceof AppError
+          ? { code: error.code, message: error.message, details: error.details }
+          : { code: "UNKNOWN", message: "Unknown error." };
+      console.error(`[IPC:${channel}]`, error);
+      return { ok: false, error: ipcError } satisfies IpcResult<T>;
+    }
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -48,7 +71,6 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Provide main window reference to archive module for dialogs
   setArchiveMainWindow(mainWindow);
 }
 
@@ -56,10 +78,7 @@ async function initDatabase(): Promise<boolean> {
   try {
     const dbPath = path.join(app.getPath("userData"), "secondbrain.db");
     setDbPath(dbPath);
-
-    // Create startup backup before starting worker
     await tryCreateStartupBackup(maybeCreateStartupBackup);
-
     await startDbWorker(dbPath);
     return true;
   } catch (error) {
@@ -76,52 +95,38 @@ async function initDatabase(): Promise<boolean> {
 
 app.whenReady().then(async () => {
   const ready = await initDatabase();
-  if (!ready) {
-    return;
-  }
+  if (!ready) return;
 
   createWindow();
 
-  // Register all IPC handlers
   registerDbIpcHandlers();
   registerBackupIpcHandlers();
   registerArchiveIpcHandlers();
 
-  // Register main-window-specific handlers that need dialog access
-  ipcMain.handle(
+  handleIpc(
     "export:showSaveDialog",
-    async (event: IpcMainInvokeEvent, options: SaveDialogOptions) => {
-      console.log("Saving from event sender:", event.sender.id);
-      if (!mainWindow) {
-        throw new Error("Main window not available");
-      }
+    async (_event, options: SaveDialogOptions) => {
+      if (!mainWindow)
+        throw new AppError("UNKNOWN", "Main window not available.");
       const result = await dialog.showSaveDialog(mainWindow, options);
-      if (result.canceled || !result.filePath) {
-        return null;
-      }
-      return result.filePath;
+      return result.canceled ? null : (result.filePath ?? null);
     },
   );
 
-  ipcMain.handle(
+  handleIpc(
     "import:showOpenDialog",
-    async (event: IpcMainInvokeEvent, options: OpenDialogOptions) => {
-      console.log("Opening from event sender:", event.sender.id);
-      if (!mainWindow) {
-        throw new Error("Main window not available");
-      }
+    async (_event, options: OpenDialogOptions) => {
+      if (!mainWindow)
+        throw new AppError("UNKNOWN", "Main window not available.");
       const result = await dialog.showOpenDialog(mainWindow, options);
-      if (result.canceled || result.filePaths.length === 0) {
-        return null;
-      }
-      return result.filePaths[0];
+      return result.canceled || result.filePaths.length === 0
+        ? null
+        : result.filePaths[0];
     },
   );
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
@@ -131,7 +136,5 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  if (process.platform !== "darwin") app.quit();
 });
