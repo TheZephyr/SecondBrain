@@ -6,7 +6,7 @@ A collection is the top-level organizational unit in Second Brain. Each collecti
 
 ## Creating a Collection
 
-Collections are created from the sidebar via the "New Collection" button. A name is required (1–80 characters). The name is validated before saving and a toast notification is shown if it is invalid.
+Collections are created from the sidebar via the "New Collection" button. A name is required (1-80 characters). The name is validated before saving and a toast notification is shown if it is invalid.
 
 When a collection is created, a default **Grid** view is automatically provisioned for it.
 
@@ -37,6 +37,6 @@ Collections are stored in a local SQLite database at `%APPDATA%/second-brain/sec
 
 ## Constraints
 
-- Collection names: 1–80 characters, trimmed
+- Collection names: 1-80 characters, trimmed
 - There is no limit on the number of collections
 - Collections cannot be nested or grouped

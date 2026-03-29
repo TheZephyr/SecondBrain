@@ -65,17 +65,3 @@ This page tracks features that are stubbed, partially built, or explicitly inten
 **Status:** The "Sort" button in the grid toolbar is styled as active when a sort is applied but has no click handler. Multi-sort is fully functional via column header shift-clicks.
 
 **Intended design:** A dropdown or modal panel listing active sort conditions, with the ability to remove individual sort levels, change direction, or reorder sort priority without using column headers.
-
----
-
-## Schema Migrations (Ongoing)
-
-The database uses `PRAGMA user_version` to track schema version. Three migrations have been applied so far:
-
-| Version | Change                                      |
-|---------|---------------------------------------------|
-| 1       | Added `views` table; backfilled default Grid view for all existing collections |
-| 2       | Added `order` column to `items`; backfilled from `rowid` |
-| 3       | Added `config` column to `views`            |
-
-Future schema changes must follow the same incremental migration pattern. Deleting the database to resolve schema conflicts is explicitly not acceptable — the app is local-first and data loss is unacceptable.
