@@ -1,7 +1,5 @@
-import { ipcMain, dialog, app } from "electron";
-import type { IpcMainInvokeEvent } from "electron";
+import { dialog, app } from "electron";
 import fs from "fs";
-import { ZodType } from "zod";
 import type {
   FullArchiveExportInput,
   FullArchiveFile,
@@ -9,7 +7,6 @@ import type {
   FullArchiveRestoreReport,
   FullArchiveDatabaseSummary,
 } from "../../src/types/models";
-import type { IpcResult, IpcError } from "../../src/types/ipc";
 import { AppError } from "../db/worker-manager";
 import {
   buildFullArchiveFileName,
@@ -20,45 +17,10 @@ import {
   archiveFilePathSchema,
   FullArchiveExportInputSchema,
 } from "../../src/validation/schemas";
-import { invokeDbWorker, restartDbWorker } from "../db/worker-manager";
-import { stopDbWorker } from "../db/worker-manager";
-
-// Helper: parse or throw
-function parseOrThrow<T>(
-  schema: ZodType<T>,
-  data: unknown,
-  context: string,
-): T {
-  const parsed = schema.safeParse(data);
-  if (!parsed.success) {
-    throw new AppError(
-      "VALIDATION_FAILED",
-      "Invalid input.",
-      JSON.stringify({ context, issues: parsed.error.issues }),
-    );
-  }
-  return parsed.data;
-}
-
-// Generic IPC handler wrapper
-function handleIpc<T, A extends unknown[]>(
-  channel: string,
-  handler: (event: IpcMainInvokeEvent, ...args: A) => T | Promise<T>,
-) {
-  ipcMain.handle(channel, async (event, ...args: A) => {
-    try {
-      const data = await handler(event, ...args);
-      return { ok: true, data } satisfies IpcResult<T>;
-    } catch (error) {
-      const ipcError: IpcError =
-        error instanceof AppError
-          ? { code: error.code, message: error.message, details: error.details }
-          : { code: "UNKNOWN", message: "Unknown error." };
-      console.error(`[IPC:${channel}]`, error);
-      return { ok: false, error: ipcError } satisfies IpcResult<T>;
-    }
-  });
-}
+import { invokeDbWorker } from "../db/worker-manager";
+import { copyDatabaseToBackup } from "./backup";
+import type { BrowserWindow } from "electron";
+import { parseOrThrow, handleIpc } from "./utils";
 
 // Archive-specific helper functions (moved from main.ts)
 async function readArchiveFromFilePath(filePath: string) {
@@ -163,50 +125,23 @@ async function restoreFullArchiveFromFilePath(
   filePath: string,
 ): Promise<FullArchiveRestoreReport> {
   const archive = await readArchiveFromFilePath(filePath);
-  const backup = await copyDatabaseToBackup("pre_restore");
 
-  // We stop the worker before performing the restore operation
-  await stopDbWorker("Full archive restore in progress.");
+  const backup = await copyDatabaseToBackup("pre_restore");
 
   try {
     const report = await invokeDbWorker<
       Omit<FullArchiveRestoreReport, "preRestoreBackupPath">
-    >(
-      {
-        type: "restoreFullArchive",
-        input: archive,
-      },
-      {
-        timeoutMs: 180_000,
-      },
-    );
-
-    return {
-      ...report,
-      preRestoreBackupPath: backup.filePath,
-    };
-  } finally {
-    // Always attempt to restart the worker, even if an error occurred
-    // The app will relaunch on success, but if there's an error we need to recover
-    try {
-      await restartDbWorker("Full archive restore completed.");
-    } catch (error) {
-      console.error(
-        "[Archive] Failed to restart database worker after full archive restore:",
-        error,
-      );
-      // If restart fails, we can't do much - the error will propagate
-    }
+    >({ type: "restoreFullArchive", input: archive }, { timeoutMs: 180_000 });
+    return { ...report, preRestoreBackupPath: backup.filePath };
+  } catch (error) {
+    console.error("[Archive] Full archive restore failed:", error);
+    throw error;
   }
 }
 
-// Import backup module for copyDatabaseToBackup
-import { copyDatabaseToBackup } from "./backup";
+let mainWindow: BrowserWindow | null = null;
 
-// Main window reference (will be set by main.ts)
-let mainWindow: any = null;
-
-export function setMainWindow(window: any) {
+export function setMainWindow(window: BrowserWindow) {
   mainWindow = window;
 }
 

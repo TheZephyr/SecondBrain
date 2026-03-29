@@ -3,9 +3,9 @@ import { toNumber } from "./query-utils";
 
 type CountRow = { count: number | bigint };
 
-export const FIELD_ORDER_UNIQUE_INDEX = "idx_fields_collection_order_unique";
+const FIELD_ORDER_UNIQUE_INDEX = "idx_fields_collection_order_unique";
 
-export function rebuildItemFtsIndex(database: Database.Database) {
+function rebuildItemFtsIndex(database: Database.Database) {
   const rebuildTransaction = database.transaction(() => {
     database.prepare("DELETE FROM items_fts").run();
     database
@@ -31,7 +31,7 @@ export function rebuildItemFtsIndex(database: Database.Database) {
   rebuildTransaction();
 }
 
-export function syncItemFtsIndex(database: Database.Database) {
+function syncItemFtsIndex(database: Database.Database) {
   const itemCountRow = database
     .prepare("SELECT COUNT(*) AS count FROM items")
     .get() as CountRow;

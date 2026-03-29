@@ -188,7 +188,7 @@ describe("buildItemDataFromForm", () => {
 });
 
 // ---------------------------------------------------------------------------
-// useCollectionItemForm – composable API surface
+// useCollectionItemForm - composable API surface
 // ---------------------------------------------------------------------------
 
 describe("useCollectionItemForm", () => {

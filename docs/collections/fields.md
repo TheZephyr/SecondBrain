@@ -19,7 +19,7 @@ Fields define the schema of a collection. Each field maps to a named column that
 Fields are added from the bottom of the Fields panel. A name, type, and (for `select` fields) a comma-separated list of options must be provided. The field is appended after all existing fields.
 
 **Name constraints:**
-- 1–64 characters
+- 1-64 characters
 - Must start with a letter or digit
 - Allowed characters: letters, digits, spaces, `_`, `-`
 - No dots (`.`)

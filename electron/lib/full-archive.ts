@@ -37,9 +37,10 @@ import {
   FullArchiveCalendarViewConfigSchema,
   FullArchiveGridViewConfigSchema,
   FullArchiveKanbanViewConfigSchema,
-  ViewConfigSchema,
 } from "../../src/validation/schemas";
 import { isSafeFieldName } from "../../src/validation/fieldNames";
+import { toNumber } from "../db/query-utils";
+import { parseStoredViewConfig } from "../db/views";
 
 type CollectionRow = {
   id: number;
@@ -82,13 +83,6 @@ const SUPPORTED_FIELD_TYPES = new Set<FieldType>([
 
 const SUPPORTED_VIEW_TYPES = new Set<ViewType>(["grid", "kanban", "calendar"]);
 
-function toNumber(value: number | bigint | null | undefined): number {
-  if (value === null || value === undefined) {
-    return 0;
-  }
-  return typeof value === "bigint" ? Number(value) : value;
-}
-
 function isSupportedFieldType(type: string): type is FieldType {
   return SUPPORTED_FIELD_TYPES.has(type as FieldType);
 }
@@ -108,23 +102,6 @@ function parseJsonObject(raw: string | null): Record<string, unknown> | null {
       return null;
     }
     return parsed as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function parseStoredViewConfig(raw: string | null): ViewConfig | null {
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    const validated = ViewConfigSchema.safeParse(parsed);
-    if (!validated.success) {
-      return null;
-    }
-    return validated.data;
   } catch {
     return null;
   }
@@ -864,10 +841,7 @@ export function restoreFullArchive(
     collectionId: number;
   }> = [];
 
-  const clearExistingData = database.transaction(() => {
-    database.prepare("DELETE FROM collections").run();
-  });
-  clearExistingData();
+  database.prepare("DELETE FROM collections").run();
 
   for (const [sourceIndex, collection] of archive.collections.entries()) {
     const restoreCollection = database.transaction(() => {
@@ -927,9 +901,6 @@ export function restoreFullArchive(
 
       const insertItem = database.prepare(
         'INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)',
-      );
-      const fieldByName = new Map(
-        validFields.map((field) => [field.name, field]),
       );
 
       for (const item of [...collection.items].sort(

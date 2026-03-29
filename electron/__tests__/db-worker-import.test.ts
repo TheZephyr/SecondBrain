@@ -81,7 +81,7 @@ afterEach(() => {
   closeDatabase();
 });
 
-describe("importCollection – append mode", () => {
+describe("importCollection - append mode", () => {
   it("adds new items without touching existing ones", () => {
     setupInMemoryDb();
     const col = addCollection({ name: "Books" });
@@ -144,7 +144,7 @@ describe("importCollection – append mode", () => {
   });
 });
 
-describe("importCollection – replace mode", () => {
+describe("importCollection - replace mode", () => {
   it("deletes existing items and inserts new ones", () => {
     setupInMemoryDb();
     const col = addCollection({ name: "Books" });
@@ -210,7 +210,7 @@ describe("importCollection – replace mode", () => {
   });
 });
 
-describe("importCollection – edge cases", () => {
+describe("importCollection - edge cases", () => {
   it("handles empty import (0 items, 0 new fields) without error", () => {
     setupInMemoryDb();
     const col = addCollection({ name: "Books" });

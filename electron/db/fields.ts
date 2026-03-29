@@ -128,7 +128,7 @@ export function deleteField(database: Database.Database, fieldId: number) {
   return true;
 }
 
-export function ensureReorderPayloadMatchesCollection(
+function ensureReorderPayloadMatchesCollection(
   database: Database.Database,
   input: ReorderFieldsInput,
 ) {
