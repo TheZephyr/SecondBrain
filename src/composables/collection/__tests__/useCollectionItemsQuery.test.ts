@@ -158,7 +158,7 @@ describe("getSortStorageKey", () => {
 });
 
 // ---------------------------------------------------------------------------
-// useCollectionItemsQuery – composable behaviour
+// useCollectionItemsQuery - composable behaviour
 // ---------------------------------------------------------------------------
 
 describe("useCollectionItemsQuery", () => {
@@ -780,7 +780,7 @@ describe("suppressNextEmptySearchLoad", () => {
 });
 
 // ---------------------------------------------------------------------------
-// loadNextPage – empty items guard
+// loadNextPage - empty items guard
 // ---------------------------------------------------------------------------
 
 describe("loadNextPage", () => {
@@ -818,7 +818,7 @@ describe("loadNextPage", () => {
 });
 
 // ---------------------------------------------------------------------------
-// migrateLegacySortIfNeeded – already-migrated guard
+// migrateLegacySortIfNeeded - already-migrated guard
 // ---------------------------------------------------------------------------
 
 describe("migrateLegacySortIfNeeded", () => {

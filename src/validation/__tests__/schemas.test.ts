@@ -588,7 +588,7 @@ describe("ViewConfigSchema", () => {
   });
 });
 
-describe("ReorderFieldsInputSchema – duplicate orderIndex", () => {
+describe("ReorderFieldsInputSchema - duplicate orderIndex", () => {
   it("rejects payload with duplicate order indices (triggers early return)", () => {
     const result = ReorderFieldsInputSchema.safeParse({
       collectionId: 1,
@@ -631,7 +631,7 @@ describe("ReorderFieldsInputSchema – duplicate orderIndex", () => {
   });
 });
 
-describe("ReorderViewsInputSchema – duplicate and non-contiguous orders", () => {
+describe("ReorderViewsInputSchema - duplicate and non-contiguous orders", () => {
   it("rejects payload with duplicate order values (triggers early return)", () => {
     const result = ReorderViewsInputSchema.safeParse({
       collectionId: 1,
@@ -823,7 +823,7 @@ describe("GetItemsInputSchema", () => {
   });
 });
 
-describe("ImportCollectionInputSchema – additional branches", () => {
+describe("ImportCollectionInputSchema - additional branches", () => {
   it("accepts a replace mode payload", () => {
     const result = ImportCollectionInputSchema.safeParse({
       collectionId: 1,

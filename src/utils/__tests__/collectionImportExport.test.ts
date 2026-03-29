@@ -121,7 +121,7 @@ describe("collectionImportExport utils", () => {
   });
 });
 
-describe("parseImportContent – CSV edge cases", () => {
+describe("parseImportContent - CSV edge cases", () => {
   it("strips UTF-8 BOM from the first header", () => {
     const bom = "\uFEFF";
     const content = `${bom}"Name","Age"\n"Alice","30"`;
@@ -168,7 +168,7 @@ describe("parseImportContent – CSV edge cases", () => {
   });
 });
 
-describe("parseImportContent – JSON edge cases", () => {
+describe("parseImportContent - JSON edge cases", () => {
   it("handles empty JSON array", () => {
     const parsed = parseImportContent("json", "[]");
     expect(parsed.fields).toEqual([]);
@@ -188,7 +188,7 @@ describe("parseImportContent – JSON edge cases", () => {
   });
 });
 
-describe("serializeItemsToCsv – edge cases", () => {
+describe("serializeItemsToCsv - edge cases", () => {
   it("handles items with null field values", () => {
     const testFields: Field[] = [
       {
@@ -279,7 +279,7 @@ describe("serializeItemsToCsv – edge cases", () => {
   });
 });
 
-describe("serializeItemsToJson – edge cases", () => {
+describe("serializeItemsToJson - edge cases", () => {
   it("replaces undefined values with empty string in JSON output", () => {
     const testFields: Field[] = [
       {

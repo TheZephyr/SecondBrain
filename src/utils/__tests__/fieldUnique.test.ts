@@ -21,7 +21,7 @@ function makeField(type: Field["type"], name = "F"): Field {
 // text / longtext / url — string passthrough
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – text-like fields", () => {
+describe("normalizeUniqueKey - text-like fields", () => {
   for (const type of ["text", "longtext", "url"] as const) {
     describe(`type: ${type}`, () => {
       it("returns the string value as-is", () => {
@@ -52,7 +52,7 @@ describe("normalizeUniqueKey – text-like fields", () => {
 // select
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – select", () => {
+describe("normalizeUniqueKey - select", () => {
   const field = makeField("select");
 
   it("returns the string value", () => {
@@ -76,7 +76,7 @@ describe("normalizeUniqueKey – select", () => {
 // boolean
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – boolean", () => {
+describe("normalizeUniqueKey - boolean", () => {
   const field = makeField("boolean");
 
   it('returns "1" for string "1"', () => {
@@ -116,7 +116,7 @@ describe("normalizeUniqueKey – boolean", () => {
 // number
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – number", () => {
+describe("normalizeUniqueKey - number", () => {
   const field = makeField("number");
 
   it("returns stringified integer", () => {
@@ -164,7 +164,7 @@ describe("normalizeUniqueKey – number", () => {
 // rating
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – rating", () => {
+describe("normalizeUniqueKey - rating", () => {
   const field = makeField("rating");
 
   it("returns stringified rating value", () => {
@@ -192,7 +192,7 @@ describe("normalizeUniqueKey – rating", () => {
 // date
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – date", () => {
+describe("normalizeUniqueKey - date", () => {
   const field = makeField("date");
 
   it("returns the ISO date string for a valid YYYY-MM-DD string", () => {
@@ -237,7 +237,7 @@ describe("normalizeUniqueKey – date", () => {
 // multiselect
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – multiselect", () => {
+describe("normalizeUniqueKey - multiselect", () => {
   const field = makeField("multiselect");
 
   it("returns JSON of the parsed array for a valid serialized value", () => {
@@ -273,7 +273,7 @@ describe("normalizeUniqueKey – multiselect", () => {
 // Cross-type: null/empty consistency
 // ---------------------------------------------------------------------------
 
-describe("normalizeUniqueKey – null/empty consistency across non-boolean types", () => {
+describe("normalizeUniqueKey - null/empty consistency across non-boolean types", () => {
   const nullishTypes: Field["type"][] = [
     "text",
     "longtext",

@@ -17,7 +17,7 @@ import type {
 } from "../../src/types/models";
 
 // ---------------------------------------------------------------------------
-// Helpers – thin wrappers around handleOperation to get typed return values
+// Helpers - thin wrappers around handleOperation to get typed return values
 // ---------------------------------------------------------------------------
 
 type ItemRow = { id: number; collection_id: number; data: string };
