@@ -1,5 +1,16 @@
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { closeDatabase, handleOperation, initDatabase } from "../db/worker";
+import { initDatabaseConnection } from "../db/init";
+import {
+  addItem as addItemInDb,
+  bulkDeleteItems as bulkDeleteItemsInDb,
+  bulkPatchItems as bulkPatchItemsInDb,
+  duplicateItem as duplicateItemInDb,
+  insertItemAt as insertItemAtInDb,
+  moveItem as moveItemInDb,
+  reorderItems as reorderItemsInDb,
+} from "../db/items";
 import type {
   Collection,
   View,
@@ -8,6 +19,7 @@ import type {
   NewViewInput,
   NewFieldInput,
   NewItemInput,
+  ItemData,
   UpdateCollectionInput,
   UpdateFieldInput,
   UpdateItemInput,
@@ -21,6 +33,12 @@ import type {
 // ---------------------------------------------------------------------------
 
 type ItemRow = { id: number; collection_id: number; data: string };
+type RawItemRow = {
+  id: number;
+  collection_id: number;
+  order: number;
+  data: string;
+};
 
 type GetItemsResult = {
   items: ItemRow[];
@@ -37,6 +55,101 @@ type CollectionItemCount = {
 function setupInMemoryDb() {
   closeDatabase();
   initDatabase(":memory:");
+}
+
+const directDatabases: Database.Database[] = [];
+
+function setupDirectDb() {
+  const connection = initDatabaseConnection(":memory:");
+  directDatabases.push(connection.db);
+  return connection;
+}
+
+function createCollectionRow(
+  database: Database.Database,
+  name: string,
+): number {
+  const info = database.prepare("INSERT INTO collections (name) VALUES (?)").run(name);
+  return Number(info.lastInsertRowid);
+}
+
+function insertRawItemRow(
+  database: Database.Database,
+  collectionId: number,
+  data: string,
+  order: number,
+): number {
+  const info = database
+    .prepare('INSERT INTO items (collection_id, data, "order") VALUES (?, ?, ?)')
+    .run(collectionId, data, order);
+  return Number(info.lastInsertRowid);
+}
+
+function disableItemFtsTriggers(database: Database.Database) {
+  database.exec(`
+    DROP TRIGGER IF EXISTS items_fts_ai;
+    DROP TRIGGER IF EXISTS items_fts_au;
+    DROP TRIGGER IF EXISTS items_fts_ad;
+  `);
+}
+
+function listRawItems(
+  database: Database.Database,
+  collectionId: number,
+): RawItemRow[] {
+  return database
+    .prepare(
+      'SELECT id, collection_id, "order", data FROM items WHERE collection_id = ? ORDER BY "order" ASC, id ASC',
+    )
+    .all(collectionId) as RawItemRow[];
+}
+
+function createStubDatabase(options: {
+  itemRows?: Array<{ id: number; data: string }>;
+  orderRows?: Array<{ id: number; order: number }>;
+  updateChanges?: number;
+}): Database.Database {
+  const prepare = (sql: string) => ({
+    all: () => {
+      if (sql.includes("SELECT id, data")) {
+        return options.itemRows ?? [];
+      }
+
+      if (sql.includes('SELECT id, "order"')) {
+        return options.orderRows ?? [];
+      }
+
+      if (sql.includes("SELECT id") && sql.includes("FROM items")) {
+        return options.orderRows?.map((row) => ({ id: row.id })) ?? [];
+      }
+
+      return [];
+    },
+    get: () => {
+      if (sql.includes("SELECT id, data")) {
+        return options.itemRows?.[0];
+      }
+
+      if (sql.includes('SELECT id, "order"')) {
+        return options.orderRows?.[0];
+      }
+
+      return undefined;
+    },
+    run: () => ({
+      changes: options.updateChanges ?? 1,
+      lastInsertRowid: 1,
+    }),
+  });
+
+  const transaction = (callback: (payload: unknown) => unknown) => {
+    return (payload: unknown) => callback(payload);
+  };
+
+  return {
+    prepare,
+    transaction,
+  } as unknown as Database.Database;
 }
 
 function addCollection(input: NewCollectionInput): Collection {
@@ -156,6 +269,9 @@ function deleteItem(id: number): boolean {
 
 afterEach(() => {
   closeDatabase();
+  while (directDatabases.length > 0) {
+    directDatabases.pop()?.close();
+  }
 });
 
 // ======================== COLLECTIONS ========================
@@ -809,6 +925,380 @@ describe("item CRUD", () => {
     expect(result2.items).toHaveLength(1);
     expect(JSON.parse(result1.items[0].data)).toEqual({ X: "1" });
     expect(JSON.parse(result2.items[0].data)).toEqual({ Y: "2" });
+  });
+});
+
+describe("item mutation edge cases", () => {
+  it("bulk deletes items and reports the affected count", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Bulk delete");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+
+    const result = bulkDeleteItemsInDb(db, {
+      collectionId,
+      itemIds: [first.id, second.id],
+    });
+
+    expect(result).toEqual({ affectedCount: 2 });
+    expect(listRawItems(db, collectionId)).toEqual([]);
+  });
+
+  it("rolls back bulk deletes when one ID is invalid", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Bulk delete rollback");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+
+    expect(() =>
+      bulkDeleteItemsInDb(db, {
+        collectionId,
+        itemIds: [first.id, 999_999, second.id],
+      }),
+    ).toThrow(/Invalid item IDs/);
+
+    expect(listRawItems(db, collectionId).map((item) => item.id)).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it("rejects reorder payloads with missing item IDs", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Reorder failure");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+
+    expect(() =>
+      reorderItemsInDb(db, {
+        collectionId,
+        itemOrders: [
+          { id: first.id, order: 1 },
+          { id: 999_999, order: 0 },
+        ],
+      }),
+    ).toThrow(/invalid item IDs/);
+
+    expect(listRawItems(db, collectionId).map((item) => item.id)).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it("rejects reorder payloads when an update reports zero changes", () => {
+    const db = createStubDatabase({
+      orderRows: [
+        { id: 1, order: 0 },
+        { id: 2, order: 1 },
+      ],
+      updateChanges: 0,
+    });
+
+    expect(() =>
+      reorderItemsInDb(db, {
+        collectionId: 1,
+        itemOrders: [
+          { id: 1, order: 1 },
+          { id: 2, order: 0 },
+        ],
+      }),
+    ).toThrow(/Failed to reorder item 1/);
+  });
+
+  it("throws when bulk patching an item with malformed JSON", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Patch JSON");
+    disableItemFtsTriggers(db);
+    const itemId = insertRawItemRow(db, collectionId, "{bad json", 0);
+
+    expect(() =>
+      bulkPatchItemsInDb(db, {
+        collectionId,
+        updates: [{ id: itemId, patch: { Title: "Updated" } }],
+      }),
+    ).toThrow(/contains invalid JSON/);
+  });
+
+  it("throws when bulk patching an item with an invalid stored shape", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Patch shape");
+    disableItemFtsTriggers(db);
+    const itemId = insertRawItemRow(
+      db,
+      collectionId,
+      JSON.stringify(["not", "an", "object"]),
+      0,
+    );
+
+    expect(() =>
+      bulkPatchItemsInDb(db, {
+        collectionId,
+        updates: [{ id: itemId, patch: { Title: "Updated" } }],
+      }),
+    ).toThrow(/contains invalid data structure/);
+  });
+
+  it("throws when bulk patching an item whose stored data is empty", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Patch empty");
+    disableItemFtsTriggers(db);
+    const itemId = insertRawItemRow(db, collectionId, "", 0);
+
+    expect(() =>
+      bulkPatchItemsInDb(db, {
+        collectionId,
+        updates: [{ id: itemId, patch: { Title: "Updated" } }],
+      }),
+    ).toThrow(/is missing from collection/);
+  });
+
+  it("throws when a merged bulk patch produces invalid item data", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Patch merge");
+    disableItemFtsTriggers(db);
+    const itemId = insertRawItemRow(
+      db,
+      collectionId,
+      JSON.stringify({ Title: "Original" }),
+      0,
+    );
+    const invalidPatch = {
+      Details: { nested: true },
+    } as unknown as ItemData;
+
+    expect(() =>
+      bulkPatchItemsInDb(db, {
+        collectionId,
+        updates: [{ id: itemId, patch: invalidPatch }],
+      }),
+    ).toThrow(/merged data is invalid/);
+  });
+
+  it("throws when bulk patching fails to update a row", () => {
+    const db = createStubDatabase({
+      itemRows: [
+        {
+          id: 1,
+          data: JSON.stringify({ Title: "Original" }),
+        },
+      ],
+      updateChanges: 0,
+    });
+
+    expect(() =>
+      bulkPatchItemsInDb(db, {
+        collectionId: 1,
+        updates: [{ id: 1, patch: { Title: "Updated" } }],
+      }),
+    ).toThrow(/Unable to update item 1/);
+  });
+
+  it("inserts an item at the top of a collection", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Insert top");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+
+    const created = insertItemAtInDb(db, {
+      collectionId,
+      afterOrder: null,
+    });
+
+    const items = listRawItems(db, collectionId);
+    expect(items.map((item) => item.id)).toEqual([
+      created.id,
+      first.id,
+      second.id,
+    ]);
+    expect(items.map((item) => item.order)).toEqual([0, 2, 3]);
+    expect(JSON.parse(items[0].data)).toEqual({});
+  });
+
+  it("inserts an item after the requested order", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Insert middle");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+
+    const created = insertItemAtInDb(db, {
+      collectionId,
+      afterOrder: 0,
+    });
+
+    const items = listRawItems(db, collectionId);
+    expect(items.map((item) => item.id)).toEqual([
+      created.id,
+      first.id,
+      second.id,
+    ]);
+    expect(items.map((item) => item.order)).toEqual([1, 2, 3]);
+  });
+
+  it("duplicates an item and keeps the source data", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Duplicate");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+
+    const created = duplicateItemInDb(db, {
+      collectionId,
+      itemId: first.id,
+    });
+
+    const items = listRawItems(db, collectionId);
+    expect(items.map((item) => item.id)).toEqual([
+      first.id,
+      created.id,
+      second.id,
+    ]);
+    expect(items.map((item) => item.order)).toEqual([1, 2, 3]);
+    expect(created.data).toEqual({ Title: "A" });
+    expect(JSON.parse(items[1].data)).toEqual({ Title: "A" });
+  });
+
+  it("rejects duplication when the source item is missing", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Duplicate missing");
+    addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+
+    expect(() =>
+      duplicateItemInDb(db, {
+        collectionId,
+        itemId: 999_999,
+      }),
+    ).toThrow(/not found/);
+  });
+
+  it("moves items up and down within a collection", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Move");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    const second = addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+    const third = addItemInDb(db, {
+      collectionId,
+      data: { Title: "C" },
+    });
+
+    expect(
+      moveItemInDb(db, {
+        collectionId,
+        itemId: third.id,
+        direction: "up",
+      }),
+    ).toBe(true);
+    expect(listRawItems(db, collectionId).map((item) => item.id)).toEqual([
+      first.id,
+      third.id,
+      second.id,
+    ]);
+
+    expect(
+      moveItemInDb(db, {
+        collectionId,
+        itemId: third.id,
+        direction: "down",
+      }),
+    ).toBe(true);
+    expect(listRawItems(db, collectionId).map((item) => item.id)).toEqual([
+      first.id,
+      second.id,
+      third.id,
+    ]);
+  });
+
+  it("rejects moving an item past the top or bottom of the collection", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Move boundaries");
+    const first = addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+    addItemInDb(db, {
+      collectionId,
+      data: { Title: "B" },
+    });
+    const third = addItemInDb(db, {
+      collectionId,
+      data: { Title: "C" },
+    });
+
+    expect(() =>
+      moveItemInDb(db, {
+        collectionId,
+        itemId: first.id,
+        direction: "up",
+      }),
+    ).toThrow(/already at the top/);
+
+    expect(() =>
+      moveItemInDb(db, {
+        collectionId,
+        itemId: third.id,
+        direction: "down",
+      }),
+    ).toThrow(/already at the bottom/);
+  });
+
+  it("rejects moving a missing item", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Move missing");
+    addItemInDb(db, {
+      collectionId,
+      data: { Title: "A" },
+    });
+
+    expect(() =>
+      moveItemInDb(db, {
+        collectionId,
+        itemId: 999_999,
+        direction: "up",
+      }),
+    ).toThrow(/not found/);
   });
 });
 

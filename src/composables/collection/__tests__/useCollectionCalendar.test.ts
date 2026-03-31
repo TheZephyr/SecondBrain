@@ -124,6 +124,50 @@ describe('useCollectionCalendar', () => {
     })
   })
 
+  it('falls back to empty calendar state when no date fields exist', async () => {
+    const viewId = ref(3)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Notes', type: 'longtext' })
+    ])
+    const items = ref<Item[]>([
+      makeItem(1, { Title: 'No dates here' })
+    ])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(true)
+    const itemsSearch = ref('')
+    const itemsSort = ref<ItemSortSpec[]>([])
+    const loadItems = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(null)
+
+    await withScope(async scope => {
+      const calendar = scope.run(() =>
+        useCollectionCalendar({
+          viewId,
+          orderedFields,
+          items,
+          itemsLoading,
+          itemsFullyLoaded,
+          itemsSearch,
+          itemsSort,
+          loadItems,
+          groupingFieldId
+        })
+      )
+
+      if (!calendar) {
+        throw new Error('Calendar composable failed to initialize')
+      }
+
+      await flushAsyncWork()
+
+      expect(calendar.selectedDateFieldId.value).toBeNull()
+      expect(calendar.selectedDateField.value).toBeNull()
+      expect(calendar.monthCells.value.every(cell => cell.items.length === 0)).toBe(true)
+      expect(loadItems).not.toHaveBeenCalled()
+    })
+  })
+
   it('groups items by the selected date field and falls back to item id for labels', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 2, 8))
@@ -169,6 +213,61 @@ describe('useCollectionCalendar', () => {
 
         const todayCell = calendar.monthCells.value.find(cell => cell.key === '2026-03-08')
         expect(todayCell?.items.map(entry => entry.label)).toEqual(['Ship alpha', '#2'])
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('updates the month label when navigating between months', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 2, 8))
+
+    const viewId = ref(13)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Due Date', type: 'date' })
+    ])
+    const items = ref<Item[]>([])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(true)
+    const itemsSearch = ref('')
+    const itemsSort = ref<ItemSortSpec[]>([])
+    const loadItems = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(2)
+
+    try {
+      await withScope(async scope => {
+        const calendar = scope.run(() =>
+          useCollectionCalendar({
+            viewId,
+            orderedFields,
+            items,
+            itemsLoading,
+            itemsFullyLoaded,
+            itemsSearch,
+            itemsSort,
+            loadItems,
+            groupingFieldId
+          })
+        )
+
+        if (!calendar) {
+          throw new Error('Calendar composable failed to initialize')
+        }
+
+        await flushAsyncWork()
+
+        const initialLabel = calendar.monthLabel.value
+        calendar.goToPreviousMonth()
+        await flushAsyncWork()
+        const previousLabel = calendar.monthLabel.value
+        calendar.goToNextMonth()
+        await flushAsyncWork()
+
+        expect(initialLabel).toEqual(calendar.monthLabel.value)
+        expect(previousLabel).not.toEqual(initialLabel)
+        expect(initialLabel.length).toBeGreaterThan(0)
       })
     } finally {
       vi.useRealTimers()
@@ -241,6 +340,213 @@ describe('useCollectionCalendar', () => {
       expect(loadItems).toHaveBeenNthCalledWith(2, { page: 1 })
       expect(itemsSearch.value).toBe('')
       expect(itemsSort.value).toEqual([])
+      expect(calendar.isEnsuringAllItems.value).toBe(false)
+    })
+  })
+
+  it('stops the load loop if items become loading after the reset query', async () => {
+    const viewId = ref(15)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Due Date', type: 'date' })
+    ])
+    const items = ref<Item[]>([])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(false)
+    const itemsSearch = ref('alpha')
+    const itemsSort = ref<ItemSortSpec[]>([{ field: 'data.Title', order: -1 }])
+    const loadItems = vi.fn(async (options?: { page?: number; search?: string; sort?: ItemSortSpec[] }) => {
+      if (options?.search !== undefined) {
+        itemsSearch.value = options.search
+      }
+
+      if (options?.sort !== undefined) {
+        itemsSort.value = options.sort
+      }
+
+      itemsLoading.value = true
+    })
+    const groupingFieldId = ref<number | null>(2)
+
+    await withScope(async scope => {
+      const calendar = scope.run(() =>
+        useCollectionCalendar({
+          viewId,
+          orderedFields,
+          items,
+          itemsLoading,
+          itemsFullyLoaded,
+          itemsSearch,
+          itemsSort,
+          loadItems,
+          groupingFieldId
+        })
+      )
+
+      if (!calendar) {
+        throw new Error('Calendar composable failed to initialize')
+      }
+
+      await flushAsyncWork()
+
+      expect(loadItems).toHaveBeenCalledTimes(1)
+      expect(loadItems).toHaveBeenCalledWith({
+        search: '',
+        sort: []
+      })
+      expect(calendar.isEnsuringAllItems.value).toBe(false)
+    })
+  })
+
+  it('loads the first empty calendar page with the calendar query options', async () => {
+    const viewId = ref(17)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Due Date', type: 'date' })
+    ])
+    const items = ref<Item[]>([])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(false)
+    const itemsSearch = ref('')
+    const itemsSort = ref<ItemSortSpec[]>([])
+    const loadItems = vi.fn(async (options?: { page?: number; search?: string; sort?: ItemSortSpec[] }) => {
+      if (options?.search !== undefined) {
+        itemsSearch.value = options.search
+      }
+
+      if (options?.sort !== undefined) {
+        itemsSort.value = options.sort
+      }
+
+      if (options?.page === undefined) {
+        itemsFullyLoaded.value = true
+      }
+    })
+    const groupingFieldId = ref<number | null>(2)
+
+    await withScope(async scope => {
+      const calendar = scope.run(() =>
+        useCollectionCalendar({
+          viewId,
+          orderedFields,
+          items,
+          itemsLoading,
+          itemsFullyLoaded,
+          itemsSearch,
+          itemsSort,
+          loadItems,
+          groupingFieldId
+        })
+      )
+
+      if (!calendar) {
+        throw new Error('Calendar composable failed to initialize')
+      }
+
+      await flushAsyncWork()
+
+      expect(loadItems).toHaveBeenCalledTimes(1)
+      expect(loadItems).toHaveBeenCalledWith({
+        search: '',
+        sort: []
+      })
+      expect(calendar.isEnsuringAllItems.value).toBe(false)
+    })
+  })
+
+  it('does not start loading while items are already loading', async () => {
+    const viewId = ref(19)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Due Date', type: 'date' })
+    ])
+    const items = ref<Item[]>([])
+    const itemsLoading = ref(true)
+    const itemsFullyLoaded = ref(false)
+    const itemsSearch = ref('')
+    const itemsSort = ref<ItemSortSpec[]>([])
+    const loadItems = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(2)
+
+    await withScope(async scope => {
+      const calendar = scope.run(() =>
+        useCollectionCalendar({
+          viewId,
+          orderedFields,
+          items,
+          itemsLoading,
+          itemsFullyLoaded,
+          itemsSearch,
+          itemsSort,
+          loadItems,
+          groupingFieldId
+        })
+      )
+
+      if (!calendar) {
+        throw new Error('Calendar composable failed to initialize')
+      }
+
+      await flushAsyncWork()
+
+      expect(loadItems).not.toHaveBeenCalled()
+      expect(calendar.isEnsuringAllItems.value).toBe(false)
+    })
+  })
+
+  it('stops the load loop if the selected date field disappears after the reset query', async () => {
+    const viewId = ref(21)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Due Date', type: 'date' })
+    ])
+    const items = ref<Item[]>([])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(false)
+    const itemsSearch = ref('alpha')
+    const itemsSort = ref<ItemSortSpec[]>([{ field: 'data.Title', order: -1 }])
+    const loadItems = vi.fn(async (options?: { page?: number; search?: string; sort?: ItemSortSpec[] }) => {
+      if (options?.search !== undefined) {
+        itemsSearch.value = options.search
+      }
+
+      if (options?.sort !== undefined) {
+        itemsSort.value = options.sort
+      }
+
+      orderedFields.value = [
+        makeField({ id: 1, name: 'Title', type: 'text' })
+      ]
+    })
+    const groupingFieldId = ref<number | null>(2)
+
+    await withScope(async scope => {
+      const calendar = scope.run(() =>
+        useCollectionCalendar({
+          viewId,
+          orderedFields,
+          items,
+          itemsLoading,
+          itemsFullyLoaded,
+          itemsSearch,
+          itemsSort,
+          loadItems,
+          groupingFieldId
+        })
+      )
+
+      if (!calendar) {
+        throw new Error('Calendar composable failed to initialize')
+      }
+
+      await flushAsyncWork()
+
+      expect(loadItems).toHaveBeenCalledTimes(1)
+      expect(loadItems).toHaveBeenCalledWith({
+        search: '',
+        sort: []
+      })
+      expect(calendar.selectedDateFieldId.value).toBeNull()
       expect(calendar.isEnsuringAllItems.value).toBe(false)
     })
   })

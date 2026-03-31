@@ -7,6 +7,7 @@ import type {
   Item,
   Collection,
   ItemData,
+  View,
   ViewConfig,
 } from "../types/models";
 
@@ -108,6 +109,16 @@ describe("loadItems", () => {
     expect(store.itemsLoading).toBe(false);
   });
 
+  it("appends nothing when appendItems receives an empty array", () => {
+    const store = useStore();
+    const existing = [makeItem(1), makeItem(2)];
+    store.items = existing;
+
+    store.appendItems([]);
+
+    expect(store.items).toEqual(existing);
+  });
+
   it("uses a fixed limit of 100", async () => {
     const store = useStore();
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
@@ -146,6 +157,60 @@ describe("loadItems", () => {
       limit: 100,
       offset: 100,
     });
+  });
+
+  it("keeps the page when the requested sort matches the current sort", async () => {
+    const store = useStore();
+    const sort = [{ field: "data.Title", order: 1 as const }];
+    mockApi.getItems.mockImplementation(
+      async (input: { limit: number; offset: number }) =>
+        ok<PaginatedItemsResult>({
+          items: [],
+          total: 0,
+          limit: input.limit,
+          offset: input.offset,
+        }),
+    );
+
+    await store.loadItems(1, { sort, page: 0 });
+    await store.loadItems(1, { sort, page: 1 });
+
+    expect(mockApi.getItems.mock.calls[1][0]).toMatchObject({
+      limit: 100,
+      offset: 100,
+      search: "",
+      sort,
+    });
+    expect(store.itemsSort).toEqual(sort);
+  });
+
+  it("resets to page 0 when the requested sort length changes", async () => {
+    const store = useStore();
+    const firstSort = [{ field: "data.Title", order: 1 as const }];
+    const nextSort = [
+      { field: "data.Title", order: 1 as const },
+      { field: "data.Date", order: -1 as const },
+    ];
+    mockApi.getItems.mockImplementation(
+      async (input: { limit: number; offset: number }) =>
+        ok<PaginatedItemsResult>({
+          items: [],
+          total: 0,
+          limit: input.limit,
+          offset: input.offset,
+        }),
+    );
+
+    await store.loadItems(1, { sort: firstSort, page: 2 });
+    await store.loadItems(1, { sort: nextSort, page: 2 });
+
+    expect(mockApi.getItems.mock.calls[1][0]).toMatchObject({
+      limit: 100,
+      offset: 0,
+      search: "",
+      sort: nextSort,
+    });
+    expect(store.itemsSort).toEqual(nextSort);
   });
 
   it("updates itemsFullyLoaded when all rows are fetched", async () => {
@@ -641,5 +706,80 @@ describe("view config", () => {
         selectedFieldIds: [],
       },
     });
+  });
+
+  it("normalizes kanbanColumnOrder by trimming and deduplicating values", async () => {
+    const store = useStore();
+    mockApi.updateViewConfig.mockResolvedValue(ok(true));
+
+    await store.saveViewConfig(4, {
+      columnWidths: {},
+      sort: [],
+      kanbanColumnOrder: ["  Todo  ", "In Progress", "Todo", "", "Done  "],
+    });
+
+    const sent = mockApi.updateViewConfig.mock.calls[0][0];
+    expect(sent.config.kanbanColumnOrder).toEqual([
+      "Todo",
+      "In Progress",
+      "Done",
+    ]);
+  });
+
+  it("returns undefined for an empty kanbanColumnOrder array", async () => {
+    const store = useStore();
+    mockApi.updateViewConfig.mockResolvedValue(ok(true));
+
+    await store.saveViewConfig(4, {
+      columnWidths: {},
+      sort: [],
+      kanbanColumnOrder: [],
+    });
+
+    const sent = mockApi.updateViewConfig.mock.calls[0][0];
+    expect(sent.config.kanbanColumnOrder).toBeUndefined();
+  });
+});
+
+describe("loadViews", () => {
+  it("ignores stale responses when a newer request finishes first", async () => {
+    const store = useStore();
+    const staleViews: View[] = [
+      {
+        id: 1,
+        collection_id: 1,
+        name: "Stale",
+        type: "grid",
+        is_default: 1,
+        order: 0,
+      },
+    ];
+    const freshViews: View[] = [
+      {
+        id: 2,
+        collection_id: 1,
+        name: "Fresh",
+        type: "grid",
+        is_default: 1,
+        order: 0,
+      },
+    ];
+    let resolveFirst!: (value: IpcResult<View[]>) => void;
+    const firstPromise = new Promise<IpcResult<View[]>>((resolve) => {
+      resolveFirst = resolve;
+    });
+    mockApi.getViews
+      .mockReturnValueOnce(firstPromise)
+      .mockResolvedValueOnce(ok(freshViews));
+
+    const firstLoad = store.loadViews(1);
+    const secondLoad = store.loadViews(1);
+    resolveFirst(ok(staleViews));
+
+    await firstLoad;
+    await secondLoad;
+
+    expect(store.currentViews).toEqual(freshViews);
+    expect(store.activeViewId).toBe(2);
   });
 });

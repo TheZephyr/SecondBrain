@@ -535,6 +535,36 @@ describe("deleteField", () => {
 
     expect(mockApi.getFields).toHaveBeenCalledWith(1);
   });
+
+  it("falls back to all fields when the removed field was the only selected field", async () => {
+    const store = useStore();
+    store.selectedCollection = { id: 1, name: "Col" };
+    store.currentViews = [makeView(20, 1, { is_default: 0 })];
+    store.fields = [
+      makeField(20, 1, { order_index: 1 }),
+      makeField(10, 1, { order_index: 1 }),
+    ];
+    mockApi.deleteField.mockResolvedValue(ok(true));
+    mockApi.getFields.mockResolvedValue(
+      ok([
+        makeField(20, 1, { order_index: 1 }),
+        makeField(10, 1, { order_index: 1 }),
+      ]),
+    );
+    mockApi.getViewConfig.mockResolvedValue(
+      ok({
+        columnWidths: {},
+        sort: [],
+        selectedFieldIds: [99],
+      }),
+    );
+    mockApi.updateViewConfig.mockResolvedValue(ok(true));
+
+    await store.deleteField(99);
+
+    const sent = mockApi.updateViewConfig.mock.calls[0][0];
+    expect(sent.config.selectedFieldIds).toEqual([10, 20]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -648,6 +678,33 @@ describe("moveItem", () => {
     await store.moveItem({ collectionId: 1, itemId: 1, direction: "up" });
 
     expect(mockApi.getItems).not.toHaveBeenCalled();
+  });
+});
+
+describe("reorderItems", () => {
+  it("normalizes order values and reloads items for the active collection", async () => {
+    const store = useStore();
+    store.selectedCollection = { id: 1, name: "Col" };
+    mockApi.reorderItems.mockResolvedValue(ok(true));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+
+    const result = await store.reorderItems({
+      collectionId: 1,
+      itemOrders: [
+        { id: 1, order: -1.2 },
+        { id: 2, order: 2.6 },
+      ],
+    });
+
+    expect(result).toBe(true);
+    expect(mockApi.reorderItems).toHaveBeenCalledWith({
+      collectionId: 1,
+      itemOrders: [
+        { id: 1, order: 0 },
+        { id: 2, order: 3 },
+      ],
+    });
+    expect(mockApi.getItems).toHaveBeenCalledOnce();
   });
 });
 

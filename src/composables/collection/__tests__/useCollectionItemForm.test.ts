@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import type { Field, Item } from "../../../types/models";
 import {
   buildItemDataFromForm,
@@ -80,6 +80,37 @@ describe("createDefaultItemFormData", () => {
 
     vi.useRealTimers();
   });
+
+  it("applies typed defaults for number, rating, multiselect, and boolean fields", () => {
+    const fields: Field[] = [
+      makeField({
+        id: 1,
+        name: "Count",
+        type: "number",
+        options: JSON.stringify({ defaultValue: 12 }),
+      }),
+      makeField({
+        id: 2,
+        name: "Stars",
+        type: "rating",
+        options: JSON.stringify({ defaultValue: 4 }),
+      }),
+      makeField({
+        id: 3,
+        name: "Tags",
+        type: "multiselect",
+        options: JSON.stringify({ defaultValue: ["A", "B"] }),
+      }),
+      makeField({ id: 4, name: "Done", type: "boolean" }),
+    ];
+
+    const form = createDefaultItemFormData(fields);
+
+    expect(form.Count).toBe(12);
+    expect(form.Stars).toBe(4);
+    expect(form.Tags).toBe('["A","B"]');
+    expect(form.Done).toBe("0");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -155,6 +186,36 @@ describe("buildItemFormDataFromItem", () => {
     const data = buildItemFormDataFromItem(makeItem({ Due: null }), fields);
     expect(data.Due).toBeNull();
   });
+
+  it("converts rating, multiselect, boolean, and select values from item data", () => {
+    const fields: Field[] = [
+      makeField({ id: 1, name: "Stars", type: "rating" }),
+      makeField({ id: 2, name: "Tags", type: "multiselect" }),
+      makeField({ id: 3, name: "Done", type: "boolean" }),
+      makeField({ id: 4, name: "Status", type: "select" }),
+    ];
+
+    const data = buildItemFormDataFromItem(
+      makeItem({
+        Stars: "4",
+        Tags: '["A","B"]',
+        Done: 1,
+        Status: null,
+      }),
+      fields,
+    );
+
+    expect(data.Stars).toBe(4);
+    expect(data.Tags).toBe('["A","B"]');
+    expect(data.Done).toBe("1");
+    expect(data.Status).toBeNull();
+  });
+
+  it("maps invalid number strings back to empty string", () => {
+    const fields = [makeField({ id: 1, name: "Score", type: "number" })];
+    const data = buildItemFormDataFromItem(makeItem({ Score: "abc" }), fields);
+    expect(data.Score).toBe("");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -184,6 +245,48 @@ describe("buildItemDataFromForm", () => {
       buildItemDataFromForm({ Title: undefined as unknown as null }, fields)
         .Title,
     ).toBe("");
+  });
+
+  it("serialises number, rating, multiselect, boolean, and select values", () => {
+    const fields: Field[] = [
+      makeField({ id: 1, name: "Count", type: "number" }),
+      makeField({ id: 2, name: "Stars", type: "rating" }),
+      makeField({ id: 3, name: "Tags", type: "multiselect" }),
+      makeField({ id: 4, name: "Done", type: "boolean" }),
+      makeField({ id: 5, name: "Status", type: "select" }),
+    ];
+
+    const result = buildItemDataFromForm(
+      {
+        Count: "12",
+        Stars: 4,
+        Tags: '["A","B"]',
+        Done: "1",
+        Status: "",
+      },
+      fields,
+    );
+
+    expect(result.Count).toBe(12);
+    expect(result.Stars).toBe(4);
+    expect(result.Tags).toBe('["A","B"]');
+    expect(result.Done).toBe("1");
+    expect(result.Status).toBeNull();
+  });
+
+  it("normalises empty number and multiselect values", () => {
+    const fields: Field[] = [
+      makeField({ id: 1, name: "Count", type: "number" }),
+      makeField({ id: 2, name: "Tags", type: "multiselect" }),
+    ];
+
+    const result = buildItemDataFromForm(
+      { Count: "", Tags: null },
+      fields,
+    );
+
+    expect(result.Count).toBe("");
+    expect(result.Tags).toBeNull();
   });
 });
 
@@ -472,6 +575,31 @@ describe("useCollectionItemForm", () => {
     expect(form.formData.value.Due).toBeNull();
   });
 
+  // --- getRatingValue / setRatingValue ---
+
+  it("getRatingValue/setRatingValue round-trip rating values", () => {
+    const fields = ref([makeField({ id: 1, name: "Stars", type: "rating" })]);
+    const form = useCollectionItemForm(fields);
+
+    form.setRatingValue("Stars", 4);
+    expect(form.formData.value.Stars).toBe(4);
+    expect(form.getRatingValue("Stars")).toBe(4);
+
+    form.setRatingValue("Stars", null);
+    expect(form.formData.value.Stars).toBeNull();
+    expect(form.getRatingValue("Stars")).toBeNull();
+  });
+
+  it("getBooleanValue parses stored string values", () => {
+    const fields = ref([makeField({ id: 1, name: "Done", type: "boolean" })]);
+    const form = useCollectionItemForm(fields);
+
+    form.formData.value.Done = "1";
+    expect(form.getBooleanValue("Done")).toBe(true);
+    form.formData.value.Done = "0";
+    expect(form.getBooleanValue("Done")).toBe(false);
+  });
+
   it("getMultiselectValue/setMultiselectValue round-trip through JSON", () => {
     const fields = ref([
       makeField({ id: 1, name: "Tags", type: "multiselect" }),
@@ -491,5 +619,40 @@ describe("useCollectionItemForm", () => {
     form.setBooleanValue("Done", false);
     expect(form.formData.value.Done).toBe("0");
     expect(form.getBooleanValue("Done")).toBe(false);
+  });
+
+  it("initialData updates refresh form data when not editing", async () => {
+    const fields = ref([
+      makeField({ id: 1, name: "Title", type: "text" }),
+      makeField({ id: 2, name: "Due", type: "date" }),
+    ]);
+    const initialData = ref({ Title: "First", Due: "2025-01-01" });
+    const form = useCollectionItemForm(fields, initialData);
+
+    expect(form.getTextValue("Title")).toBe("");
+
+    form.startCreate();
+    expect(form.getTextValue("Title")).toBe("First");
+
+    initialData.value = { Title: "Second", Due: "2025-02-02" };
+    await nextTick();
+
+    expect(form.getTextValue("Title")).toBe("Second");
+    expect(form.getDateValue("Due")?.getFullYear()).toBe(2025);
+    expect(form.getDateValue("Due")?.getMonth()).toBe(1);
+    expect(form.getDateValue("Due")?.getDate()).toBe(2);
+  });
+
+  it("initialData changes do not override an active edit session", async () => {
+    const fields = ref([makeField({ id: 1, name: "Title", type: "text" })]);
+    const initialData = ref({ Title: "Initial" });
+    const form = useCollectionItemForm(fields, initialData);
+    form.startEdit(makeItem({ Title: "Editing" }));
+
+    initialData.value = { Title: "Updated" };
+    await nextTick();
+
+    expect(form.isEditing.value).toBe(true);
+    expect(form.getTextValue("Title")).toBe("Editing");
   });
 });
