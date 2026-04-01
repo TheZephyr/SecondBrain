@@ -49,7 +49,7 @@ Both CSV and JSON formats are supported. All operations are scoped to a single c
    - Item count
    - Import mode
    - Matched fields (file columns that match existing collection fields by name, case-insensitive)
-   - New fields (file columns that do not match any existing field — will be created as `text` type)
+   - New fields with inferred types for preview-only review
    - Sample data (first 3 rows)
 5. Click "Import N items" to execute
 
@@ -65,9 +65,13 @@ Replace mode does **not** delete existing fields, only items.
 ### Field Handling
 
 - Field matching is case-insensitive
-- New fields are created as `text` type with auto-assigned order indices
+- Type inference runs only for new fields, using the full parsed dataset rather than the 3-row sample
+- Inference checks types in this order: `boolean` -> `date` -> `number` -> `select` -> `text`
+- New-field type suggestions can be changed in the preview before import
+- Select suggestions include a read-only preview of inferred choices; those choices become the initial field options if the import is confirmed
 - If the collection has no fields at all, all file columns are treated as new fields
 - Field names that fail the safety validation block the import entirely (a warning toast is shown listing the invalid names)
+- Matched fields keep their existing field type and are not part of inference
 
 ### CSV Parsing Details
 
@@ -82,6 +86,8 @@ Replace mode does **not** delete existing fields, only items.
 - Input must be a JSON array; a plain object or other type throws a parse error
 - An empty array `[]` is valid and results in zero items being imported
 - Field names are derived from the keys of the first object in the array
+- Native JSON numbers and booleans are used as strong signals during preview inference
+- Native JSON booleans are normalized to the app's stored boolean format (`1` / `0`) during import execution
 
 ### Atomicity
 

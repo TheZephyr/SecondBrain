@@ -29,7 +29,7 @@
 }
 @font-face {
   font-family: "Titillium Web";
-  src: url("/fonts/TitilliumWeb-SemiBold.woff2") format("truetype");
+  src: url("/fonts/TitilliumWeb-SemiBold.ttf") format("truetype");
   font-weight: 600;
   font-style: normal;
   font-display: swap;

@@ -24,6 +24,18 @@ export const FIELD_TYPE_META: Record<
   rating: { displayName: "Rating", icon: "Star" },
 };
 
+export const FIELD_TYPE_OPTIONS: Array<{ label: string; value: FieldType }> = [
+  { label: FIELD_TYPE_META.text.displayName, value: "text" },
+  { label: FIELD_TYPE_META.longtext.displayName, value: "longtext" },
+  { label: FIELD_TYPE_META.number.displayName, value: "number" },
+  { label: FIELD_TYPE_META.date.displayName, value: "date" },
+  { label: FIELD_TYPE_META.select.displayName, value: "select" },
+  { label: FIELD_TYPE_META.multiselect.displayName, value: "multiselect" },
+  { label: FIELD_TYPE_META.boolean.displayName, value: "boolean" },
+  { label: FIELD_TYPE_META.url.displayName, value: "url" },
+  { label: FIELD_TYPE_META.rating.displayName, value: "rating" },
+];
+
 export type BooleanIcon =
   | "square"
   | "circle"

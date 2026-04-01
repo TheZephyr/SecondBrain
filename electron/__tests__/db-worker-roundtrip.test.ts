@@ -211,6 +211,78 @@ describe("JSON round-trip", () => {
 
     expect(parsed.rows[0]?.Content).toBe('Line1\nLine2\t"quoted"');
   });
+
+  it("preserves field schema and unused select choices in wrapped JSON export", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Tasks" });
+    addField({
+      collectionId: col.id,
+      name: "Status",
+      type: "select",
+      options: JSON.stringify({ choices: ["Open", "Closed", "Paused"] }),
+      orderIndex: 0,
+    });
+    addField({
+      collectionId: col.id,
+      name: "Due",
+      type: "date",
+      options: JSON.stringify({ format: "YYYY-MM-DD" }),
+      orderIndex: 1,
+    });
+    addField({
+      collectionId: col.id,
+      name: "Score",
+      type: "number",
+      options: null,
+      orderIndex: 2,
+    });
+    addItem({
+      collectionId: col.id,
+      data: { Status: "Open", Due: "2026-04-01", Score: 10 },
+    });
+
+    const fields = getFields(col.id);
+    const items = getItems(col.id);
+    const json = serializeItemsToJson(items, fields, { includeSchema: true });
+    const parsed = parseImportContent("json", json);
+    const preview = buildImportPreview(parsed, []);
+
+    expect(parsed.fields).toEqual(["Status", "Due", "Score"]);
+    expect(preview.newFields).toEqual([
+      {
+        name: "Status",
+        inferredType: "select",
+        selectedType: "select",
+        inferredChoices: ["Open", "Closed", "Paused"],
+        source: "schema",
+        sourceOptions: {
+          type: "select",
+          choices: ["Open", "Closed", "Paused"],
+        },
+      },
+      {
+        name: "Due",
+        inferredType: "date",
+        selectedType: "date",
+        inferredChoices: [],
+        source: "schema",
+        sourceOptions: {
+          type: "date",
+          format: "YYYY-MM-DD",
+        },
+      },
+      {
+        name: "Score",
+        inferredType: "number",
+        selectedType: "number",
+        inferredChoices: [],
+        source: "schema",
+        sourceOptions: {
+          type: "number",
+        },
+      },
+    ]);
+  });
 });
 
 describe("import preview field matching", () => {
@@ -241,7 +313,14 @@ describe("import preview field matching", () => {
 
     expect(preview.matchedFields).toContain("title");
     expect(preview.matchedFields).toContain("Author");
-    expect(preview.newFields).toContain("NewField");
+    expect(preview.newFields).toContainEqual({
+      name: "NewField",
+      inferredType: "select",
+      selectedType: "select",
+      inferredChoices: ["c"],
+      source: "inference",
+      sourceOptions: null,
+    });
     expect(preview.itemCount).toBe(1);
   });
 });

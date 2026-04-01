@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-4xl px-10 py-8">
+  <div class="mx-auto max-h-[calc(100vh-2rem)] max-w-4xl overflow-y-auto px-10 py-8">
     <Accordion value="0">
       <AccordionPanel value="0">
         <AccordionHeader>
@@ -31,14 +31,25 @@
               <label class="text-base font-medium text-[var(--text-secondary)]">Export Format</label>
               <Select v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
             </div>
+            <div v-if="exportFormat === 'json'"
+              class="flex items-center justify-between gap-4 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3">
+              <div>
+                <div class="font-medium text-[var(--text-primary)]">Include schema</div>
+                <div class="text-sm text-[var(--text-muted)]">
+                  Add field types and options so JSON imports can round-trip without inference.
+                </div>
+              </div>
+              <ToggleSwitch :modelValue="exportIncludeSchema"
+                @update:modelValue="value => exportIncludeSchema = Boolean(value)" />
+            </div>
             <div
               class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
               <p v-if="exportFormat === 'csv'">
                 Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
               </p>
               <p v-else>
-                Export all items as a JSON file. Data will be exported as an array of objects with full type
-                preservation.
+                Export all items as JSON. By default this stays a plain array of objects; enabling schema wraps the
+                data with field types and options for lossless re-import.
               </p>
             </div>
             <Button class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
@@ -120,7 +131,8 @@
               <div v-if="safeFields.length === 0"
                 class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-base text-[var(--text-secondary)]">
                 <AlertTriangle :size="16" />
-                This collection has no fields. Fields will be automatically created from the import file.
+                This collection has no fields. New fields will be created from the import file using the selected preview
+                types.
               </div>
 
               <div v-if="importPreview.matchedFields.length > 0" class="space-y-2">
@@ -140,12 +152,35 @@
                   <AlertTriangle :size="14" />
                   New Fields ({{ importPreview.newFields.length }})
                 </div>
-                <p class="text-base text-[var(--text-muted)]">These fields will be added to your collection:</p>
-                <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.newFields" :key="field"
-                    class="bg-[color-mix(in_srgb,var(--warning)_20%,transparent)] text-[var(--warning)]">
-                    {{ field }}
-                  </Tag>
+                <p class="text-base text-[var(--text-muted)]">
+                  Review the suggested type for each new field before importing.
+                </p>
+                <div class="space-y-3">
+                  <div v-for="field in importPreview.newFields" :key="field.name"
+                    class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div class="min-w-0">
+                        <div class="font-medium text-[var(--text-primary)]">{{ field.name }}</div>
+                        <div class="flex flex-wrap items-center gap-2 text-sm text-[var(--text-muted)]">
+                          Suggested: {{ FIELD_TYPE_META[field.inferredType].displayName }}
+                          <Tag v-if="field.source === 'schema'" severity="info" value="From schema" />
+                        </div>
+                      </div>
+                      <Select :modelValue="field.selectedType" :options="fieldTypeOptions" optionLabel="label"
+                        optionValue="value" class="w-full md:w-56"
+                        @update:modelValue="value => onImportPreviewTypeChange(field.name, value)" />
+                    </div>
+
+                    <div v-if="shouldShowChoicesPreview(field)" class="mt-3 space-y-2">
+                      <div class="text-sm font-medium text-[var(--text-secondary)]">Choices Preview</div>
+                      <div class="flex flex-wrap gap-2">
+                        <Tag v-for="choice in getPreviewChoices(field)" :key="choice"
+                          class="bg-[color-mix(in_srgb,var(--info)_18%,transparent)] text-[var(--text-primary)]">
+                          {{ choice }}
+                        </Tag>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -162,7 +197,8 @@
                     <div class="space-y-1">
                       <div v-for="(value, key) in item" :key="key" class="flex gap-2">
                         <span class="min-w-[80px] text-[var(--text-muted)]">{{ key }}:</span>
-                        <span class="text-[var(--text-primary)]">{{ value || '(empty)' }}</span>
+                        <span class="text-[var(--text-primary)]">{{ isSampleValueEmpty(value) ? '(empty)' :
+                          formatSampleValue(value) }}</span>
                       </div>
                     </div>
                   </div>
@@ -230,8 +266,11 @@ import InputText from 'primevue/inputtext'
 import RadioButton from 'primevue/radiobutton'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
-import type { Collection, Field } from '../../../types/models'
+import ToggleSwitch from 'primevue/toggleswitch'
+import type { Collection, Field, FieldType } from '../../../types/models'
+import { FIELD_TYPE_META, FIELD_TYPE_OPTIONS } from '../../../types/models'
 import { useCollectionImportExport } from '../../../composables/collection/useCollectionImportExport'
+import type { ImportPreviewNewField, ImportValue } from '../../../utils/collectionImportExport'
 import { isSafeFieldName } from '../../../validation/fieldNames'
 import { useStore } from '../../../store'
 import type { CollectionSettingsSavePayload } from '../types'
@@ -255,8 +294,11 @@ const safeFields = computed(() => {
   return props.fields.filter(field => isSafeFieldName(field.name))
 })
 
+const fieldTypeOptions = FIELD_TYPE_OPTIONS
+
 const {
   exportFormat,
+  exportIncludeSchema,
   exportFormatOptions,
   isExporting,
   handleExport,
@@ -265,12 +307,46 @@ const {
   isImporting,
   importPreview,
   handleSelectFile,
+  getImportPreviewChoices,
+  updateImportPreviewFieldType,
   handleImport,
   cancelImport
 } = useCollectionImportExport({
   collection: toRef(props, 'collection'),
   fields: toRef(props, 'fields')
 })
+
+function onImportPreviewTypeChange(fieldName: string, value: FieldType | null | undefined) {
+  if (!value) {
+    return
+  }
+
+  updateImportPreviewFieldType(fieldName, value)
+}
+
+function getPreviewChoices(field: ImportPreviewNewField) {
+  return getImportPreviewChoices(field)
+}
+
+function shouldShowChoicesPreview(field: ImportPreviewNewField) {
+  if (field.selectedType !== 'select' && field.selectedType !== 'multiselect') {
+    return false
+  }
+
+  return getPreviewChoices(field).length > 0
+}
+
+function isSampleValueEmpty(value: ImportValue | undefined) {
+  return value === '' || value === null || value === undefined
+}
+
+function formatSampleValue(value: ImportValue | undefined) {
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+
+  return String(value)
+}
 
 function resetSettingsState() {
   collectionName.value = props.collection.name

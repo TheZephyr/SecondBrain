@@ -91,10 +91,55 @@ describe("collectionImportExport utils", () => {
     const parsed = parseImportContent("json", content);
     expect(parsed.fields).toEqual(["Name", "Age"]);
     expect(parsed.rows).toEqual([{ Name: "Alice", Age: "30" }]);
+    expect(parsed.schema).toBeNull();
   });
 
   it("rejects JSON that is not an array", () => {
     expect(() => parseImportContent("json", "{}")).toThrow("JSON_NOT_ARRAY");
+  });
+
+  it("serializes items to schema-wrapped JSON when requested", () => {
+    const json = serializeItemsToJson(items, fields, { includeSchema: true });
+    const parsed = JSON.parse(json) as {
+      _schema: Record<string, Record<string, unknown>>;
+      data: Array<Record<string, string>>;
+    };
+
+    expect(Object.keys(parsed._schema)).toEqual(["Author", "Title"]);
+    expect(parsed._schema.Author).toEqual({ type: "text" });
+    expect(parsed.data).toEqual([
+      { Author: "Frank", Title: "Dune" },
+      { Author: "", Title: 'He said "hi"' },
+    ]);
+  });
+
+  it("parses wrapped JSON import content and keeps schema order ahead of data-only fields", () => {
+    const content = JSON.stringify({
+      _schema: {
+        Status: { type: "select", choices: ["Open", "Closed", "Paused"] },
+        Due: { type: "date", format: "YYYY-MM-DD" },
+      },
+      data: [{ status: "Open", Notes: "Alpha" }],
+    });
+    const parsed = parseImportContent("json", content);
+
+    expect(parsed.fields).toEqual(["Status", "Due", "Notes"]);
+    expect(parsed.schema).toEqual({
+      Status: { type: "select", choices: ["Open", "Closed", "Paused"] },
+      Due: { type: "date", format: "YYYY-MM-DD" },
+    });
+    expect(parsed.rows).toEqual([{ status: "Open", Notes: "Alpha" }]);
+  });
+
+  it("rejects wrapped JSON when data is not an array", () => {
+    const content = JSON.stringify({
+      _schema: { Title: { type: "text" } },
+      data: {},
+    });
+
+    expect(() => parseImportContent("json", content)).toThrow(
+      "JSON_SCHEMA_DATA_NOT_ARRAY",
+    );
   });
 
   it("builds import preview with matched and new fields", () => {
@@ -116,8 +161,298 @@ describe("collectionImportExport utils", () => {
 
     expect(preview.itemCount).toBe(1);
     expect(preview.matchedFields).toEqual(["name"]);
-    expect(preview.newFields).toEqual(["City"]);
+    expect(preview.newFields).toEqual([
+      {
+        name: "City",
+        inferredType: "select",
+        selectedType: "select",
+        inferredChoices: ["Paris"],
+        source: "inference",
+        sourceOptions: null,
+      },
+    ]);
     expect(preview.sample).toEqual([{ name: "Alice", City: "Paris" }]);
+  });
+
+  it("infers boolean fields before select", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Done"],
+        rows: [{ Done: "Yes" }, { Done: "no" }, { Done: "" }],
+      },
+      [],
+    );
+
+    expect(preview.newFields).toEqual([
+      {
+        name: "Done",
+        inferredType: "boolean",
+        selectedType: "boolean",
+        inferredChoices: [],
+        source: "inference",
+        sourceOptions: null,
+      },
+    ]);
+  });
+
+  it("uses schema-backed types and choices for new fields", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Status", "Due", "Notes"],
+        rows: [{ status: "Open", Notes: "Alpha" }],
+        schema: {
+          Status: {
+            type: "select",
+            choices: ["Open", "Closed", "Paused"],
+            uniqueCheck: true,
+          },
+          Due: {
+            type: "date",
+            format: "YYYY-MM-DD",
+          },
+        },
+      },
+      [],
+    );
+
+    expect(preview.newFields).toEqual([
+      {
+        name: "Status",
+        inferredType: "select",
+        selectedType: "select",
+        inferredChoices: ["Open", "Closed", "Paused"],
+        source: "schema",
+        sourceOptions: {
+          type: "select",
+          choices: ["Open", "Closed", "Paused"],
+          uniqueCheck: true,
+        },
+      },
+      {
+        name: "Due",
+        inferredType: "date",
+        selectedType: "date",
+        inferredChoices: [],
+        source: "schema",
+        sourceOptions: {
+          type: "date",
+          format: "YYYY-MM-DD",
+        },
+      },
+      {
+        name: "Notes",
+        inferredType: "select",
+        selectedType: "select",
+        inferredChoices: ["Alpha"],
+        source: "inference",
+        sourceOptions: null,
+      },
+    ]);
+  });
+
+  it("includes schema-only fields in the preview even when no rows provide values", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Status", "Priority"],
+        rows: [{ Status: "Open" }],
+        schema: {
+          Status: { type: "select", choices: ["Open", "Closed"] },
+          Priority: { type: "number" },
+        },
+      },
+      [],
+    );
+
+    expect(preview.newFields).toContainEqual({
+      name: "Priority",
+      inferredType: "number",
+      selectedType: "number",
+      inferredChoices: [],
+      source: "schema",
+      sourceOptions: { type: "number" },
+    });
+  });
+
+  it("infers dates only for the supported storage format", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Due"],
+        rows: [{ Due: "2026-04-01" }, { Due: "2026-05-15" }, { Due: "" }],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toMatchObject({
+      name: "Due",
+      inferredType: "date",
+      selectedType: "date",
+    });
+  });
+
+  it("infers numbers when all non-empty values parse as finite numbers", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Score"],
+        rows: [{ Score: "10" }, { Score: 4.5 }, { Score: "" }],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toMatchObject({
+      name: "Score",
+      inferredType: "number",
+      selectedType: "number",
+    });
+  });
+
+  it("infers select fields with low distinct counts and preserves first-seen casing", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Status"],
+        rows: [
+          { Status: "Open" },
+          { Status: "closed" },
+          { Status: "OPEN" },
+          { Status: "Closed" },
+          { Status: "Open" },
+          { Status: "closed" },
+          { Status: "Open" },
+          { Status: "closed" },
+          { Status: "Open" },
+          { Status: "closed" },
+        ],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toEqual({
+      name: "Status",
+      inferredType: "select",
+      selectedType: "select",
+      inferredChoices: ["Open", "closed"],
+      source: "inference",
+      sourceOptions: null,
+    });
+  });
+
+  it("falls back to text for all-empty columns", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Notes"],
+        rows: [{ Notes: "" }, { Notes: null }, { Notes: undefined }],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toEqual({
+      name: "Notes",
+      inferredType: "text",
+      selectedType: "text",
+      inferredChoices: [],
+      source: "inference",
+      sourceOptions: null,
+    });
+  });
+
+  it("falls back to text when some values do not match the candidate type", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Mixed"],
+        rows: [{ Mixed: "10" }, { Mixed: "11" }, { Mixed: "oops" }],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toEqual({
+      name: "Mixed",
+      inferredType: "text",
+      selectedType: "text",
+      inferredChoices: [],
+      source: "inference",
+      sourceOptions: null,
+    });
+  });
+
+  it("does not infer select when distinct values hit the ratio boundary", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Category"],
+        rows: [
+          { Category: "A" },
+          { Category: "B" },
+          { Category: "C" },
+          { Category: "A" },
+          { Category: "B" },
+          { Category: "C" },
+          { Category: "A" },
+          { Category: "B" },
+          { Category: "C" },
+          { Category: "A" },
+        ],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toEqual({
+      name: "Category",
+      inferredType: "text",
+      selectedType: "text",
+      inferredChoices: [],
+      source: "inference",
+      sourceOptions: null,
+    });
+  });
+
+  it("infers select for a single repeated non-empty value", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Status"],
+        rows: [{ Status: "Open" }, { Status: "Open" }, { Status: "Open" }],
+      },
+      [],
+    );
+
+    expect(preview.newFields[0]).toEqual({
+      name: "Status",
+      inferredType: "select",
+      selectedType: "select",
+      inferredChoices: ["Open"],
+      source: "inference",
+      sourceOptions: null,
+    });
+  });
+
+  it("uses native JSON values as strong signals during inference", () => {
+    const preview = buildImportPreview(
+      {
+        fields: ["Done", "Points"],
+        rows: [
+          { Done: true, Points: 1 },
+          { Done: false, Points: 2 },
+          { Done: null, Points: 3 },
+        ],
+      },
+      [],
+    );
+
+    expect(preview.newFields).toEqual([
+      {
+        name: "Done",
+        inferredType: "boolean",
+        selectedType: "boolean",
+        inferredChoices: [],
+        source: "inference",
+        sourceOptions: null,
+      },
+      {
+        name: "Points",
+        inferredType: "number",
+        selectedType: "number",
+        inferredChoices: [],
+        source: "inference",
+        sourceOptions: null,
+      },
+    ]);
   });
 });
 

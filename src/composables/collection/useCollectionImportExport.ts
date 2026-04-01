@@ -5,8 +5,10 @@ import { handleIpc } from "../../utils/ipc";
 import type {
   Collection,
   Field,
+  FieldType,
   Item,
   ItemData,
+  ItemDataValue,
   NewFieldInput,
   NewItemInput,
   ExportFormat,
@@ -17,9 +19,16 @@ import {
   parseImportContent,
   serializeItemsToCsv,
   serializeItemsToJson,
+  type ImportRow,
+  type ImportPreviewNewField,
   type ImportPreview,
   type ParsedImportData,
 } from "../../utils/collectionImportExport";
+import { serializeFieldOptions } from "../../utils/fieldOptions";
+import {
+  parseMultiselectValue,
+  serializeMultiselectValue,
+} from "../../utils/fieldValues";
 import { isSafeFieldName } from "../../validation/fieldNames";
 import { fieldNameSchema } from "../../validation/schemas";
 
@@ -36,6 +45,7 @@ export function useCollectionImportExport({
   const notifications = useNotificationsStore();
 
   const exportFormat = ref<ExportFormat>("csv");
+  const exportIncludeSchema = ref(false);
   const isExporting = ref(false);
 
   const importFormat = ref<ExportFormat>("csv");
@@ -43,6 +53,7 @@ export function useCollectionImportExport({
   const isImporting = ref(false);
   const selectedFile = ref<string | null>(null);
   const importPreview = ref<ImportPreview | null>(null);
+  const parsedImportData = ref<ParsedImportData | null>(null);
 
   const exportFormatOptions = [
     { label: "CSV", value: "csv" },
@@ -59,13 +70,17 @@ export function useCollectionImportExport({
   }
 
   function handleParseError(error: unknown): boolean {
-    if (error instanceof Error) {
+      if (error instanceof Error) {
       if (error.message === "EMPTY_CSV") {
         console.error("Empty CSV file");
         return true;
       }
       if (error.message === "JSON_NOT_ARRAY") {
         console.error("JSON must be an array");
+        return true;
+      }
+      if (error.message === "JSON_SCHEMA_DATA_NOT_ARRAY") {
+        console.error("JSON schema export must contain a data array");
         return true;
       }
     }
@@ -145,7 +160,9 @@ export function useCollectionImportExport({
       const content =
         exportFormat.value === "csv"
           ? serializeItemsToCsv(exportItems, fields.value)
-          : serializeItemsToJson(exportItems, fields.value);
+          : serializeItemsToJson(exportItems, fields.value, {
+              includeSchema: exportIncludeSchema.value,
+            });
 
       const writeResult = await window.electronAPI.writeFile(filePath, content);
       const success = handleIpc(writeResult, "export:writeFile", false);
@@ -164,6 +181,9 @@ export function useCollectionImportExport({
 
   async function handleSelectFile() {
     try {
+      parsedImportData.value = null;
+      importPreview.value = null;
+
       const extension = importFormat.value;
       const filters = [
         {
@@ -213,57 +233,256 @@ export function useCollectionImportExport({
         parsed = parseImportContent(importFormat.value, content);
       } catch (error) {
         if (handleParseError(error)) {
+          selectedFile.value = null;
           return;
         }
         throw error;
       }
 
+      parsedImportData.value = parsed;
       importPreview.value = buildImportPreview(parsed, fields.value);
     } catch (error) {
       console.error("Error selecting file:", error);
       selectedFile.value = null;
+      parsedImportData.value = null;
       importPreview.value = null;
     }
   }
 
+  function updateImportPreviewFieldType(
+    fieldName: string,
+    selectedType: FieldType,
+  ) {
+    if (!importPreview.value) {
+      return;
+    }
+
+    importPreview.value = {
+      ...importPreview.value,
+      newFields: importPreview.value.newFields.map((field) =>
+        field.name === fieldName ? { ...field, selectedType } : field,
+      ),
+    };
+  }
+
   function cancelImport() {
     selectedFile.value = null;
+    parsedImportData.value = null;
     importPreview.value = null;
     importFormat.value = "csv";
     importMode.value = "append";
   }
 
+  function getNewFieldPreviewMap(
+    previewFields: ImportPreviewNewField[],
+  ): Map<string, ImportPreviewNewField> {
+    return new Map(
+      previewFields.map((field) => [field.name.toLowerCase(), field]),
+    );
+  }
+
+  function collectDistinctChoices(values: string[]): string[] {
+    const choices: string[] = [];
+    const seen = new Set<string>();
+
+    for (const value of values) {
+      const normalized = value.toLowerCase();
+      if (seen.has(normalized)) {
+        continue;
+      }
+
+      seen.add(normalized);
+      choices.push(value);
+    }
+
+    return choices;
+  }
+
+  function getParsedRowValue(
+    row: ImportRow,
+    fieldName: string,
+  ): ImportRow[string] {
+    if (Object.prototype.hasOwnProperty.call(row, fieldName)) {
+      return row[fieldName];
+    }
+
+    const normalizedFieldName = fieldName.toLowerCase();
+    const matchingKey = Object.keys(row).find(
+      (key) => key.toLowerCase() === normalizedFieldName,
+    );
+
+    return matchingKey ? row[matchingKey] : undefined;
+  }
+
+  function getImportFieldChoices(
+    fieldName: string,
+    targetType: FieldType,
+    parsedRows: ParsedImportData["rows"],
+  ): string[] {
+    if (targetType === "select") {
+      return collectDistinctChoices(
+        parsedRows.flatMap((row) => {
+          const value = getParsedRowValue(row, fieldName);
+          if (value === null || value === undefined || value === "") {
+            return [];
+          }
+          return [String(value)];
+        }),
+      );
+    }
+
+    if (targetType === "multiselect") {
+      return collectDistinctChoices(
+        parsedRows.flatMap((row) => {
+          const value = getParsedRowValue(row, fieldName);
+          if (typeof value !== "string") {
+            return [];
+          }
+          return parseMultiselectValue(value);
+        }),
+      );
+    }
+
+    return [];
+  }
+
+  function getImportPreviewChoices(
+    field: ImportPreviewNewField,
+  ): string[] {
+    const schemaOptions = getSchemaBackedFieldOptions(field, field.selectedType);
+    if (schemaOptions && Array.isArray(schemaOptions.choices)) {
+      return schemaOptions.choices.filter(
+        (choice): choice is string => typeof choice === "string",
+      );
+    }
+
+    if (
+      !parsedImportData.value ||
+      (field.selectedType !== "select" && field.selectedType !== "multiselect")
+    ) {
+      return [];
+    }
+
+    return getImportFieldChoices(
+      field.name,
+      field.selectedType,
+      parsedImportData.value.rows,
+    );
+  }
+
+  function getSchemaBackedFieldOptions(
+    field: ImportPreviewNewField,
+    targetType: FieldType,
+  ): Record<string, unknown> | null {
+    if (field.source !== "schema" || !field.sourceOptions) {
+      return null;
+    }
+
+    const { type: schemaType, ...schemaOptions } = field.sourceOptions;
+    if (targetType === schemaType) {
+      return schemaOptions;
+    }
+
+    if (
+      (targetType === "select" || targetType === "multiselect") &&
+      Array.isArray(schemaOptions.choices)
+    ) {
+      return {
+        choices: schemaOptions.choices.filter(
+          (choice): choice is string => typeof choice === "string",
+        ),
+      };
+    }
+
+    return null;
+  }
+
+  function getImportFieldOptions(
+    field: ImportPreviewNewField,
+    parsedRows: ParsedImportData["rows"],
+  ): string | null {
+    const schemaOptions = getSchemaBackedFieldOptions(field, field.selectedType);
+    if (schemaOptions) {
+      return serializeFieldOptions(schemaOptions);
+    }
+
+    if (
+      field.selectedType !== "select" &&
+      field.selectedType !== "multiselect"
+    ) {
+      return null;
+    }
+
+    return serializeFieldOptions({
+      choices: getImportFieldChoices(field.name, field.selectedType, parsedRows),
+    });
+  }
+
+  function toStoredBooleanValue(
+    value: ItemDataValue | boolean | undefined,
+  ): ItemDataValue {
+    if (typeof value === "boolean") {
+      return value ? "1" : "0";
+    }
+
+    if (typeof value === "number") {
+      return value === 1 ? "1" : "0";
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (
+        normalized === "1" ||
+        normalized === "true" ||
+        normalized === "yes"
+      ) {
+        return "1";
+      }
+
+      if (
+        normalized === "0" ||
+        normalized === "false" ||
+        normalized === "no"
+      ) {
+        return "0";
+      }
+    }
+
+    return "0";
+  }
+
+  function normalizeImportedValue(
+    value: ItemDataValue | boolean | undefined,
+    targetType: FieldType,
+  ): ItemDataValue {
+    if (targetType === "boolean") {
+      return toStoredBooleanValue(value);
+    }
+
+    if (targetType === "multiselect") {
+      if (typeof value !== "string") {
+        return null;
+      }
+
+      return serializeMultiselectValue(parseMultiselectValue(value));
+    }
+
+    if (typeof value === "boolean") {
+      return value ? "true" : "false";
+    }
+
+    return value !== undefined ? value : "";
+  }
+
   async function handleImport() {
-    if (!selectedFile.value || !importPreview.value) {
+    if (!selectedFile.value || !importPreview.value || !parsedImportData.value) {
       return;
     }
 
     isImporting.value = true;
 
     try {
-      const contentResult = await window.electronAPI.readFile(
-        selectedFile.value,
-      );
-      if (!contentResult.ok) {
-        handleIpc(contentResult, "import:readFile", null);
-        return;
-      }
-
-      const content = contentResult.data;
-      if (!content) {
-        console.error("Failed to read file");
-        return;
-      }
-
-      let parsed: ParsedImportData;
-      try {
-        parsed = parseImportContent(importFormat.value, content);
-      } catch (error) {
-        if (handleParseError(error)) {
-          return;
-        }
-        throw error;
-      }
+      const parsed = parsedImportData.value;
 
       const { rows: parsedData, fields: fileFields } = parsed;
       const invalidFields = fileFields.filter(
@@ -295,6 +514,7 @@ export function useCollectionImportExport({
       const newFieldNames = normalizedFileFields.filter(
         (field) => !fieldMap.has(field.toLowerCase()),
       );
+      const previewNewFields = getNewFieldPreviewMap(importPreview.value.newFields);
 
       const newFieldsToCreate: NewFieldInput[] = [];
       const nextOrderIndex =
@@ -303,22 +523,39 @@ export function useCollectionImportExport({
         safeExistingFields.length === 0 ? normalizedFileFields : newFieldNames;
 
       for (let i = 0; i < fieldsToCreate.length; i++) {
+        const previewField = previewNewFields.get(
+          fieldsToCreate[i].toLowerCase(),
+        );
         newFieldsToCreate.push({
           collectionId: collection.value.id,
           name: fieldsToCreate[i],
-          type: "text",
-          options: null,
+          type: previewField?.selectedType ?? "text",
+          options: previewField
+            ? getImportFieldOptions(previewField, parsedData)
+            : null,
           orderIndex: nextOrderIndex + i,
         });
       }
 
-      fieldMap.clear();
+      const targetFieldMap = new Map<
+        string,
+        { name: string; type: FieldType }
+      >();
       const currentFieldNames = [
         ...safeExistingFields.map((field) => field.name),
         ...newFieldNames,
       ];
-      currentFieldNames.forEach((fieldName) =>
-        fieldMap.set(fieldName.toLowerCase(), fieldName),
+      safeExistingFields.forEach((field) =>
+        targetFieldMap.set(field.name.toLowerCase(), {
+          name: field.name,
+          type: field.type,
+        }),
+      );
+      newFieldNames.forEach((fieldName) =>
+        targetFieldMap.set(fieldName.toLowerCase(), {
+          name: fieldName,
+          type: previewNewFields.get(fieldName.toLowerCase())?.selectedType ?? "text",
+        }),
       );
 
       const itemsToAdd: NewItemInput[] = parsedData.map((row) => {
@@ -328,12 +565,14 @@ export function useCollectionImportExport({
         }
 
         for (const csvHeader of normalizedFileFields) {
-          const val = row[csvHeader];
-          const targetFieldName = fieldMap.get(csvHeader.toLowerCase());
+          const val = getParsedRowValue(row, csvHeader);
+          const targetField = targetFieldMap.get(csvHeader.toLowerCase());
 
-          if (targetFieldName) {
-            itemData[targetFieldName] =
-              val !== undefined && val !== null ? val : "";
+          if (targetField) {
+            itemData[targetField.name] = normalizeImportedValue(
+              val,
+              targetField.type,
+            );
           }
         }
 
@@ -368,6 +607,7 @@ export function useCollectionImportExport({
 
   return {
     exportFormat,
+    exportIncludeSchema,
     exportFormatOptions,
     isExporting,
     handleExport,
@@ -375,6 +615,8 @@ export function useCollectionImportExport({
     importMode,
     isImporting,
     importPreview,
+    getImportPreviewChoices,
+    updateImportPreviewFieldType,
     handleSelectFile,
     handleImport,
     cancelImport,

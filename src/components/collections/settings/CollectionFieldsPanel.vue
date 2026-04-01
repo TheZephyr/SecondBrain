@@ -86,7 +86,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import type { Field, FieldOptions, FieldType, Item } from '../../../types/models'
-import { FIELD_TYPE_META } from '../../../types/models'
+import { FIELD_TYPE_META, FIELD_TYPE_OPTIONS } from '../../../types/models'
 import { getDefaultOptions, parseFieldOptions } from '../../../utils/fieldOptions'
 import FieldOptionsForm from './FieldOptionsForm.vue'
 import type { FieldDraftInput } from './../types'
@@ -110,17 +110,7 @@ const emit = defineEmits<{
   (e: 'update-field', value: { field: Field; name: string; options: FieldOptions; removedOptions: string[] }): void
 }>()
 
-const fieldTypeOptions: Array<{ label: string; value: FieldType }> = [
-  { label: FIELD_TYPE_META.text.displayName, value: 'text' },
-  { label: FIELD_TYPE_META.longtext.displayName, value: 'longtext' },
-  { label: FIELD_TYPE_META.number.displayName, value: 'number' },
-  { label: FIELD_TYPE_META.date.displayName, value: 'date' },
-  { label: FIELD_TYPE_META.select.displayName, value: 'select' },
-  { label: FIELD_TYPE_META.multiselect.displayName, value: 'multiselect' },
-  { label: FIELD_TYPE_META.boolean.displayName, value: 'boolean' },
-  { label: FIELD_TYPE_META.url.displayName, value: 'url' },
-  { label: FIELD_TYPE_META.rating.displayName, value: 'rating' }
-]
+const fieldTypeOptions = FIELD_TYPE_OPTIONS
 
 const iconMap = icons as unknown as Record<string, Component>
 
