@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useStore } from '../../store'
+import { useStore } from '../../../store'
 import { Settings2 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 
