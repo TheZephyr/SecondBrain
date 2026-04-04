@@ -1,162 +1,81 @@
 # Second Brain
 
-A desktop application for organizing personal data collections with a flexible, database-driven approach.
+Second Brain is a local-first Electron desktop app for organizing structured personal data in custom collections.
 
 ## Features
 
-- **Custom Collections** - Create collections for different data types
-- **Collection views** - Add Grid view for spreadsheet-type data management, Kanban view for tracking progress and Calendar view for scheduling events
-- **Flexible Schema** - Define custom fields with support for text, numbers, dates, dropdowns, and text areas
-- **Data Management** - Import and export data in CSV or JSON formats with preview and merge options
+- Custom collections with local SQLite storage
+- Three view types: grid, kanban, and calendar
+- Flexible field types: text, long text, number, date, select, multiselect, boolean, URL, and rating
+- Per-view configuration for visible fields, sort, column widths, kanban grouping, and calendar date selection
+- Collection-level CSV and JSON import/export with preview and schema-aware JSON export
+- Global recovery tools: backups, full archive export, preview, and restore
+
+## Architecture
+
+```text
+Renderer (Vue 3 + Pinia)
+  -> window.electronAPI (preload bridge)
+  -> Main process IPC handlers
+  -> DB worker (worker_threads)
+  -> SQLite
+```
+
+The renderer never talks to SQLite directly. All database work goes through the main process and the database worker.
 
 ## Tech Stack
 
-- Runtime: Electron
-- Language: TypeScript
-- Database: SQLite
-- Frontend: Vue 3, Vite
-- State: Pinia
-- UI: PrimeVue, Tailwind CSS
+- Electron
+- Vue 3
+- TypeScript
+- Pinia
+- PrimeVue
+- Tailwind CSS 4
+- SQLite via better-sqlite3
+- Vite and VitePress
 
-## Contributor Quick Map
-
-```
-┌─────────────────────────────────────────┐
-│  Renderer Process (Vue 3 + TypeScript)  │
-│  ┌────────────┐      ┌────────────┐     │
-│  │   Views    │ ───> │   Store    │     │
-│  │ Components │      │  (Pinia)   │     │
-│  └────────────┘      └────────────┘     │
-│         │                   │           │
-│         └───────────────────┘           │
-└──────────────────┼──────────────────────┘
-                   │
-               IPC Bridge
-                   │
-┌──────────────────┼──────────────────────┐
-│     Main Process (Electron + Node)      │
-│         ┌────────▼────────┐             │
-│         │   IPC Handlers  │             │
-│         └────────┬────────┘             │
-│                  │                      │
-│         ┌────────▼─────────┐            │
-│         │   Worker Thread  │            │
-│         │    (Database)    │            │
-│         └────────┬─────────┘            │
-│                  │                      │
-│         ┌────────▼─────────┐            │
-│         │  SQLite Database │            │
-│         └──────────────────┘            │
-└─────────────────────────────────────────┘
-```
-
-## Installation
-
-### Prerequisites
-
-- Node.js 22.12 or higher
-- Git
-
-### Setup
-
-1. Clone the repository:
+## Getting Started
 
 ```bash
 git clone https://github.com/TheZephyr/SecondBrain.git
 cd SecondBrain
-```
-
-2. Install dependencies:
-
-```bash
 npm install
-```
-
-3. Rebuild native modules for Electron:
-
-```bash
-npm run rebuild:electron
-```
-
-4. Start the development server:
-
-```bash
 npm run dev
 ```
 
-## Testing Code Changes
+Useful rebuild scripts:
 
-Run these commands after pulling code changes:
+- `npm run rebuild:node`
+- `npm run rebuild:electron`
 
-1. Install/update dependencies:
+## Verification
 
-```bash
-npm install
-```
-
-2. Run unit tests (includes Node-targeted native rebuild via `pretest`):
+Run the full repository gate before finishing work:
 
 ```bash
-npm run test
+npm run verify
 ```
 
-3. Run renderer type-check:
+If you changed documentation navigation or links, also run:
 
 ```bash
-npx vue-tsc --noEmit
+npm run docs:build
 ```
 
-4. Run node/electron type-check:
+## Documentation
+
+- User guide: `docs/user`
+- Developer guide: `docs/developer`
+- Roadmap: `docs/roadmap`
+
+The VitePress site can be previewed locally with:
 
 ```bash
-npx tsc --noEmit -p tsconfig.node.json
+npm run docs:dev
 ```
-
-5. Validate the production build:
-
-```bash
-npm run build:win
-```
-
-6. Launch app for manual smoke testing (includes Electron-targeted native rebuild via `predev:electron`):
-
-```bash
-npm run dev
-```
-
-7. Manual edge-case smoke checks:
-
-- Switch between collections with saved table sort and confirm the sort preference is preserved.
-- Reorder fields in a collection that includes legacy/hidden unsafe fields; the reorder mutation should succeed.
-- Import data into a collection that includes legacy/hidden unsafe fields and confirm no order-index conflict errors occur.
-
-Useful native rebuild scripts:
-
-- `npm run rebuild:node` - rebuild `better-sqlite3` for your local Node runtime.
-- `npm run rebuild:electron` - rebuild `better-sqlite3` for Electron runtime (via `@electron/rebuild`).
-
-## Troubleshooting
-
-If you see `NODE_MODULE_VERSION` mismatch errors, run:
-
-```bash
-npm run rebuild:electron
-```
-
-## Build for Production
-
-Create a Windows installer:
-
-```bash
-npm run build:win
-```
-
-The installer will be generated in the `release/` directory.
 
 ## Data Storage
 
-Application data is stored locally in an SQLite database:
+Application data is stored locally under Electron's `userData` directory in a SQLite database file named `secondbrain.db`.
 
-**Windows:** `%APPDATA%/second-brain/secondbrain.db`
-
-All data remains on your machine and is never transmitted externally.
+Backups and full archives are separate recovery/export mechanisms and are managed from the app UI.
