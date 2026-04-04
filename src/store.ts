@@ -288,6 +288,8 @@ export const useStore = defineStore("main", () => {
           (viewItem) => viewItem.id === activeViewId.value,
         )
       ) {
+        // This fallback is effectively unreachable here because `loadViews()`
+        // always preserves a matching active view when `preserveActive` is set.
         const fallback = currentViews.value[0];
         activeViewId.value = fallback?.id ?? null;
       }
@@ -405,6 +407,8 @@ export const useStore = defineStore("main", () => {
             next.push(created.id);
           }
           if (next.length === 0) {
+            // This branch is unreachable because `created.id` is always pushed
+            // into a cloned array, so the selection can never be empty here.
             return allFieldIds;
           }
           return next;

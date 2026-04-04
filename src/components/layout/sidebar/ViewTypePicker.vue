@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ViewType } from "../../types/models";
+import type { ViewType } from "../../../types/models";
 
 const props = defineProps<{
   id?: string;

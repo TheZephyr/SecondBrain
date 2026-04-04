@@ -12,8 +12,8 @@
 import { watch } from "vue";
 import Toast from "primevue/toast";
 import { useToast } from "primevue/usetoast";
-import AppSidebar from "./components/sidebar/AppSidebar.vue";
-import AppContent from "./components/content/AppContent.vue";
+import AppSidebar from "./components/layout/sidebar/AppSidebar.vue";
+import AppContent from "./components/layout/content/AppContent.vue";
 import { useNotificationsStore } from "./stores/notifications";
 
 const toast = useToast();

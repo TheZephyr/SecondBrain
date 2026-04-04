@@ -186,14 +186,14 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from "vue";
 import type { ComponentPublicInstance } from "vue";
 import { storeToRefs } from "pinia";
-import { useStore } from "../../store";
-import { useNotificationsStore } from "../../stores/notifications";
+import { useStore } from "../../../store";
+import { useNotificationsStore } from "../../../stores/notifications";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Select from "primevue/select";
-import { collectionNameSchema, viewNameSchema } from "../../validation/schemas";
-import type { Collection, View, ViewType } from "../../types/models";
+import { collectionNameSchema, viewNameSchema } from "../../../validation/schemas";
+import type { Collection, View, ViewType } from "../../../types/models";
 import { Brain, GripVertical, LockKeyhole } from "lucide-vue-next";
 import ViewTypePicker from "./ViewTypePicker.vue";
 
