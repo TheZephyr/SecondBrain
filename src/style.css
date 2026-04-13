@@ -1,3 +1,6 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @font-face {
   font-family: "Chakra Petch";
   src: url("/fonts/ChakraPetch-Regular.ttf") format("truetype");
@@ -37,6 +40,9 @@
 
 @import "tailwindcss";
 @import "tailwindcss-primeui";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 @layer base {
   :root {
@@ -123,5 +129,18 @@
     --p-primary-hover-color: var(--p-primary-600);
     --p-primary-active-color: var(--p-primary-700);
     --p-primary-contrast-color: #var(--p-amber-500);
+  }
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }
