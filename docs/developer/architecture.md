@@ -32,7 +32,8 @@ If database initialization fails, the app shows an error dialog and exits instea
 The renderer owns:
 
 - Vue components and PrimeVue UI.
-- Pinia state.
+- Pinia domain stores plus a temporary compatibility facade in `src/store.ts`.
+- Renderer-side repositories that wrap `window.electronAPI` and centralize `handleIpc`.
 - Query orchestration for the active collection and active view.
 - User feedback through the notifications store and toast queue.
 
@@ -64,6 +65,9 @@ All renderer-to-main payloads must be structured-clone-safe.
 - Pass plain objects, arrays, strings, numbers, booleans, and `null`.
 - Do not pass Vue refs, proxies, or reactive store objects directly.
 - Renderer errors should be handled through `handleIpc` instead of crashing the UI.
+
+Renderer code should route IPC through repositories in `src/repositories/**`.
+Components and collection composables should not call `window.electronAPI` directly.
 
 ## Validation Boundary
 

@@ -10,6 +10,7 @@ import type {
   View,
   ViewConfig,
 } from "../types/models";
+import { normalizeViewConfig } from "../utils/viewConfig";
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -547,6 +548,7 @@ describe("deleteCollection", () => {
 
     mockApi.deleteCollection.mockResolvedValue(ok(true));
     mockApi.getCollections.mockResolvedValue(ok([]));
+    mockApi.getCollectionItemCounts.mockResolvedValue(ok([]));
 
     await store.deleteCollection(3);
 
@@ -560,6 +562,7 @@ describe("deleteCollection", () => {
 
     mockApi.deleteCollection.mockResolvedValue(ok(true));
     mockApi.getCollections.mockResolvedValue(ok([active]));
+    mockApi.getCollectionItemCounts.mockResolvedValue(ok([]));
 
     await store.deleteCollection(99);
 
@@ -570,6 +573,7 @@ describe("deleteCollection", () => {
     const store = useStore();
     mockApi.deleteCollection.mockResolvedValue(ok(true));
     mockApi.getCollections.mockResolvedValue(ok([]));
+    mockApi.getCollectionItemCounts.mockResolvedValue(ok([]));
 
     await store.deleteCollection(1);
 
@@ -578,12 +582,19 @@ describe("deleteCollection", () => {
 });
 
 describe("bulkDeleteItems", () => {
-  it("re-fetches items after successful bulk delete on active collection", async () => {
+  it("patches visible items locally after successful bulk delete", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A" };
+    mockApi.getItems.mockResolvedValueOnce(
+      ok<PaginatedItemsResult>({
+        items: [makeItem(10), makeItem(11), makeItem(12)],
+        total: 3,
+        limit: 100,
+        offset: 0,
+      }),
+    );
+    await store.loadItems(1);
 
     mockApi.bulkDeleteItems.mockResolvedValue(ok({ affectedCount: 2 }));
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
     const result = await store.bulkDeleteItems({
       collectionId: 1,
@@ -591,7 +602,9 @@ describe("bulkDeleteItems", () => {
     });
 
     expect(result).toEqual({ affectedCount: 2 });
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(store.items).toEqual([makeItem(12)]);
+    expect(store.itemsTotal).toBe(1);
+    expect(mockApi.getItems).toHaveBeenCalledTimes(1);
   });
 
   it("returns null on IPC error", async () => {
@@ -616,12 +629,19 @@ describe("bulkDeleteItems", () => {
 });
 
 describe("bulkPatchItems", () => {
-  it("re-fetches items after successful bulk patch on active collection", async () => {
+  it("patches visible items locally after successful bulk patch", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "A" };
+    mockApi.getItems.mockResolvedValueOnce(
+      ok<PaginatedItemsResult>({
+        items: [makeItem(5, { Title: "Before" })],
+        total: 1,
+        limit: 100,
+        offset: 0,
+      }),
+    );
+    await store.loadItems(1);
 
     mockApi.bulkPatchItems.mockResolvedValue(ok({ affectedCount: 1 }));
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
     const result = await store.bulkPatchItems({
       collectionId: 1,
@@ -629,7 +649,8 @@ describe("bulkPatchItems", () => {
     });
 
     expect(result).toEqual({ affectedCount: 1 });
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(store.items[0]?.data).toEqual({ Title: "Updated" });
+    expect(mockApi.getItems).toHaveBeenCalledTimes(1);
   });
 
   it("returns null on IPC error", async () => {
@@ -681,7 +702,7 @@ describe("view config", () => {
     const result = await store.loadViewConfig(5);
 
     expect(mockApi.getViewConfig).toHaveBeenCalledWith(5);
-    expect(result).toEqual(config);
+    expect(result).toEqual(normalizeViewConfig(config));
   });
 
   it("saves view config via IPC", async () => {

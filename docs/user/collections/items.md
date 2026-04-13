@@ -25,9 +25,11 @@ You can edit items in two main ways.
 
 ### Inline Grid Editing
 
-- Click a grid cell to edit it directly.
-- Press `Enter` to commit and move through the row.
+- Click a grid cell to select it, then double-click to edit it.
+- Press `Enter` to commit the current value.
+- Press `Tab` to commit and move to the next cell in the row flow.
 - Date, select, multiselect, boolean, URL, and rating values use field-specific editors.
+- Successful inline edits update the visible grid immediately.
 
 ### Dialog Editing
 

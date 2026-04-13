@@ -122,7 +122,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted } from "vue";
+import { storeToRefs } from "pinia";
 import Button from "primevue/button";
 import Card from "primevue/card";
 import ConfirmDialog from "primevue/confirmdialog";
@@ -130,134 +131,50 @@ import InputNumber from "primevue/inputnumber";
 import Tag from "primevue/tag";
 import ToggleSwitch from "primevue/toggleswitch";
 import { useConfirm } from "primevue/useconfirm";
-import { handleIpc } from "../../utils/ipc";
 import type { BackupEntry, BackupLabel } from "../../types/models";
+import { useSettingsStore } from "../../stores/settings";
 
 const confirm = useConfirm();
-
-const backupDirectory = ref("");
-const automaticBackupsEnabled = ref(true);
-const automaticBackupsLimit = ref(10);
-const manualBackupsLimit = ref(20);
-const backups = ref<BackupEntry[]>([]);
-const loadingBackups = ref(false);
-const creatingBackup = ref(false);
-const savingSettings = ref(false);
-const restoringFileName = ref<string | null>(null);
-const deletingFileName = ref<string | null>(null);
-
-function normalizeLimit(value: number | null | undefined, fallback: number): number {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return fallback;
-  }
-  return Math.max(0, Math.min(999, Math.trunc(value)));
-}
+const settingsStore = useSettingsStore();
+const {
+  backupDirectory,
+  automaticBackupsEnabled,
+  automaticBackupsLimit,
+  manualBackupsLimit,
+  backups,
+  loadingBackups,
+  creatingBackup,
+  savingSettings,
+  restoringFileName,
+  deletingFileName,
+} = storeToRefs(settingsStore);
 
 function onAutomaticEnabledChange(value: boolean | undefined) {
-  automaticBackupsEnabled.value = Boolean(value);
+  settingsStore.onAutomaticEnabledChange(value);
 }
 
 function onAutomaticLimitChange(value: number | null | undefined) {
-  automaticBackupsLimit.value = normalizeLimit(value, automaticBackupsLimit.value);
+  settingsStore.onAutomaticLimitChange(value);
 }
 
 function onManualLimitChange(value: number | null | undefined) {
-  manualBackupsLimit.value = normalizeLimit(value, manualBackupsLimit.value);
-}
-
-function applySettings(settings: {
-  backupDirectory: string;
-  automaticBackupsEnabled: boolean;
-  automaticBackupsLimit: number;
-  manualBackupsLimit: number;
-}) {
-  backupDirectory.value = settings.backupDirectory;
-  automaticBackupsEnabled.value = settings.automaticBackupsEnabled;
-  automaticBackupsLimit.value = settings.automaticBackupsLimit;
-  manualBackupsLimit.value = settings.manualBackupsLimit;
-}
-
-async function loadSettings() {
-  const result = await window.electronAPI.getBackupSettings();
-  const fallback = {
-    backupDirectory: "",
-    automaticBackupsEnabled: true,
-    automaticBackupsLimit: 10,
-    manualBackupsLimit: 20,
-  };
-  const settings = handleIpc(result, "backup:getSettings", fallback);
-  applySettings(settings);
-}
-
-async function loadBackups() {
-  loadingBackups.value = true;
-  try {
-    const result = await window.electronAPI.listBackups();
-    backups.value = handleIpc(result, "backup:list", []);
-  } finally {
-    loadingBackups.value = false;
-  }
+  settingsStore.onManualLimitChange(value);
 }
 
 async function saveSettings() {
-  savingSettings.value = true;
-  try {
-    const result = await window.electronAPI.updateBackupSettings({
-      automaticBackupsEnabled: automaticBackupsEnabled.value,
-      automaticBackupsLimit: normalizeLimit(automaticBackupsLimit.value, 10),
-      manualBackupsLimit: normalizeLimit(manualBackupsLimit.value, 20),
-    });
-    const fallback = {
-      backupDirectory: backupDirectory.value,
-      automaticBackupsEnabled: automaticBackupsEnabled.value,
-      automaticBackupsLimit: automaticBackupsLimit.value,
-      manualBackupsLimit: manualBackupsLimit.value,
-    };
-    applySettings(handleIpc(result, "backup:updateSettings", fallback));
-  } finally {
-    savingSettings.value = false;
-  }
+  await settingsStore.saveBackupSettings();
 }
 
 async function createBackupNow() {
-  creatingBackup.value = true;
-  try {
-    const result = await window.electronAPI.createManualBackup();
-    const created = handleIpc<BackupEntry | null>(result, "backup:createManual", null);
-    if (created) {
-      await loadBackups();
-    }
-  } finally {
-    creatingBackup.value = false;
-  }
+  await settingsStore.createBackupNow();
 }
 
 async function openBackupsFolder() {
-  const result = await window.electronAPI.openBackupsFolder();
-  handleIpc(result, "backup:openFolder", false);
+  await settingsStore.openBackupsFolder();
 }
 
-async function restoreBackup(fileName: string) {
-  restoringFileName.value = fileName;
-  try {
-    const result = await window.electronAPI.restoreBackup(fileName);
-    handleIpc(result, "backup:restore", false);
-  } finally {
-    restoringFileName.value = null;
-  }
-}
-
-async function deleteBackup(fileName: string) {
-  deletingFileName.value = fileName;
-  try {
-    const result = await window.electronAPI.deleteBackup(fileName);
-    const deleted = handleIpc(result, "backup:delete", false);
-    if (deleted) {
-      backups.value = backups.value.filter((backup) => backup.fileName !== fileName);
-    }
-  } finally {
-    deletingFileName.value = null;
-  }
+async function loadBackups() {
+  await settingsStore.loadBackups();
 }
 
 function confirmRestore(backup: BackupEntry) {
@@ -270,7 +187,7 @@ function confirmRestore(backup: BackupEntry) {
     acceptLabel: "Restore Backup",
     rejectLabel: "Cancel",
     accept: () => {
-      void restoreBackup(backup.fileName);
+      void settingsStore.restoreBackup(backup.fileName);
     },
   });
 }
@@ -284,55 +201,31 @@ function confirmDelete(backup: BackupEntry) {
     acceptLabel: "Delete",
     rejectLabel: "Cancel",
     accept: () => {
-      void deleteBackup(backup.fileName);
+      void settingsStore.deleteBackup(backup.fileName);
     },
   });
 }
 
 function formatBackupDate(createdAt: string): string {
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) {
-    return createdAt;
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "long",
-    timeStyle: "short",
-  }).format(date);
+  return settingsStore.formatBackupDate(createdAt);
 }
 
 function formatLabel(label: BackupLabel): string {
-  switch (label) {
-    case "startup":
-      return "Startup";
-    case "manual":
-      return "Manual";
-    case "pre_restore":
-      return "Pre-restore";
-  }
+  return settingsStore.formatLabel(label);
 }
 
 function tagSeverity(label: BackupLabel): "success" | "info" | "warn" {
-  switch (label) {
-    case "startup":
-      return "info";
-    case "manual":
-      return "success";
-    case "pre_restore":
-      return "warn";
-  }
+  return settingsStore.tagSeverity(label);
 }
 
 function formatFileSize(sizeBytes: number): string {
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`;
-  }
-  if (sizeBytes < 1024 * 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+  return settingsStore.formatFileSize(sizeBytes);
 }
 
 onMounted(async () => {
-  await Promise.all([loadSettings(), loadBackups()]);
+  await Promise.all([
+    settingsStore.loadBackupSettings(),
+    settingsStore.loadBackups(),
+  ]);
 });
 </script>

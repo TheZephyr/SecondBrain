@@ -41,47 +41,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useStore } from '../../store'
+import { useCollectionsStore } from '../../stores/collections'
 import {
   FolderOpen, Database, ChevronRight
 } from 'lucide-vue-next'
 import Card from 'primevue/card'
-import { handleIpc } from '../../utils/ipc'
 
-const store = useStore()
-const { collections } = storeToRefs(store)
+const collectionsStore = useCollectionsStore()
+const { collections, collectionItemCounts } = storeToRefs(collectionsStore)
 
 defineEmits(['select-collection'])
-
-const collectionStats = ref<Map<number, number>>(new Map())
 
 const collectionsWithStats = computed(() => {
   return collections.value.map(collection => ({
     ...collection,
-    itemCount: collectionStats.value.get(collection.id) || 0
+    itemCount: collectionItemCounts.value.get(collection.id) || 0
   }))
 })
 
-async function loadStats() {
-  if (collections.value.length === 0) {
-    collectionStats.value = new Map()
-    return
-  }
-
-  const result = await window.electronAPI.getCollectionItemCounts()
-  const counts = handleIpc(result, 'db:getCollectionItemCounts', [])
-  const nextStats = new Map<number, number>()
-
-  for (const entry of counts) {
-    nextStats.set(entry.collectionId, entry.itemCount)
-  }
-
-  collectionStats.value = nextStats
-}
-
-watch(collections, () => {
-  loadStats()
-}, { immediate: true })
+onMounted(() => {
+  void collectionsStore.loadCollectionItemCounts()
+})
 </script>

@@ -71,107 +71,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { storeToRefs } from "pinia";
 import Button from "primevue/button";
 import Card from "primevue/card";
 import Tag from "primevue/tag";
 import Textarea from "primevue/textarea";
 import { useStore } from "../../store";
-import { handleIpc } from "../../utils/ipc";
-import type {
-  FullArchiveExportResult,
-  FullArchivePreview,
-  FullArchiveRestoreReport,
-} from "../../types/models";
+import { useSettingsStore } from "../../stores/settings";
 import ArchivePreviewDialog from "./ArchivePreviewDialog.vue";
 import ArchiveRestoreReportDialog from "./ArchiveRestoreReportDialog.vue";
 
 const store = useStore();
-
-const archiveDescription = ref("");
-const exportingArchive = ref(false);
-const previewingArchive = ref(false);
-const restoringArchive = ref(false);
-const archivePreview = ref<FullArchivePreview | null>(null);
-const archivePreviewVisible = ref(false);
-const archiveReport = ref<FullArchiveRestoreReport | null>(null);
-const archiveReportVisible = ref(false);
-const navigateToDashboardAfterArchiveReport = ref(false);
-const lastArchiveExportPath = ref<string | null>(null);
+const settingsStore = useSettingsStore();
+const {
+  archiveDescription,
+  exportingArchive,
+  previewingArchive,
+  restoringArchive,
+  archivePreview,
+  archivePreviewVisible,
+  archiveReport,
+  archiveReportVisible,
+  navigateToDashboardAfterArchiveReport,
+  lastArchiveExportPath,
+} = storeToRefs(settingsStore);
 
 async function exportArchive() {
-  exportingArchive.value = true;
-  try {
-    const result = await window.electronAPI.exportFullArchive({
-      description: archiveDescription.value,
-    });
-    const exported = handleIpc<FullArchiveExportResult | null>(
-      result,
-      "archive:exportFull",
-      null,
-    );
-    if (exported) {
-      lastArchiveExportPath.value = exported.filePath;
-    }
-  } finally {
-    exportingArchive.value = false;
-  }
+  await settingsStore.exportArchive();
 }
 
 async function openArchivePreview() {
-  previewingArchive.value = true;
-  try {
-    const result = await window.electronAPI.previewFullArchiveRestore();
-    const preview = handleIpc<FullArchivePreview | null>(
-      result,
-      "archive:previewRestore",
-      null,
-    );
-    if (preview) {
-      archivePreview.value = preview;
-      archivePreviewVisible.value = true;
-    }
-  } finally {
-    previewingArchive.value = false;
-  }
+  await settingsStore.openArchivePreview();
 }
 
 async function restoreArchive() {
-  if (!archivePreview.value) {
-    return;
-  }
-
-  restoringArchive.value = true;
-  try {
-    const result = await window.electronAPI.restoreFullArchive(
-      archivePreview.value.filePath,
-    );
-    const report = handleIpc<FullArchiveRestoreReport | null>(
-      result,
-      "archive:restore",
-      null,
-    );
-    if (!report) {
-      return;
-    }
-
-    archivePreviewVisible.value = false;
-    archivePreview.value = null;
-    archiveReport.value = report;
-    archiveReportVisible.value = true;
-    navigateToDashboardAfterArchiveReport.value = true;
-    await store.loadCollections();
-  } finally {
-    restoringArchive.value = false;
-  }
+  await settingsStore.restoreArchive();
 }
 
 function handleArchiveReportHide() {
-  if (!navigateToDashboardAfterArchiveReport.value) {
-    return;
+  const shouldNavigate = navigateToDashboardAfterArchiveReport.value;
+  settingsStore.handleArchiveReportHide();
+  if (shouldNavigate) {
+    store.showDashboard();
   }
-
-  navigateToDashboardAfterArchiveReport.value = false;
-  store.showDashboard();
 }
 </script>

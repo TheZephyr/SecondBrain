@@ -1,747 +1,231 @@
-import { defineStore } from "pinia";
-import { ref } from "vue";
+import { defineStore, storeToRefs } from "pinia";
 import type {
+  BulkDeleteItemsInput,
+  BulkMutationResult,
+  BulkPatchItemsInput,
   Collection,
   CollectionPanelType,
-  View,
-  Field,
+  DuplicateItemInput,
+  InsertItemAtInput,
   Item,
   ItemSortSpec,
-  NewCollectionInput,
-  NewViewInput,
-  UpdateViewInput,
-  UpdateCollectionInput,
-  NewFieldInput,
-  UpdateFieldInput,
-  ReorderFieldsInput,
-  ReorderViewsInput,
-  ReorderItemsInput,
-  NewItemInput,
-  UpdateItemInput,
-  InsertItemAtInput,
-  DuplicateItemInput,
   MoveItemInput,
-  BulkDeleteItemsInput,
-  BulkPatchItemsInput,
-  BulkMutationResult,
-  PaginatedItemsResult,
+  NewCollectionInput,
+  NewFieldInput,
+  NewItemInput,
+  NewViewInput,
+  ReorderFieldsInput,
+  ReorderItemsInput,
+  ReorderViewsInput,
+  UpdateCollectionInput,
+  UpdateFieldInput,
+  UpdateItemInput,
+  UpdateViewInput,
   ViewConfig,
 } from "./types/models";
-import { handleIpc } from "./utils/ipc";
-
-type LoadItemsOptions = {
-  page?: number;
-  search?: string;
-  sort?: ItemSortSpec[];
-};
-
-const ITEMS_LIMIT = 100;
-
-function areItemSortSpecsEqual(a: ItemSortSpec[], b: ItemSortSpec[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return a.every(
-    (entry, index) =>
-      entry.field === b[index]?.field && entry.order === b[index]?.order,
-  );
-}
+import { useCollectionsStore } from "./stores/collections";
+import { useItemsStore } from "./stores/items";
+import { useNavigationStore } from "./stores/navigation";
+import { useSettingsStore } from "./stores/settings";
 
 export const useStore = defineStore("main", () => {
-  // State
-  const collections = ref<Collection[]>([]);
-  const currentViews = ref<View[]>([]);
-  const activeViewId = ref<number | null>(null);
-  const fields = ref<Field[]>([]);
-  const items = ref<Item[]>([]);
-  const itemsTotal = ref(0);
-  const itemsLoading = ref(false);
-  const itemsFullyLoaded = ref(false);
-  const itemsPage = ref(0);
-  const itemsSearch = ref("");
-  const itemsSort = ref<ItemSortSpec[]>([]);
-  const selectedCollection = ref<Collection | null>(null);
-  const currentView = ref<"dashboard" | "collection" | "settings">("dashboard");
-  const activeCollectionPanel = ref<CollectionPanelType>("data");
-  const collectionSettingsOpen = ref(false);
-  let itemsRequestToken = 0;
-  let viewsRequestToken = 0;
+  const collectionsStore = useCollectionsStore();
+  const itemsStore = useItemsStore();
+  const navigationStore = useNavigationStore();
+  const settingsStore = useSettingsStore();
+  const collectionRefs = storeToRefs(collectionsStore);
+  const itemRefs = storeToRefs(itemsStore);
+  const navigationRefs = storeToRefs(navigationStore);
 
-  function clearItemsState() {
-    itemsRequestToken += 1;
-    items.value = [];
-    itemsTotal.value = 0;
-    itemsLoading.value = false;
-    itemsFullyLoaded.value = false;
-    itemsPage.value = 0;
-    itemsSearch.value = "";
-    itemsSort.value = [];
+  function setActiveCollectionPanel(panel: CollectionPanelType): void {
+    navigationStore.setActiveCollectionPanel(panel);
   }
 
-  function appendItems(nextItems: Item[]) {
-    if (nextItems.length === 0) {
+  function setCollectionSettingsOpen(open: boolean): void {
+    navigationStore.setCollectionSettingsOpen(open);
+  }
+
+  function setActiveViewId(id: number | null): void {
+    collectionsStore.setActiveViewId(id);
+  }
+
+  function resetForNoCollection(
+    nextView: "dashboard" | "settings",
+  ): void {
+    collectionsStore.setSelectedCollection(null);
+    collectionsStore.clearFieldsState();
+    collectionsStore.clearViewsState();
+    itemsStore.setActiveCollectionId(null);
+    itemsStore.clearItemsState();
+    navigationStore.setCurrentView(nextView);
+    navigationStore.resetCollectionUiState();
+  }
+
+  function selectCollection(collection: Collection | null): void {
+    collectionsStore.setSelectedCollection(collection);
+
+    if (!collection) {
+      resetForNoCollection("dashboard");
       return;
     }
 
-    const existingIds = new Set(items.value.map((item) => item.id));
-    const deduped = [...items.value];
-    for (const item of nextItems) {
-      if (existingIds.has(item.id)) {
-        continue;
-      }
-      deduped.push(item);
-      existingIds.add(item.id);
+    navigationStore.setCurrentView("collection");
+    navigationStore.resetCollectionUiState();
+    itemsStore.setActiveCollectionId(collection.id);
+    itemsStore.clearItemsState();
+    collectionsStore.clearViewsState();
+
+    void collectionsStore.loadFields(collection.id);
+    void itemsStore.loadItems(collection.id);
+    void collectionsStore.loadViews(collection.id);
+  }
+
+  function showDashboard(): void {
+    resetForNoCollection("dashboard");
+  }
+
+  function showSettings(): void {
+    resetForNoCollection("settings");
+  }
+
+  async function deleteCollection(id: number): Promise<boolean> {
+    const wasSelected = collectionsStore.selectedCollection?.id === id;
+    const success = await collectionsStore.deleteCollection(id);
+    if (success && wasSelected) {
+      showDashboard();
     }
-    items.value = deduped;
+    return success;
   }
 
-  function clearViewsState() {
-    viewsRequestToken += 1;
-    currentViews.value = [];
-    activeViewId.value = null;
+  async function addCollection(
+    collection: NewCollectionInput,
+  ): Promise<Collection | null> {
+    return collectionsStore.addCollection(collection);
   }
 
-  function getOrderedFieldIds(collectionId: number): number[] {
-    return [...fields.value]
-      .filter((field) => field.collection_id === collectionId)
-      .sort((a, b) => {
-        if (a.order_index !== b.order_index) {
-          return a.order_index - b.order_index;
-        }
-        return a.id - b.id;
-      })
-      .map((field) => field.id);
+  async function updateCollection(
+    collection: UpdateCollectionInput,
+  ): Promise<boolean> {
+    return collectionsStore.updateCollection(collection);
   }
 
-  function normalizeSelectedFieldIds(value: unknown): number[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-
-    const seen = new Set<number>();
-    const normalized: number[] = [];
-    for (const entry of value) {
-      const parsed = Number(entry);
-      if (!Number.isInteger(parsed) || parsed <= 0) {
-        continue;
-      }
-      if (seen.has(parsed)) {
-        continue;
-      }
-      seen.add(parsed);
-      normalized.push(parsed);
-    }
-    return normalized;
+  async function addView(view: NewViewInput) {
+    return collectionsStore.addView(view);
   }
 
-  function normalizeCalendarDateFieldId(value: unknown): number | undefined {
-    const parsed = Number(value);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+  async function updateView(view: UpdateViewInput) {
+    return collectionsStore.updateView(view);
   }
 
-  function normalizeGroupingFieldId(value: unknown): number | undefined {
-    const parsed = Number(value);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+  async function deleteView(id: number) {
+    return collectionsStore.deleteView(id);
   }
 
-  function normalizeKanbanColumnOrder(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) {
-      return undefined;
-    }
-
-    const seen = new Set<string>();
-    const normalized: string[] = [];
-    for (const entry of value) {
-      if (typeof entry !== "string") {
-        continue;
-      }
-      const trimmed = entry.trim();
-      if (!trimmed) {
-        continue;
-      }
-      if (seen.has(trimmed)) {
-        continue;
-      }
-      seen.add(trimmed);
-      normalized.push(trimmed);
-    }
-
-    return normalized.length > 0 ? normalized : undefined;
+  async function loadViewConfig(viewId: number): Promise<ViewConfig | null> {
+    return collectionsStore.loadViewConfig(viewId);
   }
 
-  async function updateChildViewFieldSelections(
-    collectionId: number,
-    updater: (currentIds: number[], allFieldIds: number[]) => number[],
-    removedFieldId?: number,
-  ) {
-    const childViews = currentViews.value.filter(
-      (view) => view.collection_id === collectionId && view.is_default === 0,
-    );
-    if (childViews.length === 0) {
-      return;
-    }
-
-    const allFieldIds = getOrderedFieldIds(collectionId);
-    for (const view of childViews) {
-      const existing = await loadViewConfig(view.id);
-      const existingSelected = normalizeSelectedFieldIds(
-        existing?.selectedFieldIds,
-      );
-      const baseSelected =
-        existingSelected.length > 0 ? existingSelected : allFieldIds;
-      const nextSelected = updater(baseSelected, allFieldIds);
-      const groupingFieldId =
-        removedFieldId && existing?.groupingFieldId === removedFieldId
-          ? undefined
-          : existing?.groupingFieldId;
-      const kanbanColumnOrder =
-        groupingFieldId === undefined ? undefined : existing?.kanbanColumnOrder;
-      const unchanged =
-        nextSelected.length === baseSelected.length &&
-        nextSelected.every((id, index) => id === baseSelected[index]) &&
-        groupingFieldId === existing?.groupingFieldId &&
-        kanbanColumnOrder === existing?.kanbanColumnOrder;
-
-      if (unchanged) {
-        continue;
-      }
-
-      await saveViewConfig(view.id, {
-        columnWidths: existing?.columnWidths ?? {},
-        sort: existing?.sort ?? [],
-        calendarDateField: existing?.calendarDateField,
-        calendarDateFieldId: existing?.calendarDateFieldId,
-        groupingFieldId,
-        kanbanColumnOrder,
-        selectedFieldIds: nextSelected,
-      });
-    }
+  async function saveViewConfig(viewId: number, config: ViewConfig): Promise<void> {
+    await collectionsStore.saveViewConfig(viewId, config);
   }
 
-  // Actions
-  async function loadCollections() {
-    const result = await window.electronAPI.getCollections();
-    collections.value = handleIpc(result, "db:getCollections", []);
+  async function loadCollections(): Promise<void> {
+    await collectionsStore.loadCollections();
   }
 
   async function loadViews(
     collectionId: number,
-    options: { preserveActive?: boolean } = {},
-  ) {
-    const requestToken = ++viewsRequestToken;
-    const result = await window.electronAPI.getViews(collectionId);
-    const views = handleIpc(result, "db:getViews", []);
-    if (requestToken !== viewsRequestToken) {
-      return;
-    }
-    currentViews.value = views;
-    if (options.preserveActive && activeViewId.value !== null) {
-      const stillExists = views.some((view) => view.id === activeViewId.value);
-      if (stillExists) {
-        return;
-      }
-    }
-    const defaultView = views.find((view) => view.is_default === 1);
-    activeViewId.value = defaultView?.id ?? views[0]?.id ?? null;
-  }
-
-  function setActiveCollectionPanel(panel: CollectionPanelType) {
-    activeCollectionPanel.value = panel;
-  }
-
-  function setCollectionSettingsOpen(open: boolean) {
-    collectionSettingsOpen.value = open;
-  }
-
-  function setActiveViewId(id: number | null) {
-    activeViewId.value = id;
-  }
-
-  async function addCollection(collection: NewCollectionInput) {
-    const result = await window.electronAPI.addCollection(collection);
-    const newCollection = handleIpc(result, "db:addCollection", null);
-    if (newCollection) {
-      await loadCollections();
-    }
-    return newCollection;
-  }
-
-  async function addView(view: NewViewInput) {
-    const result = await window.electronAPI.addView(view);
-    const created = handleIpc(result, "db:addView", null);
-    if (created) {
-      await loadViews(view.collectionId, { preserveActive: true });
-      activeViewId.value = created.id;
-    }
-    return created;
-  }
-
-  async function updateView(view: UpdateViewInput) {
-    if (!selectedCollection.value) return false;
-    const result = await window.electronAPI.updateView(view);
-    const success = handleIpc(result, "db:updateView", false);
-    if (success) {
-      await loadViews(selectedCollection.value.id, { preserveActive: true });
-      if (
-        activeViewId.value !== null &&
-        !currentViews.value.some(
-          (viewItem) => viewItem.id === activeViewId.value,
-        )
-      ) {
-        // This fallback is effectively unreachable here because `loadViews()`
-        // always preserves a matching active view when `preserveActive` is set.
-        const fallback = currentViews.value[0];
-        activeViewId.value = fallback?.id ?? null;
-      }
-    }
-    return success;
-  }
-
-  async function deleteView(id: number) {
-    if (!selectedCollection.value) return false;
-    const result = await window.electronAPI.deleteView(id);
-    const success = handleIpc(result, "db:deleteView", false);
-    if (success) {
-      const previousActiveViewId = activeViewId.value;
-      await loadViews(selectedCollection.value.id, { preserveActive: true });
-      if (
-        previousActiveViewId !== null &&
-        !currentViews.value.some(
-          (viewItem) => viewItem.id === previousActiveViewId,
-        )
-      ) {
-        const fallback = currentViews.value[0];
-        activeViewId.value = fallback?.id ?? null;
-      }
-    }
-    return success;
-  }
-
-  async function loadViewConfig(viewId: number): Promise<ViewConfig | null> {
-    const parsedViewId = Number(viewId);
-    if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
-      return null;
-    }
-
-    const result = await window.electronAPI.getViewConfig(parsedViewId);
-    return handleIpc(result, "db:getViewConfig", null);
-  }
-
-  async function saveViewConfig(
-    viewId: number,
-    config: ViewConfig,
+    options?: { preserveActive?: boolean },
   ): Promise<void> {
-    const parsedViewId = Number(viewId);
-    if (!Number.isInteger(parsedViewId) || parsedViewId <= 0) {
-      return;
-    }
-
-    const normalizedColumnWidths = Object.fromEntries(
-      Object.entries(config.columnWidths).map(([fieldId, width]) => [
-        Number(fieldId),
-        Math.max(60, Math.round(Number(width))),
-      ]),
-    ) as Record<number, number>;
-
-    const normalizedConfig: ViewConfig = {
-      columnWidths: normalizedColumnWidths,
-      sort: config.sort.map((entry) => ({
-        field: String(entry.field),
-        order: entry.order === -1 ? -1 : 1,
-      })),
-      calendarDateField:
-        typeof config.calendarDateField === "string" &&
-        config.calendarDateField.trim().length > 0
-          ? config.calendarDateField.trim()
-          : undefined,
-      calendarDateFieldId: normalizeCalendarDateFieldId(
-        config.calendarDateFieldId,
-      ),
-      groupingFieldId: normalizeGroupingFieldId(config.groupingFieldId),
-      kanbanColumnOrder: normalizeKanbanColumnOrder(config.kanbanColumnOrder),
-      selectedFieldIds: normalizeSelectedFieldIds(config.selectedFieldIds),
-    };
-
-    const result = await window.electronAPI.updateViewConfig({
-      viewId: parsedViewId,
-      config: normalizedConfig,
-    });
-    handleIpc(result, "db:updateViewConfig", false);
+    await collectionsStore.loadViews(collectionId, options);
   }
 
-  async function updateCollection(collection: UpdateCollectionInput) {
-    const result = await window.electronAPI.updateCollection(collection);
-    const success = handleIpc(result, "db:updateCollection", false);
-    if (success) {
-      await loadCollections();
-    }
-  }
-
-  async function deleteCollection(id: number) {
-    const result = await window.electronAPI.deleteCollection(id);
-    const success = handleIpc(result, "db:deleteCollection", false);
-    if (success) {
-      await loadCollections();
-      if (selectedCollection.value?.id === id) {
-        selectedCollection.value = null;
-        clearViewsState();
-      }
-    }
-  }
-
-  async function loadFields(collectionId: number) {
-    const result = await window.electronAPI.getFields(collectionId);
-    fields.value = handleIpc(result, "db:getFields", []);
+  async function loadFields(collectionId: number): Promise<void> {
+    await collectionsStore.loadFields(collectionId);
   }
 
   async function addField(field: NewFieldInput) {
-    const result = await window.electronAPI.addField(field);
-    const created = handleIpc(result, "db:addField", null);
-    if (created) {
-      await loadFields(field.collectionId);
-      await updateChildViewFieldSelections(
-        field.collectionId,
-        (currentIds, allFieldIds) => {
-          const next = [...currentIds];
-          if (!next.includes(created.id)) {
-            next.push(created.id);
-          }
-          if (next.length === 0) {
-            // This branch is unreachable because `created.id` is always pushed
-            // into a cloned array, so the selection can never be empty here.
-            return allFieldIds;
-          }
-          return next;
-        },
-      );
-    }
+    return collectionsStore.addField(field);
   }
 
   async function updateField(field: UpdateFieldInput) {
-    if (!selectedCollection.value) return;
-
-    const result = await window.electronAPI.updateField(field);
-    const success = handleIpc(result, "db:updateField", false);
-    if (success) {
-      await loadFields(selectedCollection.value.id);
-    }
+    return collectionsStore.updateField(field);
   }
 
   async function reorderFields(input: ReorderFieldsInput) {
-    const payload: ReorderFieldsInput = {
-      collectionId: input.collectionId,
-      fieldOrders: input.fieldOrders.map((entry) => ({
-        id: entry.id,
-        orderIndex: entry.orderIndex,
-      })),
-    };
-
-    const result = await window.electronAPI.reorderFields(payload);
-    const success = handleIpc(result, "db:reorderFields", false);
-    if (success) {
-      await loadFields(payload.collectionId);
-    }
+    return collectionsStore.reorderFields(input);
   }
 
   async function deleteField(fieldId: number) {
-    if (!selectedCollection.value) return;
-
-    const result = await window.electronAPI.deleteField(fieldId);
-    const success = handleIpc(result, "db:deleteField", false);
-    if (success) {
-      const collectionId = selectedCollection.value.id;
-      await loadFields(collectionId);
-      await updateChildViewFieldSelections(
-        collectionId,
-        (currentIds, allFieldIds) => {
-          const next = currentIds.filter((id) => id !== fieldId);
-          if (next.length === 0 && allFieldIds.length > 0) {
-            return allFieldIds;
-          }
-          return next;
-        },
-        fieldId,
-      );
-    }
+    return collectionsStore.deleteField(fieldId);
   }
 
   async function reorderViews(input: ReorderViewsInput) {
-    const payload: ReorderViewsInput = {
-      collectionId: input.collectionId,
-      viewOrders: input.viewOrders.map((entry) => ({
-        id: entry.id,
-        order: entry.order,
-      })),
-    };
-
-    const result = await window.electronAPI.reorderViews(payload);
-    const success = handleIpc(result, "db:reorderViews", false);
-    if (success) {
-      await loadViews(payload.collectionId, { preserveActive: true });
-    }
-    return success;
+    return collectionsStore.reorderViews(input);
   }
 
   async function loadItems(
     collectionId: number,
-    options: LoadItemsOptions = {},
-  ) {
-    const searchChanged =
-      options.search !== undefined && options.search !== itemsSearch.value;
-    const sortChanged =
-      options.sort !== undefined &&
-      !areItemSortSpecsEqual(options.sort, itemsSort.value);
-
-    if (options.search !== undefined) {
-      itemsSearch.value = options.search;
-    }
-    if (options.sort !== undefined) {
-      itemsSort.value = options.sort;
-    }
-
-    let nextPage = options.page !== undefined ? Math.max(0, options.page) : 0;
-    if (searchChanged || sortChanged) {
-      nextPage = 0;
-    }
-
-    itemsPage.value = nextPage;
-    const shouldResetItems = itemsPage.value === 0;
-    if (shouldResetItems) {
-      items.value = [];
-      itemsFullyLoaded.value = false;
-    }
-
-    const limit = ITEMS_LIMIT;
-    const offset = itemsPage.value * limit;
-    const requestToken = ++itemsRequestToken;
-    itemsLoading.value = true;
-
-    try {
-      const requestSort: ItemSortSpec[] = itemsSort.value.map((entry) => ({
-        field: String(entry.field),
-        order: entry.order === -1 ? -1 : 1,
-      }));
-      const requestSearch = String(itemsSearch.value ?? "");
-
-      const result = await window.electronAPI.getItems({
-        collectionId,
-        limit,
-        offset,
-        search: requestSearch,
-        sort: requestSort,
-      });
-
-      const fallback: PaginatedItemsResult = {
-        items: shouldResetItems ? [] : items.value,
-        total: shouldResetItems ? 0 : itemsTotal.value,
-        limit,
-        offset,
-      };
-      const payload = handleIpc(result, "db:getItems", fallback);
-
-      if (requestToken !== itemsRequestToken) {
-        return;
-      }
-
-      const resolvedPage =
-        payload.limit > 0 ? Math.floor(payload.offset / payload.limit) : 0;
-
-      if (resolvedPage === 0) {
-        items.value = payload.items;
-      } else {
-        appendItems(payload.items);
-      }
-      itemsTotal.value = payload.total;
-      itemsPage.value = resolvedPage;
-      itemsFullyLoaded.value = items.value.length >= payload.total;
-    } finally {
-      if (requestToken === itemsRequestToken) {
-        itemsLoading.value = false;
-      }
-    }
+    options?: { page?: number; search?: string; sort?: ItemSortSpec[] },
+  ): Promise<void> {
+    await itemsStore.loadItems(collectionId, options);
   }
 
   async function addItem(item: NewItemInput) {
-    const result = await window.electronAPI.addItem(item);
-    const created = handleIpc(result, "db:addItem", null);
-    if (created) {
-      await loadItems(item.collectionId);
-    }
-    return created;
+    return itemsStore.addItem(item);
   }
 
   async function insertItemAt(input: InsertItemAtInput) {
-    const payload: InsertItemAtInput = {
-      collectionId: input.collectionId,
-      afterOrder: input.afterOrder === null ? null : Number(input.afterOrder),
-    };
-
-    const result = await window.electronAPI.insertItemAt(payload);
-    const created = handleIpc(result, "db:insertItemAt", null);
-    if (created && selectedCollection.value?.id === payload.collectionId) {
-      await loadItems(payload.collectionId);
-    }
-    return created;
+    return itemsStore.insertItemAt(input);
   }
 
   async function duplicateItem(input: DuplicateItemInput) {
-    const payload: DuplicateItemInput = {
-      collectionId: input.collectionId,
-      itemId: input.itemId,
-    };
-
-    const result = await window.electronAPI.duplicateItem(payload);
-    const created = handleIpc(result, "db:duplicateItem", null);
-    if (created && selectedCollection.value?.id === payload.collectionId) {
-      await loadItems(payload.collectionId);
-    }
-    return created;
+    return itemsStore.duplicateItem(input);
   }
 
   async function moveItem(input: MoveItemInput) {
-    const payload: MoveItemInput = {
-      collectionId: input.collectionId,
-      itemId: input.itemId,
-      direction: input.direction,
-    };
-
-    const result = await window.electronAPI.moveItem(payload);
-    const success = handleIpc(result, "db:moveItem", false);
-    if (success && selectedCollection.value?.id === payload.collectionId) {
-      await loadItems(payload.collectionId);
-    }
-    return success;
+    return itemsStore.moveItem(input);
   }
 
   async function updateItem(item: UpdateItemInput) {
-    if (!selectedCollection.value) return;
-    const result = await window.electronAPI.updateItem(item);
-    const success = handleIpc(result, "db:updateItem", false);
-    if (success) {
-      await loadItems(selectedCollection.value.id);
-    }
+    return itemsStore.updateItem(item);
   }
 
   async function deleteItem(item: Item) {
-    if (!selectedCollection.value) return;
-    const result = await window.electronAPI.deleteItem(item.id);
-    const success = handleIpc(result, "db:deleteItem", false);
-    if (success) {
-      await loadItems(selectedCollection.value.id);
-    }
+    return itemsStore.deleteItem(item.id);
   }
 
   async function reorderItems(input: ReorderItemsInput) {
-    const payload: ReorderItemsInput = {
-      collectionId: input.collectionId,
-      itemOrders: input.itemOrders.map((entry) => ({
-        id: entry.id,
-        order: Math.max(0, Math.round(Number(entry.order))),
-      })),
-    };
-
-    const result = await window.electronAPI.reorderItems(payload);
-    const success = handleIpc(result, "db:reorderItems", false);
-    if (success && selectedCollection.value?.id === payload.collectionId) {
-      await loadItems(payload.collectionId);
-    }
-    return success;
+    return itemsStore.reorderItems(input);
   }
 
   async function bulkDeleteItems(
     input: BulkDeleteItemsInput,
   ): Promise<BulkMutationResult | null> {
-    const payload: BulkDeleteItemsInput = {
-      collectionId: input.collectionId,
-      itemIds: [...input.itemIds],
-    };
-
-    const result = await window.electronAPI.bulkDeleteItems(payload);
-    const mutationResult = handleIpc(result, "db:bulkDeleteItems", {
-      affectedCount: 0,
-    } satisfies BulkMutationResult);
-    if (!result.ok) {
-      return null;
-    }
-    if (selectedCollection.value?.id === payload.collectionId) {
-      await loadItems(payload.collectionId);
-    }
-    return mutationResult;
+    return itemsStore.bulkDeleteItems(input);
   }
 
   async function bulkPatchItems(
     input: BulkPatchItemsInput,
   ): Promise<BulkMutationResult | null> {
-    const payload: BulkPatchItemsInput = {
-      collectionId: input.collectionId,
-      updates: input.updates.map((update) => ({
-        id: update.id,
-        patch: { ...update.patch },
-      })),
-    };
-
-    const result = await window.electronAPI.bulkPatchItems(payload);
-    const mutationResult = handleIpc(result, "db:bulkPatchItems", {
-      affectedCount: 0,
-    } satisfies BulkMutationResult);
-    if (!result.ok) {
-      return null;
-    }
-    if (selectedCollection.value?.id === payload.collectionId) {
-      await loadItems(payload.collectionId);
-    }
-    return mutationResult;
-  }
-
-  function selectCollection(collection: Collection | null) {
-    selectedCollection.value = collection;
-    if (collection) {
-      currentView.value = "collection";
-      clearItemsState();
-      clearViewsState();
-      loadFields(collection.id);
-      loadItems(collection.id);
-      loadViews(collection.id);
-    } else {
-      currentView.value = "dashboard";
-      fields.value = [];
-      clearItemsState();
-      clearViewsState();
-    }
-
-    activeCollectionPanel.value = "data";
-    collectionSettingsOpen.value = false;
-  }
-
-  function showDashboard() {
-    selectCollection(null);
-  }
-
-  function showSettings() {
-    selectedCollection.value = null;
-    currentView.value = "settings";
-    fields.value = [];
-    clearItemsState();
-    clearViewsState();
-    activeCollectionPanel.value = "data";
-    collectionSettingsOpen.value = false;
+    return itemsStore.bulkPatchItems(input);
   }
 
   return {
-    collections,
-    currentViews,
-    activeViewId,
-    fields,
-    items,
-    itemsTotal,
-    itemsLoading,
-    itemsFullyLoaded,
-    itemsSearch,
-    itemsSort,
-    selectedCollection,
-    currentView,
-    activeCollectionPanel,
-    collectionSettingsOpen,
+    collections: collectionRefs.collections,
+    currentViews: collectionRefs.currentViews,
+    activeViewId: collectionRefs.activeViewId,
+    fields: collectionRefs.fields,
+    items: itemRefs.items,
+    itemsTotal: itemRefs.itemsTotal,
+    itemsLoading: itemRefs.itemsLoading,
+    itemsFullyLoaded: itemRefs.itemsFullyLoaded,
+    itemsSearch: itemRefs.itemsSearch,
+    itemsSort: itemRefs.itemsSort,
+    selectedCollection: collectionRefs.selectedCollection,
+    currentView: navigationRefs.currentView,
+    activeCollectionPanel: navigationRefs.activeCollectionPanel,
+    collectionSettingsOpen: navigationRefs.collectionSettingsOpen,
     addView,
     updateView,
     deleteView,
@@ -762,7 +246,7 @@ export const useStore = defineStore("main", () => {
     deleteField,
     reorderViews,
     loadItems,
-    appendItems,
+    appendItems: itemsStore.appendItems,
     addItem,
     insertItemAt,
     duplicateItem,
@@ -775,5 +259,6 @@ export const useStore = defineStore("main", () => {
     selectCollection,
     showDashboard,
     showSettings,
+    settingsStore,
   };
 });

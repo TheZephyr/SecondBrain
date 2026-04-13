@@ -104,7 +104,7 @@ import { useFieldUniqueCheck } from '../../composables/collection/useFieldUnique
 import { getChipStyle } from '../../utils/selectChip'
 import { parseFieldOptions, getSelectChoices } from '../../utils/fieldOptions'
 import { formatDateForPrimeVue } from '../../utils/date'
-import { handleIpc } from '../../utils/ipc'
+import { systemRepository } from '../../repositories/systemRepository'
 import type { ItemEditorSavePayload } from './types'
 
 const props = defineProps<{
@@ -255,8 +255,7 @@ function getBooleanIcon(field: Field) {
 
 async function openExternal(url: string | null) {
   if (!url) return
-  const result = await window.electronAPI.openExternal(url)
-  handleIpc(result, 'openExternal', null)
+  await systemRepository.openExternal(url)
 }
 
 const booleanIconMap: Record<BooleanIcon, typeof icons.Square> = {

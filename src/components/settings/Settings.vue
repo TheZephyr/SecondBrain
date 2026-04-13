@@ -82,15 +82,15 @@ import Button from "primevue/button";
 import Card from "primevue/card";
 import Tag from "primevue/tag";
 import { useStore } from "../../store";
-import { handleIpc } from "../../utils/ipc";
+import { useSettingsStore } from "../../stores/settings";
 import SettingsBackupSection from "./SettingsBackupSection.vue";
 import SettingsDataSection from "./SettingsDataSection.vue";
 
 const appVersion = __APP_VERSION__;
 const store = useStore();
+const settingsStore = useSettingsStore();
 
 async function openBackupsFolder() {
-  const result = await window.electronAPI.openBackupsFolder();
-  handleIpc(result, "backup:openFolder", false);
+  await settingsStore.openBackupsFolder();
 }
 </script>

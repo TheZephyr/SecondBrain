@@ -132,6 +132,7 @@ describe("addCollection", () => {
     const created: Collection = { id: 1, name: "Books" };
     mockApi.addCollection.mockResolvedValue(ok(created));
     mockApi.getCollections.mockResolvedValue(ok([created]));
+    mockApi.getCollectionItemCounts.mockResolvedValue(ok([]));
 
     const result = await store.addCollection({ name: "Books" });
 
@@ -574,33 +575,32 @@ describe("deleteField", () => {
 describe("addItem", () => {
   it("reloads items after successful add", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
     const newItem = makeItem(1, { Title: "New" });
     mockApi.addItem.mockResolvedValue(ok(newItem));
     mockApi.getItems.mockResolvedValue(
       ok<PaginatedItemsResult>({
-        items: [newItem],
-        total: 1,
+        items: [],
+        total: 0,
         limit: 100,
         offset: 0,
       }),
     );
 
+    await store.loadItems(1);
     await store.addItem({ collectionId: 1, data: { Title: "New" } });
 
-    expect(mockApi.getItems).toHaveBeenCalled();
-    expect(store.items).toEqual([newItem]);
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
   });
 
   it("reloads items using the input collectionId (no selectedCollection needed)", async () => {
-    // addItem reloads via input.collectionId, not selectedCollection
     const store = useStore();
     mockApi.addItem.mockResolvedValue(ok(makeItem(1)));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
+    await store.loadItems(1);
     await store.addItem({ collectionId: 1, data: {} });
 
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
   });
 
   it("does not reload when IPC returns null", async () => {
@@ -617,13 +617,13 @@ describe("addItem", () => {
 describe("insertItemAt", () => {
   it("reloads items after successful insert", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
     mockApi.insertItemAt.mockResolvedValue(ok(makeItem(2)));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
+    await store.loadItems(1);
     await store.insertItemAt({ collectionId: 1, afterOrder: null });
 
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
   });
 
   it("does nothing when no selectedCollection", async () => {
@@ -639,13 +639,13 @@ describe("insertItemAt", () => {
 describe("duplicateItem", () => {
   it("reloads items after successful duplicate", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
     mockApi.duplicateItem.mockResolvedValue(ok(makeItem(3)));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
+    await store.loadItems(1);
     await store.duplicateItem({ collectionId: 1, itemId: 1 });
 
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
   });
 
   it("does nothing when no selectedCollection", async () => {
@@ -661,13 +661,13 @@ describe("duplicateItem", () => {
 describe("moveItem", () => {
   it("reloads items after successful move", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
     mockApi.moveItem.mockResolvedValue(ok(true));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
+    await store.loadItems(1);
     await store.moveItem({ collectionId: 1, itemId: 1, direction: "up" });
 
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
   });
 
   it("does not reload items when IPC returns false", async () => {
@@ -684,10 +684,10 @@ describe("moveItem", () => {
 describe("reorderItems", () => {
   it("normalizes order values and reloads items for the active collection", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
     mockApi.reorderItems.mockResolvedValue(ok(true));
     mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
+    await store.loadItems(1);
     const result = await store.reorderItems({
       collectionId: 1,
       itemOrders: [
@@ -704,46 +704,63 @@ describe("reorderItems", () => {
         { id: 2, order: 3 },
       ],
     });
-    expect(mockApi.getItems).toHaveBeenCalledOnce();
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("updateItem", () => {
-  it("reloads items on success", async () => {
+  it("patches the visible item locally on success", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
+    store.items = [makeItem(1, { Title: "Before" }), makeItem(2)];
+    store.itemsTotal = 2;
     mockApi.updateItem.mockResolvedValue(ok(true));
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
     await store.updateItem({ id: 1, data: { Title: "Changed" } });
 
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(mockApi.updateItem).toHaveBeenCalledWith({
+      id: 1,
+      data: { Title: "Changed" },
+    });
+    expect(store.items[0]?.data).toEqual({ Title: "Changed" });
+    expect(mockApi.getItems).not.toHaveBeenCalled();
   });
 
-  it("does nothing when no selectedCollection", async () => {
+  it("still forwards the mutation when no collection is selected", async () => {
     const store = useStore();
+    mockApi.updateItem.mockResolvedValue(ok(false));
+
     await store.updateItem({ id: 1, data: {} });
-    expect(mockApi.updateItem).not.toHaveBeenCalled();
+
+    expect(mockApi.updateItem).toHaveBeenCalledWith({ id: 1, data: {} });
   });
 });
 
 describe("deleteItem", () => {
-  it("reloads items on success", async () => {
+  it("removes the item locally on success", async () => {
     const store = useStore();
-    store.selectedCollection = { id: 1, name: "Col" };
+    store.items = [makeItem(1), makeItem(2)];
+    store.itemsTotal = 2;
     mockApi.deleteItem.mockResolvedValue(ok(true));
-    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
 
     await store.deleteItem(makeItem(1));
 
     expect(mockApi.deleteItem).toHaveBeenCalledWith(1);
-    expect(mockApi.getItems).toHaveBeenCalled();
+    expect(store.items).toEqual([makeItem(2)]);
+    expect(store.itemsTotal).toBe(1);
+    expect(mockApi.getItems).not.toHaveBeenCalled();
   });
 
-  it("does nothing when no selectedCollection", async () => {
+  it("keeps local state unchanged when the delete fails", async () => {
     const store = useStore();
+    store.items = [makeItem(1), makeItem(2)];
+    store.itemsTotal = 2;
+    mockApi.deleteItem.mockResolvedValue(ok(false));
+
     await store.deleteItem(makeItem(1));
-    expect(mockApi.deleteItem).not.toHaveBeenCalled();
+
+    expect(mockApi.deleteItem).toHaveBeenCalledWith(1);
+    expect(store.items).toEqual([makeItem(1), makeItem(2)]);
+    expect(store.itemsTotal).toBe(2);
   });
 });
 

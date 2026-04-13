@@ -194,8 +194,10 @@ import InputText from "primevue/inputtext";
 import Select from "primevue/select";
 import { collectionNameSchema, viewNameSchema } from "../../../validation/schemas";
 import type { Collection, View, ViewType } from "../../../types/models";
+import { getOrderedFieldIds } from "../../../utils/viewConfig";
 import { Brain, GripVertical, LockKeyhole } from "lucide-vue-next";
 import ViewTypePicker from "./ViewTypePicker.vue";
+import { createConfiguredView } from "./viewCreation";
 
 type ViewTypeOption = {
   type: ViewType;
@@ -488,32 +490,19 @@ async function saveViewModal() {
       return;
     }
 
-    const created = await store.addView({
+    await createConfiguredView({
+      store,
       collectionId: viewModalCollectionId.value,
       name: nameResult.data,
       type: viewModalType.value,
-      isDefault: 0,
+      calendarFieldId,
+      kanbanFieldId,
+      selectedFieldIds: getOrderedFieldIds(
+        fields.value.filter(
+          (field) => field.collection_id === viewModalCollectionId.value,
+        ),
+      ),
     });
-
-    if (created) {
-      const selectedFieldIds = [...fields.value]
-        .filter((field) => field.collection_id === created.collection_id)
-        .sort((a, b) => {
-          if (a.order_index !== b.order_index) {
-            return a.order_index - b.order_index;
-          }
-          return a.id - b.id;
-        })
-        .map((field) => field.id);
-
-      await store.saveViewConfig(created.id, {
-        columnWidths: {},
-        sort: [],
-        calendarDateFieldId: calendarFieldId ?? undefined,
-        groupingFieldId: kanbanFieldId ?? undefined,
-        selectedFieldIds,
-      });
-    }
   }
 
   closeViewModal();

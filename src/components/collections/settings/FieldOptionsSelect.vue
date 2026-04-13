@@ -2,7 +2,7 @@
   <div>
     <div class="mb-2 text-base font-semibold uppercase text-[var(--text-muted)]">Options</div>
     <div class="space-y-2">
-      <div v-for="(choice, index) in choices" :key="`${choice}-${index}`" class="space-y-1">
+      <div v-for="(choice, index) in choices" :key="index" class="space-y-1">
         <div class="flex items-center gap-2">
           <InputText :modelValue="choice" @update:modelValue="value => updateChoice(index, value)" class="flex-1" />
           <Button text
@@ -34,6 +34,7 @@
 import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import { Trash2 } from 'lucide-vue-next'
 import type { SelectFieldOptions, MultiselectFieldOptions, FieldOptions } from '../../../types/models'
 import { parseMultiselectValue } from '../../../utils/fieldValues'
 

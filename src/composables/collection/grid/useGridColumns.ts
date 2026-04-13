@@ -1,7 +1,8 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import type { Field, Item, ViewConfig } from '../../../types/models'
 import type { GridColumnDef } from '../../../components/collections/grid/types'
-import { useStore } from '../../../store'
+import { useCollectionsStore } from '../../../stores/collections'
+import { mergeViewConfig, normalizeColumnWidths } from '../../../utils/viewConfig'
 
 type UseGridColumnsParams = {
   orderedFields: Ref<Field[]>
@@ -12,39 +13,12 @@ const MIN_COLUMN_WIDTH = 60
 const ROW_NUMBER_COLUMN_WIDTH = 52
 const ADD_FIELD_COLUMN_WIDTH = 40
 
-function normalizeColumnWidths(
-  value: Record<number, number> | Record<string, number> | undefined,
-  allowedFieldIds?: Set<number>
-): Record<number, number> {
-  if (!value) {
-    return {}
-  }
-
-  const normalized: Record<number, number> = {}
-  for (const [fieldId, width] of Object.entries(value)) {
-    const parsedFieldId = Number(fieldId)
-    if (!Number.isInteger(parsedFieldId) || parsedFieldId <= 0) {
-      continue
-    }
-    if (allowedFieldIds && !allowedFieldIds.has(parsedFieldId)) {
-      continue
-    }
-
-    const parsedWidth = Number(width)
-    if (!Number.isFinite(parsedWidth)) {
-      continue
-    }
-    normalized[parsedFieldId] = Math.max(MIN_COLUMN_WIDTH, Math.round(parsedWidth))
-  }
-  return normalized
-}
-
 function buildAllowedFieldIdSet(fields: Field[]): Set<number> {
   return new Set(fields.map(field => field.id))
 }
 
 export function useGridColumns({ orderedFields, viewId }: UseGridColumnsParams) {
-  const store = useStore()
+  const collectionsStore = useCollectionsStore()
   const columnWidths = ref<Record<number, number>>({})
   let loadToken = 0
 
@@ -113,20 +87,14 @@ export function useGridColumns({ orderedFields, viewId }: UseGridColumnsParams) 
       return
     }
 
-    const existingConfig = await store.loadViewConfig(targetViewId)
-    const nextConfig: ViewConfig = {
-      columnWidths: normalizeColumnWidths(columnWidths.value, buildAllowedFieldIdSet(orderedFields.value)),
-      sort: (existingConfig?.sort ?? []).map(entry => ({
-        field: entry.field,
-        order: entry.order
-      })),
-      calendarDateField: existingConfig?.calendarDateField,
-      calendarDateFieldId: existingConfig?.calendarDateFieldId,
-      groupingFieldId: existingConfig?.groupingFieldId,
-      kanbanColumnOrder: existingConfig?.kanbanColumnOrder,
-      selectedFieldIds: existingConfig?.selectedFieldIds ?? []
-    }
-    await store.saveViewConfig(targetViewId, nextConfig)
+    const existingConfig = await collectionsStore.loadViewConfig(targetViewId)
+    const nextConfig: ViewConfig = mergeViewConfig(existingConfig, {
+      columnWidths: normalizeColumnWidths(
+        columnWidths.value,
+        buildAllowedFieldIdSet(orderedFields.value)
+      )
+    })
+    await collectionsStore.saveViewConfig(targetViewId, nextConfig)
   }
 
   watch(
@@ -150,7 +118,7 @@ export function useGridColumns({ orderedFields, viewId }: UseGridColumnsParams) 
       }
 
       const token = ++loadToken
-      const config = await store.loadViewConfig(parsedViewId)
+      const config = await collectionsStore.loadViewConfig(parsedViewId)
       if (token !== loadToken) {
         return
       }

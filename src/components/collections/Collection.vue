@@ -78,6 +78,7 @@ import CollectionChildFieldsPanel from './settings/CollectionChildFieldsPanel.vu
 import CollectionSettingsPanel from './settings/CollectionSettingsPanel.vue'
 import { serializeFieldOptions } from '../../utils/fieldOptions'
 import { parseMultiselectValue } from '../../utils/fieldValues'
+import { mergeViewConfig } from '../../utils/viewConfig'
 import type {
   CollectionSettingsSavePayload,
   FieldDraftInput,
@@ -132,19 +133,6 @@ let childConfigToken = 0
 function normalizeGroupingFieldId(value: unknown): number | null {
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function buildViewConfig(base: ViewConfig | null, overrides: Partial<ViewConfig>): ViewConfig {
-  return {
-    columnWidths: base?.columnWidths ?? {},
-    sort: base?.sort ?? [],
-    calendarDateField: base?.calendarDateField,
-    calendarDateFieldId: base?.calendarDateFieldId,
-    groupingFieldId: base?.groupingFieldId,
-    kanbanColumnOrder: base?.kanbanColumnOrder,
-    selectedFieldIds: base?.selectedFieldIds ?? [],
-    ...overrides
-  }
 }
 
 const selectedFieldIds = computed(() => {
@@ -237,7 +225,7 @@ watch(
     }
 
     if (config && !config.groupingFieldId && config.calendarDateFieldId) {
-      const migrated = buildViewConfig(config, {
+      const migrated = mergeViewConfig(config, {
         calendarDateFieldId: undefined,
         groupingFieldId: config.calendarDateFieldId
       })
@@ -514,7 +502,7 @@ async function persistChildViewConfig(
   nextSelectedIds: number[]
 ) {
   const existing = childViewConfig.value
-  const config = buildViewConfig(existing, {
+  const config = mergeViewConfig(existing, {
     selectedFieldIds: nextSelectedIds
   })
 
@@ -532,7 +520,7 @@ async function onUpdateGroupingFieldId(fieldId: number | null) {
 
   const existing = childViewConfig.value
   const normalized = normalizeGroupingFieldId(fieldId) ?? undefined
-  const config = buildViewConfig(existing, {
+  const config = mergeViewConfig(existing, {
     groupingFieldId: normalized,
     calendarDateFieldId: undefined,
     kanbanColumnOrder:

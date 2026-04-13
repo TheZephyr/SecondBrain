@@ -27,6 +27,7 @@
         <CollectionGridFooter :itemsTotal="itemsTotal" />
       </div>
 
+      <CollectionGridEditorOverlay :items="items" :orderedFields="orderedFields" :rowIds="rowIds" />
       <ContextMenu ref="contextMenuRef" :model="contextMenuItems" :pt="contextMenuPt" />
     </div>
   </div>
@@ -51,6 +52,7 @@ import CollectionGridHeader from './CollectionGridHeader.vue'
 import CollectionGridBody from './CollectionGridBody.vue'
 import CollectionGridFooter from './CollectionGridFooter.vue'
 import CollectionGridToolbar from './CollectionGridToolbar.vue'
+import CollectionGridEditorOverlay from './CollectionGridEditorOverlay.vue'
 import { gridEditingKey, gridSelectionKey } from './types'
 import { useGridSelection } from '../../../composables/collection/grid/useGridSelection'
 import { useGridEditing } from '../../../composables/collection/grid/useGridEditing'
@@ -129,6 +131,7 @@ const table = useVueTable<Item>({
 })
 
 const rows = computed<Row<Item>[]>(() => table.getRowModel().rows)
+const rowIds = computed(() => rows.value.map(row => row.original.id))
 const headerGroups = computed<HeaderGroup<Item>[]>(() => table.getHeaderGroups())
 
 const duplicateMap = computed(() => {

@@ -5,6 +5,7 @@ import type {
   MultiSortMeta,
   RawSortMeta
 } from '../../components/collections/types'
+import { mergeViewConfig } from '../../utils/viewConfig'
 
 export type LoadItemsOptions = {
   page?: number
@@ -54,28 +55,6 @@ function parseRawSortMeta(value: string | null): RawSortMeta[] {
   } catch {
     return []
   }
-}
-
-function normalizeColumnWidths(
-  value: Record<number, number> | Record<string, number> | undefined
-): Record<number, number> {
-  if (!value) {
-    return {}
-  }
-
-  const normalized: Record<number, number> = {}
-  for (const [fieldId, width] of Object.entries(value)) {
-    const parsedFieldId = Number(fieldId)
-    if (!Number.isInteger(parsedFieldId) || parsedFieldId <= 0) {
-      continue
-    }
-    const parsedWidth = Number(width)
-    if (!Number.isFinite(parsedWidth)) {
-      continue
-    }
-    normalized[parsedFieldId] = Math.max(60, Math.round(parsedWidth))
-  }
-  return normalized
 }
 
 function parsePersistedSort(sort: ItemSortSpec[] | undefined): RawSortMeta[] {
@@ -158,18 +137,12 @@ export function useCollectionItemsQuery({
 
   async function persistSortForView(targetViewId: number, nextSortMeta: MultiSortMeta[]) {
     const existing = await loadViewConfig(targetViewId)
-    const nextConfig: ViewConfig = {
-      columnWidths: normalizeColumnWidths(existing?.columnWidths),
+    const nextConfig: ViewConfig = mergeViewConfig(existing, {
       sort: toItemSort(nextSortMeta).map(entry => ({
         field: entry.field,
         order: entry.order
-      })),
-      calendarDateField: existing?.calendarDateField,
-      calendarDateFieldId: existing?.calendarDateFieldId,
-      groupingFieldId: existing?.groupingFieldId,
-      kanbanColumnOrder: existing?.kanbanColumnOrder,
-      selectedFieldIds: existing?.selectedFieldIds ?? []
-    }
+      }))
+    })
     await saveViewConfig(targetViewId, nextConfig)
   }
 
@@ -191,15 +164,9 @@ export function useCollectionItemsQuery({
 
     const parsedLegacySort = parseRawSortMeta(rawLegacySort)
     const migratedSort = sanitizeRawSort(parsedLegacySort)
-    const migratedConfig: ViewConfig = {
-      columnWidths: normalizeColumnWidths(existingConfig?.columnWidths),
-      sort: migratedSort,
-      calendarDateField: existingConfig?.calendarDateField,
-      calendarDateFieldId: existingConfig?.calendarDateFieldId,
-      groupingFieldId: existingConfig?.groupingFieldId,
-      kanbanColumnOrder: existingConfig?.kanbanColumnOrder,
-      selectedFieldIds: existingConfig?.selectedFieldIds ?? []
-    }
+    const migratedConfig: ViewConfig = mergeViewConfig(existingConfig, {
+      sort: migratedSort
+    })
 
     await saveViewConfig(targetViewId, migratedConfig)
     sortStorage.removeItem(storageKey)

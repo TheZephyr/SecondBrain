@@ -1,8 +1,9 @@
 ﻿import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
-import { useStore } from '../../../store'
 import type { Field, Item, ItemSortSpec, ViewConfig } from '../../../types/models'
 import type { LoadItemsOptions } from '../useCollectionItemsQuery'
 import { parseFieldOptions } from '../../../utils/fieldOptions'
+import { useItemsStore } from '../../../stores/items'
+import { mergeViewConfig, normalizeKanbanColumnOrder } from '../../../utils/viewConfig'
 
 const ITEMS_PAGE_SIZE = 100
 
@@ -30,41 +31,6 @@ function isKanbanQuery(itemsSearch: string, itemsSort: ItemSortSpec[]): boolean 
   return itemsSearch === '' && itemsSort.length === 0
 }
 
-function normalizeColumnOrder(values: string[], options: string[]): string[] {
-  const optionSet = new Set(options)
-  const normalized: string[] = []
-  const seen = new Set<string>()
-  for (const entry of values) {
-    const trimmed = entry.trim()
-    if (!trimmed || !optionSet.has(trimmed) || seen.has(trimmed)) {
-      continue
-    }
-    seen.add(trimmed)
-    normalized.push(trimmed)
-  }
-
-  for (const option of options) {
-    if (!seen.has(option)) {
-      normalized.push(option)
-    }
-  }
-
-  return normalized
-}
-
-function buildViewConfig(base: ViewConfig | null, overrides: Partial<ViewConfig>): ViewConfig {
-  return {
-    columnWidths: base?.columnWidths ?? {},
-    sort: base?.sort ?? [],
-    calendarDateField: base?.calendarDateField,
-    calendarDateFieldId: base?.calendarDateFieldId,
-    groupingFieldId: base?.groupingFieldId,
-    kanbanColumnOrder: base?.kanbanColumnOrder,
-    selectedFieldIds: base?.selectedFieldIds ?? [],
-    ...overrides
-  }
-}
-
 export function useCollectionKanban({
   viewId,
   items,
@@ -78,7 +44,7 @@ export function useCollectionKanban({
   childViewConfig,
   saveViewConfig
 }: UseCollectionKanbanParams) {
-  const store = useStore()
+  const itemsStore = useItemsStore()
   const isEnsuringAllItems = ref(false)
   let loadAllToken = 0
 
@@ -105,8 +71,12 @@ export function useCollectionKanban({
   })
 
   const columnOrder = computed(() => {
-    const configured = childViewConfig.value?.kanbanColumnOrder ?? []
-    return normalizeColumnOrder(configured, groupingOptions.value)
+    return (
+      normalizeKanbanColumnOrder(
+        childViewConfig.value?.kanbanColumnOrder,
+        groupingOptions.value
+      ) ?? groupingOptions.value
+    )
   })
 
   const columns = computed<KanbanColumn[]>(() => {
@@ -176,7 +146,7 @@ export function useCollectionKanban({
     }
 
     const existing = childViewConfig.value
-    const config = buildViewConfig(existing, {
+    const config = mergeViewConfig(existing, {
       kanbanColumnOrder: nextOrder
     })
 
@@ -221,7 +191,7 @@ export function useCollectionKanban({
       return
     }
 
-    await store.reorderItems({
+    await itemsStore.reorderItems({
       collectionId: currentItems[0].collection_id,
       itemOrders: orderedItemIds.map((id, index) => ({
         id,
@@ -237,7 +207,7 @@ export function useCollectionKanban({
     }
 
     const patchValue = targetKey === null ? null : targetKey
-    const mutation = await store.bulkPatchItems({
+    const mutation = await itemsStore.bulkPatchItems({
       collectionId: item.collection_id,
       updates: [{
         id: item.id,
@@ -279,7 +249,7 @@ export function useCollectionKanban({
       return
     }
 
-    await store.reorderItems({
+    await itemsStore.reorderItems({
       collectionId: item.collection_id,
       itemOrders: filtered.map((id, index) => ({
         id,
