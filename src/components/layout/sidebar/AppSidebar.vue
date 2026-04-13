@@ -207,8 +207,7 @@
   >
     <div class="space-y-4">
       <div class="space-y-2">
-        <label class="text-base font-medium text-[var(--text-secondary)]">Collection Name</label>
-        <AppInput v-model="newCollection.name" type="text" autofocus />
+        <AppInput v-model="newCollection.name" placeholder="Name" type="text" autofocus />
       </div>
     </div>
 
@@ -227,8 +226,7 @@
   >
     <div class="space-y-4">
       <div class="space-y-2">
-        <label class="text-base font-medium text-[var(--text-secondary)]">View Name</label>
-        <AppInput v-model="viewModalName" type="text" autofocus />
+        <AppInput v-model="viewModalName" placeholder="Name" type="text" autofocus />
       </div>
       <div v-if="viewModalMode === 'create' && viewModalType === 'kanban'" class="space-y-2">
         <label class="text-base font-medium text-[var(--text-secondary)]">Stacked by</label>
