@@ -16,19 +16,20 @@ This page covers the renderer-side architecture: app shell composition, Pinia st
 
 - Vue 3 with Composition API and `<script setup>`
 - Pinia setup stores
-- PrimeVue components and services
+- shadcn-vue primitives plus app-level wrappers in `src/components/app/ui/**`
 - Tailwind CSS 4 utilities plus app-level CSS variables in `src/style.css`
 - TanStack Table and virtualization for the grid
 
 ## App Shell
 
-`src/main.ts` creates the Vue app, installs Pinia, PrimeVue, confirmation, and toast services, and applies the custom theme preset.
+`src/main.ts` creates the Vue app, installs Pinia, imports the global renderer stylesheet, and sets the renderer into dark mode at bootstrap.
 
 `src/App.vue` is intentionally thin:
 
 - renders `AppSidebar`
 - renders `AppContent`
-- drains the notifications queue into PrimeVue toasts
+- renders the global `AppToaster`
+- renders the global `AppConfirmDialog`
 
 ## State Ownership
 
@@ -58,7 +59,15 @@ Components and composables should depend on stores or repositories, not on raw p
 
 ### Notifications Store
 
-`src/stores/notifications.ts` is a simple queue store for toast messages. Components and helpers push messages there; `App.vue` consumes the queue and forwards it to PrimeVue toast service.
+`src/stores/notifications.ts` is a simple queue store for toast messages. Components and helpers push messages there; `AppToaster.vue` consumes the queue and maps severities to Sonner toasts.
+
+### Confirm Flow
+
+Destructive confirmation flows use the renderer-local confirm service in `src/components/app/ui/confirm-service.ts`.
+
+- call `useAppConfirm().confirm(...)` from components or composables
+- `AppConfirmDialog.vue` renders the active request with shadcn `AlertDialog`
+- the API resolves to `Promise<boolean>` so call sites stay linear and service-free
 
 ## Query Orchestration
 
@@ -95,8 +104,17 @@ That component should stay orchestration-heavy and delegate feature logic to ded
 Renderer styling combines:
 
 - Tailwind layout and spacing classes
-- PrimeVue components
+- shadcn component tokens and primitives
 - app CSS variables and fonts in `src/style.css`
+
+## UI Composition
+
+The migration splits renderer UI into two layers:
+
+- `src/components/app/ui/**` provides normalized controls such as `AppButton`, `AppDialog`, `AppSelect`, `AppToaster`, and `AppConfirmDialog`
+- `src/components/ui/**` contains generated shadcn-vue primitives for low-level composition such as dialogs, popovers, dropdown menus, tables, commands, and form fields
+
+This keeps repeated app-wide behavior stable while still allowing feature screens to build custom overlays and editors directly from shadcn primitives.
 
 Docs and implementation should refer to the actual UI labels from components, not generic placeholder names.
 

@@ -1,49 +1,49 @@
 <template>
   <div class="mx-auto max-h-[calc(100vh-2rem)] max-w-4xl overflow-y-auto px-10 py-8">
-    <Accordion value="0">
-      <AccordionPanel value="0">
-        <AccordionHeader>
+    <Accordion type="single" collapsible defaultValue="0">
+      <AccordionItem value="0">
+        <AccordionTrigger>
           <div class="flex items-center gap-2">
             <Settings2 :size="16" />
             <span>Collection Settings</span>
           </div>
-        </AccordionHeader>
+        </AccordionTrigger>
         <AccordionContent>
           <div class="space-y-4">
             <div class="space-y-2">
-              <label class="text-base font-medium text-[var(--text-secondary)]">Collection Name </label>
-              <InputText v-model="collectionName" type="text" placeholder="Collection name" />
+              <label class="text-base font-medium text-[var(--text-secondary)]">Collection Name</label>
+              <AppInput v-model="collectionName" type="text" placeholder="Collection name" />
             </div>
           </div>
         </AccordionContent>
-      </AccordionPanel>
+      </AccordionItem>
 
-      <AccordionPanel value="1">
-        <AccordionHeader>
+      <AccordionItem value="1">
+        <AccordionTrigger>
           <div class="flex items-center gap-2">
             <Upload :size="16" />
             <span>Export Data</span>
           </div>
-        </AccordionHeader>
+        </AccordionTrigger>
         <AccordionContent>
           <div class="space-y-4">
             <div class="space-y-2">
               <label class="text-base font-medium text-[var(--text-secondary)]">Export Format</label>
-              <Select v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
+              <AppSelect v-model="exportFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
             </div>
-            <div v-if="exportFormat === 'json'"
-              class="flex items-center justify-between gap-4 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3">
+            <div
+              v-if="exportFormat === 'json'"
+              class="flex items-center justify-between gap-4 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3"
+            >
               <div>
                 <div class="font-medium text-[var(--text-primary)]">Include schema</div>
                 <div class="text-sm text-[var(--text-muted)]">
                   Add field types and options so JSON imports can round-trip without inference.
                 </div>
               </div>
-              <ToggleSwitch :modelValue="exportIncludeSchema"
-                @update:modelValue="value => exportIncludeSchema = Boolean(value)" />
+              <AppSwitch :modelValue="exportIncludeSchema" @update:modelValue="value => exportIncludeSchema = Boolean(value)" />
             </div>
-            <div
-              class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
+            <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
               <p v-if="exportFormat === 'csv'">
                 Export all items as a CSV file. All values will be enclosed in quotes for compatibility.
               </p>
@@ -52,57 +52,62 @@
                 data with field types and options for lossless re-import.
               </p>
             </div>
-            <Button class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
-              <Download v-if="!isExporting" />
+            <AppButton class="w-full justify-center gap-2" :disabled="isExporting" @click="handleExport">
+              <template #icon>
+                <Download v-if="!isExporting" />
+              </template>
               <span v-if="isExporting">Exporting...</span>
-              <span v-else>Export {{ itemsTotal }} {{ itemsTotal === 1 ? 'item' : 'items' }}</span>
-            </Button>
+              <span v-else>Export {{ itemsTotal }} {{ itemsTotal === 1 ? "item" : "items" }}</span>
+            </AppButton>
           </div>
         </AccordionContent>
-      </AccordionPanel>
+      </AccordionItem>
 
-      <AccordionPanel value="2">
-        <AccordionHeader>
+      <AccordionItem value="2">
+        <AccordionTrigger>
           <div class="flex items-center gap-2">
             <Download :size="16" />
             <span>Import Data</span>
           </div>
-        </AccordionHeader>
+        </AccordionTrigger>
         <AccordionContent>
           <div class="space-y-4">
             <div v-if="!importPreview" class="space-y-4">
               <div class="space-y-2">
                 <label class="text-base font-medium text-[var(--text-secondary)]">Import Format</label>
-                <Select v-model="importFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
+                <AppSelect v-model="importFormat" :options="exportFormatOptions" optionLabel="label" optionValue="value" />
               </div>
 
               <div class="space-y-2">
                 <label class="text-base font-medium text-[var(--text-secondary)]">Import Mode</label>
-                <div class="flex gap-2">
+                <RadioGroup v-model="importMode" class="flex gap-2">
                   <label
-                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
-                    <RadioButton v-model="importMode" value="append" />
+                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]"
+                  >
+                    <RadioGroupItem value="append" />
                     <div>
                       <div class="font-medium text-[var(--text-primary)]">Append</div>
                       <div class="text-base text-[var(--text-muted)]">Add imported items to existing data</div>
                     </div>
                   </label>
                   <label
-                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]">
-                    <RadioButton v-model="importMode" value="replace" />
+                    class="flex flex-1 items-start gap-3 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base text-[var(--text-secondary)]"
+                  >
+                    <RadioGroupItem value="replace" />
                     <div>
                       <div class="font-medium text-[var(--text-primary)]">Replace</div>
-                      <div class="text-base text-[var(--text-muted)]">Delete all existing items and import new data
-                      </div>
+                      <div class="text-base text-[var(--text-muted)]">Delete all existing items and import new data</div>
                     </div>
                   </label>
-                </div>
+                </RadioGroup>
               </div>
 
-              <Button class="w-full justify-center gap-2" @click="handleSelectFile">
-                <Download />
+              <AppButton class="w-full justify-center gap-2" @click="handleSelectFile">
+                <template #icon>
+                  <Download />
+                </template>
                 Select File to Import
-              </Button>
+              </AppButton>
             </div>
 
             <div v-else class="space-y-4">
@@ -111,9 +116,11 @@
                   <FileText :size="18" />
                   Import Preview
                 </div>
-                <Button text class="h-8 w-8 p-0" title="Cancel" @click="cancelImport">
-                  <X />
-                </Button>
+                <AppButton text class="h-8 w-8 p-0" title="Cancel" @click="cancelImport">
+                  <template #icon>
+                    <X />
+                  </template>
+                </AppButton>
               </div>
 
               <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-base">
@@ -123,13 +130,14 @@
                 </div>
                 <div class="mt-2 flex justify-between text-[var(--text-secondary)]">
                   <span>Import mode:</span>
-                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === 'append' ? 'Append' :
-                    'Replace' }}</span>
+                  <span class="font-semibold text-[var(--text-primary)]">{{ importMode === "append" ? "Append" : "Replace" }}</span>
                 </div>
               </div>
 
-              <div v-if="safeFields.length === 0"
-                class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-base text-[var(--text-secondary)]">
+              <div
+                v-if="safeFields.length === 0"
+                class="flex items-start gap-2 rounded-md border border-[color-mix(in_srgb,var(--accent-primary)_30%,transparent)] bg-[var(--accent-light)] p-3 text-base text-[var(--text-secondary)]"
+              >
                 <AlertTriangle :size="16" />
                 This collection has no fields. New fields will be created from the import file using the selected preview
                 types.
@@ -140,10 +148,13 @@
                   Matched Fields ({{ importPreview.matchedFields.length }})
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <Tag v-for="field in importPreview.matchedFields" :key="field"
-                    class="bg-[color-mix(in_srgb,var(--success)_20%,transparent)] text-[var(--success)]">
+                  <AppBadge
+                    v-for="field in importPreview.matchedFields"
+                    :key="field"
+                    class="bg-[color-mix(in_srgb,var(--success)_20%,transparent)] text-[var(--success)]"
+                  >
                     {{ field }}
-                  </Tag>
+                  </AppBadge>
                 </div>
               </div>
 
@@ -156,28 +167,39 @@
                   Review the suggested type for each new field before importing.
                 </p>
                 <div class="space-y-3">
-                  <div v-for="field in importPreview.newFields" :key="field.name"
-                    class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3">
+                  <div
+                    v-for="field in importPreview.newFields"
+                    :key="field.name"
+                    class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3"
+                  >
                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div class="min-w-0">
                         <div class="font-medium text-[var(--text-primary)]">{{ field.name }}</div>
                         <div class="flex flex-wrap items-center gap-2 text-sm text-[var(--text-muted)]">
                           Suggested: {{ FIELD_TYPE_META[field.inferredType].displayName }}
-                          <Tag v-if="field.source === 'schema'" severity="info" value="From schema" />
+                          <AppBadge v-if="field.source === 'schema'" severity="info" value="From schema" />
                         </div>
                       </div>
-                      <Select :modelValue="field.selectedType" :options="fieldTypeOptions" optionLabel="label"
-                        optionValue="value" class="w-full md:w-56"
-                        @update:modelValue="value => onImportPreviewTypeChange(field.name, value)" />
+                      <AppSelect
+                        :modelValue="field.selectedType"
+                        :options="fieldTypeOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full md:w-56"
+                        @update:modelValue="value => onImportPreviewTypeChange(field.name, value as FieldType | null)"
+                      />
                     </div>
 
                     <div v-if="shouldShowChoicesPreview(field)" class="mt-3 space-y-2">
                       <div class="text-sm font-medium text-[var(--text-secondary)]">Choices Preview</div>
                       <div class="flex flex-wrap gap-2">
-                        <Tag v-for="choice in getPreviewChoices(field)" :key="choice"
-                          class="bg-[color-mix(in_srgb,var(--info)_18%,transparent)] text-[var(--text-primary)]">
+                        <AppBadge
+                          v-for="choice in getPreviewChoices(field)"
+                          :key="choice"
+                          class="bg-[color-mix(in_srgb,var(--info)_18%,transparent)] text-[var(--text-primary)]"
+                        >
                           {{ choice }}
-                        </Tag>
+                        </AppBadge>
                       </div>
                     </div>
                   </div>
@@ -189,16 +211,18 @@
                   Sample Data (first 3 items)
                 </div>
                 <div class="flex gap-2">
-                  <div v-for="(item, index) in importPreview.sample" :key="index"
-                    class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2">
+                  <div
+                    v-for="(item, index) in importPreview.sample"
+                    :key="index"
+                    class="flex-1 rounded border border-[var(--border-color)] bg-[var(--bg-primary)] p-2"
+                  >
                     <div class="mb-1 text-base font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       Item {{ index + 1 }}
                     </div>
                     <div class="space-y-1">
                       <div v-for="(value, key) in item" :key="key" class="flex gap-2">
                         <span class="min-w-[80px] text-[var(--text-muted)]">{{ key }}:</span>
-                        <span class="text-[var(--text-primary)]">{{ isSampleValueEmpty(value) ? '(empty)' :
-                          formatSampleValue(value) }}</span>
+                        <span class="text-[var(--text-primary)]">{{ isSampleValueEmpty(value) ? "(empty)" : formatSampleValue(value) }}</span>
                       </div>
                     </div>
                   </div>
@@ -206,95 +230,82 @@
               </div>
 
               <div class="flex items-center justify-end gap-2 border-t border-[var(--border-color)] pt-4">
-                <Button severity="secondary" text @click="cancelImport">Cancel</Button>
-                <Button class="gap-2" :disabled="isImporting" @click="handleImport">
-                  <Upload v-if="!isImporting" :size="16" />
+                <AppButton severity="secondary" text @click="cancelImport">Cancel</AppButton>
+                <AppButton class="gap-2" :disabled="isImporting" @click="handleImport">
+                  <template #icon>
+                    <Upload v-if="!isImporting" :size="16" />
+                  </template>
                   <span v-if="isImporting">Importing...</span>
                   <span v-else>Import {{ importPreview.itemCount }} items</span>
-                </Button>
+                </AppButton>
               </div>
             </div>
           </div>
         </AccordionContent>
-      </AccordionPanel>
+      </AccordionItem>
 
-      <AccordionPanel value="3">
-        <AccordionHeader>
+      <AccordionItem value="3">
+        <AccordionTrigger>
           <div class="flex items-center gap-2">
             <AlertTriangle :size="16" />
             <span>Danger Zone</span>
           </div>
-        </AccordionHeader>
+        </AccordionTrigger>
         <AccordionContent>
           <div class="space-y-3">
             <p class="text-base text-[var(--text-muted)]">
               Once you delete a collection, there is no going back.
             </p>
-            <Button severity="danger" class="gap-2 min-w-[180px]" @click="$emit('delete-collection')">
-              <Trash2 />
+            <AppButton severity="danger" class="min-w-[180px] gap-2" @click="$emit('delete-collection')">
+              <template #icon>
+                <Trash2 />
+              </template>
               Delete Collection
-            </Button>
+            </AppButton>
           </div>
         </AccordionContent>
-      </AccordionPanel>
+      </AccordionItem>
     </Accordion>
 
     <div class="mt-6 flex justify-end gap-2">
-      <Button severity="secondary" text @click="store.setCollectionSettingsOpen(false)">Cancel</Button>
-      <Button @click="saveSettings">Save Changes</Button>
+      <AppButton severity="secondary" text @click="store.setCollectionSettingsOpen(false)">Cancel</AppButton>
+      <AppButton @click="saveSettings">Save Changes</AppButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from 'vue'
-import {
-  AlertTriangle,
-  Download,
-  FileText,
-  Settings2,
-  Trash2,
-  Upload,
-  X
-} from 'lucide-vue-next'
-import Accordion from 'primevue/accordion'
-import AccordionContent from 'primevue/accordioncontent'
-import AccordionHeader from 'primevue/accordionheader'
-import AccordionPanel from 'primevue/accordionpanel'
-import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
-import RadioButton from 'primevue/radiobutton'
-import Select from 'primevue/select'
-import Tag from 'primevue/tag'
-import ToggleSwitch from 'primevue/toggleswitch'
-import type { Collection, Field, FieldType } from '../../../types/models'
-import { FIELD_TYPE_META, FIELD_TYPE_OPTIONS } from '../../../types/models'
-import { useCollectionImportExport } from '../../../composables/collection/useCollectionImportExport'
-import type { ImportPreviewNewField, ImportValue } from '../../../utils/collectionImportExport'
-import { isSafeFieldName } from '../../../validation/fieldNames'
-import { useStore } from '../../../store'
-import type { CollectionSettingsSavePayload } from '../types'
+import { computed, ref, toRef, watch } from "vue";
+import { AlertTriangle, Download, FileText, Settings2, Trash2, Upload, X } from "lucide-vue-next";
+import AppBadge from "@/components/app/ui/AppBadge.vue";
+import AppButton from "@/components/app/ui/AppButton.vue";
+import AppInput from "@/components/app/ui/AppInput.vue";
+import AppSelect from "@/components/app/ui/AppSelect.vue";
+import AppSwitch from "@/components/app/ui/AppSwitch.vue";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useStore } from "../../../store";
+import { useCollectionImportExport } from "../../../composables/collection/useCollectionImportExport";
+import { FIELD_TYPE_META, FIELD_TYPE_OPTIONS, type Collection, type Field, type FieldType } from "../../../types/models";
+import type { ImportPreviewNewField, ImportValue } from "../../../utils/collectionImportExport";
+import { isSafeFieldName } from "../../../validation/fieldNames";
+import type { CollectionSettingsSavePayload } from "../types";
 
 const props = defineProps<{
-  collection: Collection
-  fields: Field[]
-  itemsTotal: number
-}>()
+  collection: Collection;
+  fields: Field[];
+  itemsTotal: number;
+}>();
 
 const emit = defineEmits<{
-  (e: 'save-settings', value: CollectionSettingsSavePayload): void
-  (e: 'delete-collection'): void
-}>()
+  (e: "save-settings", value: CollectionSettingsSavePayload): void;
+  (e: "delete-collection"): void;
+}>();
 
-const store = useStore()
-
-const collectionName = ref('')
-
-const safeFields = computed(() => {
-  return props.fields.filter(field => isSafeFieldName(field.name))
-})
-
-const fieldTypeOptions = FIELD_TYPE_OPTIONS
+const store = useStore();
+const collectionName = ref("");
+const safeFields = computed(() => props.fields.filter((field) => isSafeFieldName(field.name)));
+const fieldTypeOptions = FIELD_TYPE_OPTIONS;
 
 const {
   exportFormat,
@@ -310,59 +321,51 @@ const {
   getImportPreviewChoices,
   updateImportPreviewFieldType,
   handleImport,
-  cancelImport
+  cancelImport,
 } = useCollectionImportExport({
-  collection: toRef(props, 'collection'),
-  fields: toRef(props, 'fields')
-})
+  collection: toRef(props, "collection"),
+  fields: toRef(props, "fields"),
+});
 
-function onImportPreviewTypeChange(fieldName: string, value: FieldType | null | undefined) {
-  if (!value) {
-    return
-  }
-
-  updateImportPreviewFieldType(fieldName, value)
+function onImportPreviewTypeChange(fieldName: string, value: FieldType | null) {
+  if (!value) return;
+  updateImportPreviewFieldType(fieldName, value);
 }
 
 function getPreviewChoices(field: ImportPreviewNewField) {
-  return getImportPreviewChoices(field)
+  return getImportPreviewChoices(field);
 }
 
 function shouldShowChoicesPreview(field: ImportPreviewNewField) {
-  if (field.selectedType !== 'select' && field.selectedType !== 'multiselect') {
-    return false
-  }
-
-  return getPreviewChoices(field).length > 0
+  return (field.selectedType === "select" || field.selectedType === "multiselect") && getPreviewChoices(field).length > 0;
 }
 
 function isSampleValueEmpty(value: ImportValue | undefined) {
-  return value === '' || value === null || value === undefined
+  return value === "" || value === null || value === undefined;
 }
 
 function formatSampleValue(value: ImportValue | undefined) {
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false'
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
   }
-
-  return String(value)
+  return String(value);
 }
 
 function resetSettingsState() {
-  collectionName.value = props.collection.name
+  collectionName.value = props.collection.name;
 }
 
 watch(
   () => props.collection,
   () => {
-    resetSettingsState()
+    resetSettingsState();
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 function saveSettings() {
-  emit('save-settings', {
-    name: collectionName.value
-  })
+  emit("save-settings", {
+    name: collectionName.value,
+  });
 }
 </script>

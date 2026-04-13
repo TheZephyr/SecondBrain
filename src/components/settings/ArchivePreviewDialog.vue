@@ -1,8 +1,6 @@
 <template>
-  <Dialog
+  <AppDialog
     :visible="visible"
-    modal
-    :draggable="false"
     header="Restore Full Archive"
     class="w-full max-w-3xl"
     @update:visible="$emit('update:visible', $event)"
@@ -40,7 +38,7 @@
           : 'border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-secondary)]'"
       >
         <div class="font-medium text-[var(--text-primary)]">
-          {{ preview.willReplaceExistingData ? 'Existing data will be replaced.' : 'Current database is empty.' }}
+          {{ preview.willReplaceExistingData ? "Existing data will be replaced." : "Current database is empty." }}
         </div>
         <div class="mt-1">
           A <span class="font-medium">pre_restore</span> backup will be created automatically before the restore begins.
@@ -65,28 +63,19 @@
     </div>
 
     <template #footer>
-      <Button
-        severity="secondary"
-        text
-        :disabled="restoring"
-        @click="$emit('update:visible', false)"
-      >
+      <AppButton severity="secondary" text :disabled="restoring" @click="$emit('update:visible', false)">
         Cancel
-      </Button>
-      <Button
-        severity="danger"
-        :loading="restoring"
-        @click="$emit('confirm')"
-      >
+      </AppButton>
+      <AppButton severity="danger" :loading="restoring" @click="$emit('confirm')">
         Restore Full Archive
-      </Button>
+      </AppButton>
     </template>
-  </Dialog>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
-import Button from "primevue/button";
-import Dialog from "primevue/dialog";
+import AppButton from "@/components/app/ui/AppButton.vue";
+import AppDialog from "@/components/app/ui/AppDialog.vue";
 import type { FullArchivePreview } from "../../types/models";
 
 defineProps<{

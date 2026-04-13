@@ -29,7 +29,6 @@ The renderer never talks to SQLite directly. All database work goes through the 
 - Vue 3
 - TypeScript
 - Pinia
-- PrimeVue
 - Tailwind CSS 4
 - SQLite via better-sqlite3
 - Vite and VitePress

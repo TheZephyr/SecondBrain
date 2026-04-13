@@ -4,44 +4,48 @@
       <div>
         <h2 class="text-xl font-semibold text-[var(--text-primary)]">Data</h2>
       </div>
-      <Tag severity="info">Import & Export</Tag>
+      <AppBadge severity="info">Import & Export</AppBadge>
     </div>
     <div class="rounded-lg border border-[var(--border-color)]">
       <div class="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <template #title>Full Archive Export</template>
-          <template #content>
-            <div class="space-y-4">
-              <p class="text-sm text-[var(--text-secondary)]">
-                Export the entire database to a single JSON archive for cross-machine migration or long-term
-                storage.
-              </p>
-              <div class="space-y-2">
-                <label for="archiveDescription" class="text-sm text-[var(--text-secondary)]">Description</label>
-                <Textarea id="archiveDescription" v-model="archiveDescription" rows="4" class="w-full" autoResize
-                  placeholder="Optional notes about this archive" />
-              </div>
-              <Button label="Export Full Archive" :loading="exportingArchive" @click="exportArchive" />
-              <div v-if="lastArchiveExportPath" class="text-xs text-[var(--text-muted)]">
-                Last export: <span class="font-mono">{{ lastArchiveExportPath }}</span>
-              </div>
+        <AppCard title="Full Archive Export">
+          <div class="space-y-4">
+            <p class="text-sm text-[var(--text-secondary)]">
+              Export the entire database to a single JSON archive for cross-machine migration or long-term storage.
+            </p>
+            <div class="space-y-2">
+              <label for="archiveDescription" class="text-sm text-[var(--text-secondary)]">Description</label>
+              <AppTextarea
+                id="archiveDescription"
+                v-model="archiveDescription"
+                :rows="4"
+                class="w-full"
+                autoResize
+                placeholder="Optional notes about this archive"
+              />
             </div>
-          </template>
-        </Card>
+            <AppButton label="Export Full Archive" :loading="exportingArchive" @click="exportArchive" />
+            <div v-if="lastArchiveExportPath" class="text-xs text-[var(--text-muted)]">
+              Last export: <span class="font-mono">{{ lastArchiveExportPath }}</span>
+            </div>
+          </div>
+        </AppCard>
 
-        <Card>
-          <template #title>Full Archive Restore</template>
-          <template #content>
-            <div class="space-y-4">
-              <p class="text-sm text-[var(--text-secondary)]">
-                Restore a full archive into the current database. Existing data will be replaced after a mandatory
-                pre-restore backup is created.
-              </p>
-              <Button label="Select Archive File" severity="danger" outlined :loading="previewingArchive"
-                @click="openArchivePreview" />
-            </div>
-          </template>
-        </Card>
+        <AppCard title="Full Archive Restore">
+          <div class="space-y-4">
+            <p class="text-sm text-[var(--text-secondary)]">
+              Restore a full archive into the current database. Existing data will be replaced after a mandatory
+              pre-restore backup is created.
+            </p>
+            <AppButton
+              label="Select Archive File"
+              severity="danger"
+              outlined
+              :loading="previewingArchive"
+              @click="openArchivePreview"
+            />
+          </div>
+        </AppCard>
       </div>
     </div>
 
@@ -51,7 +55,7 @@
         Collection-level CSV/JSON import and export stays in Collection Settings for per-collection workflows.
       </p>
       <div class="mt-4">
-        <Button label="Back to Dashboard" severity="secondary" outlined @click="store.showDashboard()" />
+        <AppButton label="Back to Dashboard" severity="secondary" outlined @click="store.showDashboard()" />
       </div>
     </div>
 
@@ -72,10 +76,10 @@
 
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import Button from "primevue/button";
-import Card from "primevue/card";
-import Tag from "primevue/tag";
-import Textarea from "primevue/textarea";
+import AppBadge from "@/components/app/ui/AppBadge.vue";
+import AppButton from "@/components/app/ui/AppButton.vue";
+import AppCard from "@/components/app/ui/AppCard.vue";
+import AppTextarea from "@/components/app/ui/AppTextarea.vue";
 import { useStore } from "../../store";
 import { useSettingsStore } from "../../stores/settings";
 import ArchivePreviewDialog from "./ArchivePreviewDialog.vue";

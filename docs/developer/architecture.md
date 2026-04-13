@@ -31,11 +31,11 @@ If database initialization fails, the app shows an error dialog and exits instea
 
 The renderer owns:
 
-- Vue components and PrimeVue UI.
+- Vue components, shadcn-vue primitives, and the app UI adapter layer in `src/components/app/ui/**`.
 - Pinia domain stores plus a temporary compatibility facade in `src/store.ts`.
 - Renderer-side repositories that wrap `window.electronAPI` and centralize `handleIpc`.
 - Query orchestration for the active collection and active view.
-- User feedback through the notifications store and toast queue.
+- User feedback through the notifications store plus Sonner-backed toasts and the renderer-local confirm dialog service.
 
 The renderer never touches SQLite directly.
 

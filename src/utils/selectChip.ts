@@ -9,7 +9,8 @@ export function getChipStyle(
   const hue = Math.round((position / total) * 360);
 
   return {
-    "--p-chip-background": `hsla(${hue}, 70%, 60%, 0.15)`,
-    "--p-chip-color": `hsl(${hue}, 70%, 70%)`,
+    backgroundColor: `hsla(${hue}, 70%, 60%, 0.15)`,
+    color: `hsl(${hue}, 70%, 70%)`,
+    borderColor: "transparent",
   };
 }
