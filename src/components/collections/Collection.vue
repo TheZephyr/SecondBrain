@@ -105,7 +105,10 @@ import { useAppConfirm } from "@/components/app/ui/confirm-service";
 import { useStore } from "../../store";
 import { useNotificationsStore } from "../../stores/notifications";
 import { useSafeFields } from "../../composables/collection/useSafeFields";
-import { useCollectionItemsQuery, type LoadItemsOptions } from "../../composables/collection/useCollectionItemsQuery";
+import {
+  useCollectionItemsQuery,
+  type LoadItemsOptions,
+} from "../../composables/collection/useCollectionItemsQuery";
 import type {
   Collection,
   DuplicateItemInput,
@@ -122,12 +125,19 @@ import type {
 import { parseMultiselectValue } from "../../utils/fieldValues";
 import { serializeFieldOptions } from "../../utils/fieldOptions";
 import { mergeViewConfig } from "../../utils/viewConfig";
-import { collectionNameSchema, fieldNameSchema } from "../../validation/schemas";
+import {
+  collectionNameSchema,
+  fieldNameSchema,
+} from "../../validation/schemas";
 import CollectionCalendarView from "./calendar/CollectionCalendarView.vue";
 import CollectionGrid from "./grid/CollectionGrid.vue";
 import CollectionItemEditorDialog from "./CollectionItemEditorDialog.vue";
 import CollectionKanbanView from "./kanban/CollectionKanbanView.vue";
-import type { CollectionSettingsSavePayload, FieldDraftInput, ItemEditorSavePayload } from "./types";
+import type {
+  CollectionSettingsSavePayload,
+  FieldDraftInput,
+  ItemEditorSavePayload,
+} from "./types";
 import CollectionChildFieldsPanel from "./settings/CollectionChildFieldsPanel.vue";
 import CollectionFieldsPanel from "./settings/CollectionFieldsPanel.vue";
 import CollectionSettingsPanel from "./settings/CollectionSettingsPanel.vue";
@@ -167,7 +177,10 @@ const { safeFields, orderedFields: sourceOrderedFields } = useSafeFields({
 });
 
 const collectionId = computed(() => props.collection.id);
-const activeView = computed(() => currentViews.value.find((view) => view.id === activeViewId.value) ?? null);
+const activeView = computed(
+  () =>
+    currentViews.value.find((view) => view.id === activeViewId.value) ?? null,
+);
 const isSourceViewActive = computed(() => activeView.value?.is_default === 1);
 
 const childViewConfig = ref<ViewConfig | null>(null);
@@ -196,7 +209,9 @@ const viewOrderedFields = computed(() => {
     return sourceOrderedFields.value;
   }
 
-  const fieldMap = new Map(sourceOrderedFields.value.map((field) => [field.id, field]));
+  const fieldMap = new Map(
+    sourceOrderedFields.value.map((field) => [field.id, field]),
+  );
   return selectedFieldIds.value
     .map((id) => fieldMap.get(id))
     .filter((field): field is Field => Boolean(field));
@@ -207,7 +222,9 @@ const groupingFieldId = computed(() => {
     return null;
   }
 
-  const configured = normalizeGroupingFieldId(childViewConfig.value?.groupingFieldId);
+  const configured = normalizeGroupingFieldId(
+    childViewConfig.value?.groupingFieldId,
+  );
   if (configured !== null) {
     return configured;
   }
@@ -230,7 +247,13 @@ async function loadCollectionItems(options: LoadItemsOptions = {}) {
   await store.loadItems(props.collection.id, options);
 }
 
-const { searchQuery, debouncedSearchQuery, multiSortMeta, onItemsSort, loadNextPage } = useCollectionItemsQuery({
+const {
+  searchQuery,
+  debouncedSearchQuery,
+  multiSortMeta,
+  onItemsSort,
+  loadNextPage,
+} = useCollectionItemsQuery({
   collectionId,
   viewId: activeViewId,
   activeViewType: computed(() => activeView.value?.type ?? null),
@@ -248,7 +271,9 @@ watch(
   async () => {
     childViewConfig.value = null;
 
-    const view = currentViews.value.find((entry) => entry.id === activeViewId.value) ?? null;
+    const view =
+      currentViews.value.find((entry) => entry.id === activeViewId.value) ??
+      null;
     if (!view || view.is_default === 1) {
       return;
     }
@@ -352,7 +377,9 @@ async function addField(newField: FieldDraftInput) {
     notifications.push({
       severity: "warn",
       summary: "Invalid field name",
-      detail: nameResult.error.issues[0]?.message || "Please enter a valid field name.",
+      detail:
+        nameResult.error.issues[0]?.message ||
+        "Please enter a valid field name.",
       life: 5000,
     });
     return;
@@ -363,7 +390,10 @@ async function addField(newField: FieldDraftInput) {
   }
 
   const nextOrderIndex =
-    fields.value.reduce((maxOrder, field) => Math.max(maxOrder, field.order_index), -1) + 1;
+    fields.value.reduce(
+      (maxOrder, field) => Math.max(maxOrder, field.order_index),
+      -1,
+    ) + 1;
 
   await store.addField({
     collectionId: props.collection.id,
@@ -374,13 +404,20 @@ async function addField(newField: FieldDraftInput) {
   });
 }
 
-async function updateField(payload: { field: Field; name: string; options: FieldOptions; removedOptions: string[] }) {
+async function updateField(payload: {
+  field: Field;
+  name: string;
+  options: FieldOptions;
+  removedOptions: string[];
+}) {
   const nameResult = fieldNameSchema.safeParse(payload.name);
   if (!nameResult.success) {
     notifications.push({
       severity: "warn",
       summary: "Invalid field name",
-      detail: nameResult.error.issues[0]?.message || "Please enter a valid field name.",
+      detail:
+        nameResult.error.issues[0]?.message ||
+        "Please enter a valid field name.",
       life: 5000,
     });
     return;
@@ -417,7 +454,9 @@ async function confirmDeleteField(field: Field) {
 
 function validateFieldOptions(type: FieldType, options: FieldOptions) {
   if (type !== "date") return true;
-  const dateOptions = options as { highlight?: { type?: string; date?: string; color?: string } | null };
+  const dateOptions = options as {
+    highlight?: { type?: string; date?: string; color?: string } | null;
+  };
   const highlight = dateOptions.highlight;
   if (!highlight) return true;
 
@@ -439,29 +478,36 @@ function validateFieldOptions(type: FieldType, options: FieldOptions) {
 }
 
 async function clearRemovedOptions(field: Field, removedOptions: string[]) {
-  if (!removedOptions.length || !["select", "multiselect"].includes(field.type)) return;
+  if (!removedOptions.length || !["select", "multiselect"].includes(field.type))
+    return;
 
-  const updates = items.value.reduce((acc, item) => {
-    const currentValue = item.data[field.name];
-    if (field.type === "select") {
-      if (typeof currentValue === "string" && removedOptions.includes(currentValue)) {
-        acc.push({ id: item.id, patch: { [field.name]: null } });
+  const updates = items.value.reduce(
+    (acc, item) => {
+      const currentValue = item.data[field.name];
+      if (field.type === "select") {
+        if (
+          typeof currentValue === "string" &&
+          removedOptions.includes(currentValue)
+        ) {
+          acc.push({ id: item.id, patch: { [field.name]: null } });
+        }
+        return acc;
       }
+
+      const parsed = parseMultiselectValue(currentValue);
+      if (parsed.length === 0) return acc;
+
+      const next = parsed.filter((value) => !removedOptions.includes(value));
+      if (next.length === parsed.length) return acc;
+
+      acc.push({
+        id: item.id,
+        patch: { [field.name]: next.length > 0 ? JSON.stringify(next) : null },
+      });
       return acc;
-    }
-
-    const parsed = parseMultiselectValue(currentValue);
-    if (parsed.length === 0) return acc;
-
-    const next = parsed.filter((value) => !removedOptions.includes(value));
-    if (next.length === parsed.length) return acc;
-
-    acc.push({
-      id: item.id,
-      patch: { [field.name]: next.length > 0 ? JSON.stringify(next) : null },
-    });
-    return acc;
-  }, [] as { id: number; patch: Record<string, string | number | null> }[]);
+    },
+    [] as { id: number; patch: Record<string, string | number | null> }[],
+  );
 
   if (updates.length === 0) return;
 
@@ -485,7 +531,8 @@ async function onFieldsReorder(reorderedFields: Field[]) {
     notifications.push({
       severity: "warn",
       summary: "Unable to reorder fields",
-      detail: "Field list changed while reordering. Reopen the Fields panel and try again.",
+      detail:
+        "Field list changed while reordering. Reopen the Fields panel and try again.",
       life: 5000,
     });
     return;
@@ -513,7 +560,8 @@ async function onFieldsReorder(reorderedFields: Field[]) {
     notifications.push({
       severity: "warn",
       summary: "Unable to reorder fields",
-      detail: "Field reorder payload was incomplete. Reopen the Fields panel and try again.",
+      detail:
+        "Field reorder payload was incomplete. Reopen the Fields panel and try again.",
       life: 5000,
     });
     return;
@@ -528,7 +576,10 @@ async function onFieldsReorder(reorderedFields: Field[]) {
   });
 }
 
-async function persistChildViewConfig(viewId: number, nextSelectedIds: number[]) {
+async function persistChildViewConfig(
+  viewId: number,
+  nextSelectedIds: number[],
+) {
   const config = mergeViewConfig(childViewConfig.value, {
     selectedFieldIds: nextSelectedIds,
   });
@@ -549,7 +600,10 @@ async function onUpdateGroupingFieldId(fieldId: number | null) {
   const config = mergeViewConfig(childViewConfig.value, {
     groupingFieldId: normalized,
     calendarDateFieldId: undefined,
-    kanbanColumnOrder: activeView.value?.type === "kanban" ? undefined : childViewConfig.value?.kanbanColumnOrder,
+    kanbanColumnOrder:
+      activeView.value?.type === "kanban"
+        ? undefined
+        : childViewConfig.value?.kanbanColumnOrder,
   });
 
   await store.saveViewConfig(viewId, config);
@@ -558,7 +612,10 @@ async function onUpdateGroupingFieldId(fieldId: number | null) {
   }
 }
 
-async function onToggleSelectedField(payload: { id: number; selected: boolean }) {
+async function onToggleSelectedField(payload: {
+  id: number;
+  selected: boolean;
+}) {
   const viewId = activeView.value?.id;
   if (!viewId || activeView.value?.is_default === 1) {
     return;
@@ -586,14 +643,20 @@ async function onToggleSelectedField(payload: { id: number; selected: boolean })
   await persistChildViewConfig(viewId, nextIds);
 }
 
-async function onReorderSelectedFields(payload: { draggedId: number; targetId: number }) {
+async function onReorderSelectedFields(payload: {
+  draggedId: number;
+  targetId: number;
+}) {
   const viewId = activeView.value?.id;
   if (!viewId || activeView.value?.is_default === 1) {
     return;
   }
 
   const baseIds = selectedFieldIds.value;
-  if (!baseIds.includes(payload.draggedId) || !baseIds.includes(payload.targetId)) {
+  if (
+    !baseIds.includes(payload.draggedId) ||
+    !baseIds.includes(payload.targetId)
+  ) {
     return;
   }
 
@@ -625,7 +688,9 @@ async function saveSettings(payload: CollectionSettingsSavePayload) {
   const nameResult = collectionNameSchema.safeParse(payload.name);
 
   if (!nameResult.success) {
-    const detail = nameResult.error.issues[0]?.message || "Please check your collection settings.";
+    const detail =
+      nameResult.error.issues[0]?.message ||
+      "Please check your collection settings.";
     notifications.push({
       severity: "warn",
       summary: "Invalid collection settings",

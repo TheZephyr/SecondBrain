@@ -1,14 +1,29 @@
 <template>
   <div class="flex h-full w-full min-h-0 flex-col" @click="closeContextMenu">
-    <CollectionGridToolbar v-model:searchQuery="searchModel" :multiSortMeta="multiSortMeta" />
+    <CollectionGridToolbar
+      v-model:searchQuery="searchModel"
+      :multiSortMeta="multiSortMeta"
+    />
 
-    <div v-if="orderedFields.length === 0" class="flex flex-1 flex-col items-center justify-center px-10 py-16 text-center">
-      <Columns :size="64" :stroke-width="1.5" class="mb-5 text-[var(--text-muted)]" />
-      <h3 class="text-lg font-semibold text-[var(--text-primary)]">No Fields Yet</h3>
+    <div
+      v-if="orderedFields.length === 0"
+      class="flex flex-1 flex-col items-center justify-center px-10 py-16 text-center"
+    >
+      <Columns
+        :size="64"
+        :stroke-width="1.5"
+        class="mb-5 text-[var(--text-muted)]"
+      />
+      <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+        No Fields Yet
+      </h3>
       <p class="mt-2 text-base text-[var(--text-muted)]">
         Define the structure of your collection by adding fields
       </p>
-      <AppButton class="mt-6 min-w-[140px] gap-2 px-4 text-white" @click.stop="notifyAddField">
+      <AppButton
+        class="mt-6 min-w-[140px] gap-2 px-4 text-white"
+        @click.stop="notifyAddField"
+      >
         <template #icon>
           <Plus class="size-4" />
         </template>
@@ -17,7 +32,9 @@
     </div>
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
-      <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]">
+      <div
+        class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
+      >
         <CollectionGridHeader
           :headerGroups="headerGroups"
           :gridTemplateColumns="gridTemplateColumns"
@@ -44,22 +61,32 @@
         <CollectionGridFooter :itemsTotal="itemsTotal" />
       </div>
 
-      <CollectionGridEditorOverlay :items="items" :orderedFields="orderedFields" :rowIds="rowIds" />
+      <CollectionGridEditorOverlay
+        :items="items"
+        :orderedFields="orderedFields"
+        :rowIds="rowIds"
+      />
 
       <div
         v-if="contextMenuOpen"
         class="fixed z-50 min-w-48 rounded-md border border-[var(--border-color)] bg-[var(--bg-secondary)] p-1 text-base shadow-lg"
-        :style="{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }"
+        :style="{
+          left: `${contextMenuPosition.x}px`,
+          top: `${contextMenuPosition.y}px`,
+        }"
         @click.stop
       >
         <template v-for="(item, index) in contextMenuItems" :key="index">
-          <div v-if="item.separator" class="my-1 border-t border-[var(--border-color)]" />
+          <div
+            v-if="item.separator"
+            class="my-1 border-t border-[var(--border-color)]"
+          />
           <button
             v-else
             type="button"
             class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="item.disabled"
-            @click="item.command"
+            @click="onContextMenuAction(item)"
           >
             {{ item.label }}
           </button>
@@ -71,13 +98,24 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref, toRef } from "vue";
-import { getCoreRowModel, useVueTable, type HeaderGroup, type Row } from "@tanstack/vue-table";
+import {
+  getCoreRowModel,
+  useVueTable,
+  type HeaderGroup,
+  type Row,
+} from "@tanstack/vue-table";
 import { Columns, Plus } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
 import { useGridColumns } from "../../../composables/collection/grid/useGridColumns";
 import { useGridEditing } from "../../../composables/collection/grid/useGridEditing";
 import { useGridSelection } from "../../../composables/collection/grid/useGridSelection";
-import type { DuplicateItemInput, Field, InsertItemAtInput, Item, MoveItemInput } from "../../../types/models";
+import type {
+  DuplicateItemInput,
+  Field,
+  InsertItemAtInput,
+  Item,
+  MoveItemInput,
+} from "../../../types/models";
 import { parseFieldOptions } from "../../../utils/fieldOptions";
 import { normalizeUniqueKey } from "../../../utils/fieldUnique";
 import type { MultiSortMeta } from "../types";
@@ -86,6 +124,10 @@ import CollectionGridEditorOverlay from "./CollectionGridEditorOverlay.vue";
 import CollectionGridFooter from "./CollectionGridFooter.vue";
 import CollectionGridHeader from "./CollectionGridHeader.vue";
 import CollectionGridToolbar from "./CollectionGridToolbar.vue";
+import {
+  buildGridContextMenuActions,
+  type ContextMenuAction,
+} from "./collectionGridContextMenu";
 import { gridEditingKey, gridSelectionKey } from "./types";
 
 type RowContextMenuPayload = {
@@ -94,10 +136,6 @@ type RowContextMenuPayload = {
   rowIndex: number;
   totalRows: number;
 };
-
-type ContextMenuAction =
-  | { separator: true }
-  | { label: string; disabled?: boolean; command: () => void; separator?: false };
 
 const props = defineProps<{
   viewId: number;
@@ -131,10 +169,11 @@ const searchModel = computed({
   set: (value: string) => emit("update:searchQuery", value),
 });
 
-const { columns, gridTemplateColumns, setColumnWidth, persistColumnWidths } = useGridColumns({
-  orderedFields: computed(() => props.orderedFields),
-  viewId: toRef(props, "viewId"),
-});
+const { columns, gridTemplateColumns, setColumnWidth, persistColumnWidths } =
+  useGridColumns({
+    orderedFields: computed(() => props.orderedFields),
+    viewId: toRef(props, "viewId"),
+  });
 
 const selection = useGridSelection();
 const editing = useGridEditing({
@@ -159,12 +198,16 @@ const table = useVueTable<Item>({
 
 const rows = computed<Row<Item>[]>(() => table.getRowModel().rows);
 const rowIds = computed(() => rows.value.map((row) => row.original.id));
-const headerGroups = computed<HeaderGroup<Item>[]>(() => table.getHeaderGroups());
+const headerGroups = computed<HeaderGroup<Item>[]>(() =>
+  table.getHeaderGroups(),
+);
 
 const duplicateMap = computed(() => {
   const map = new Map<string, Set<string>>();
   const fieldsWithUnique = props.orderedFields.filter((field) => {
-    const options = parseFieldOptions(field.type, field.options) as { uniqueCheck?: boolean };
+    const options = parseFieldOptions(field.type, field.options) as {
+      uniqueCheck?: boolean;
+    };
     return Boolean(options.uniqueCheck);
   });
 
@@ -194,68 +237,16 @@ const contextMenuTotalRows = ref(0);
 const contextMenuPosition = ref({ x: 0, y: 0 });
 
 const contextMenuItems = computed<ContextMenuAction[]>(() => {
-  const row = contextMenuRow.value;
-  const rowIndex = contextMenuRowIndex.value;
-  const totalRows = contextMenuTotalRows.value;
-  const isFirstOnPage = rowIndex === 0;
-  const isLastOnPage = rowIndex !== null && rowIndex === totalRows - 1;
-  const collectionId = row?.collection_id;
-
-  return [
-    {
-      label: "Insert row above",
-      command: () => {
-        if (!row || collectionId === undefined) return;
-        const afterOrder = row.order <= 0 ? null : row.order - 1;
-        emit("insert-item-at", { collectionId, afterOrder });
-        closeContextMenu();
-      },
-    },
-    {
-      label: "Insert row below",
-      command: () => {
-        if (!row || collectionId === undefined) return;
-        emit("insert-item-at", { collectionId, afterOrder: row.order });
-        closeContextMenu();
-      },
-    },
-    {
-      label: "Duplicate row",
-      command: () => {
-        if (!row || collectionId === undefined) return;
-        emit("duplicate-item", { collectionId, itemId: row.id });
-        closeContextMenu();
-      },
-    },
-    { separator: true },
-    {
-      label: "Move up",
-      disabled: !row || isFirstOnPage,
-      command: () => {
-        if (!row || collectionId === undefined || isFirstOnPage) return;
-        emit("move-item", { collectionId, itemId: row.id, direction: "up" });
-        closeContextMenu();
-      },
-    },
-    {
-      label: "Move down",
-      disabled: !row || isLastOnPage,
-      command: () => {
-        if (!row || collectionId === undefined || isLastOnPage) return;
-        emit("move-item", { collectionId, itemId: row.id, direction: "down" });
-        closeContextMenu();
-      },
-    },
-    { separator: true },
-    {
-      label: "Delete row",
-      command: () => {
-        if (!row) return;
-        emit("delete-item", row);
-        closeContextMenu();
-      },
-    },
-  ];
+  return buildGridContextMenuActions({
+    row: contextMenuRow.value,
+    rowIndex: contextMenuRowIndex.value,
+    totalRows: contextMenuTotalRows.value,
+    onInsertItemAt: (payload) => emit("insert-item-at", payload),
+    onDuplicateItem: (payload) => emit("duplicate-item", payload),
+    onMoveItem: (payload) => emit("move-item", payload),
+    onDeleteItem: (row) => emit("delete-item", row),
+    closeContextMenu,
+  });
 });
 
 function onSort(nextMeta: MultiSortMeta[]) {
@@ -271,11 +262,26 @@ function onPersistColumnWidths() {
   void persistColumnWidths();
 }
 
+function onContextMenuAction(item: ContextMenuAction) {
+  if ("separator" in item) {
+    return;
+  }
+
+  if (item.disabled) {
+    return;
+  }
+
+  item.command();
+}
+
 function onRowContextMenu(payload: RowContextMenuPayload) {
   contextMenuRow.value = payload.row;
   contextMenuRowIndex.value = payload.rowIndex;
   contextMenuTotalRows.value = payload.totalRows;
-  contextMenuPosition.value = { x: payload.event.clientX, y: payload.event.clientY };
+  contextMenuPosition.value = {
+    x: payload.event.clientX,
+    y: payload.event.clientY,
+  };
   contextMenuOpen.value = true;
 }
 

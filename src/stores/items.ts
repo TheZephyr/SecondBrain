@@ -180,13 +180,10 @@ export const useItemsStore = defineStore("items", () => {
     return created;
   }
 
-  async function insertItemAt(
-    input: InsertItemAtInput,
-  ): Promise<Item | null> {
+  async function insertItemAt(input: InsertItemAtInput): Promise<Item | null> {
     const payload: InsertItemAtInput = {
       collectionId: input.collectionId,
-      afterOrder:
-        input.afterOrder === null ? null : Number(input.afterOrder),
+      afterOrder: input.afterOrder === null ? null : Number(input.afterOrder),
     };
 
     const created = await itemsRepository.insertItemAt(payload);
@@ -239,6 +236,7 @@ export const useItemsStore = defineStore("items", () => {
 
   async function deleteItem(itemId: number): Promise<boolean> {
     const success = await itemsRepository.deleteItem(itemId);
+
     if (success) {
       applyMutation({
         type: "delete",
@@ -337,4 +335,3 @@ export const useItemsStore = defineStore("items", () => {
     bulkPatchItems,
   };
 });
-

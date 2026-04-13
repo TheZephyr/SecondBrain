@@ -5,7 +5,11 @@
     @update:model-value="onUpdate"
   >
     <SelectTrigger :id="inputId" :class="triggerClass">
-      <slot name="value" :option="selectedOption?.raw ?? null" :value="selectedOption?.value ?? null">
+      <slot
+        name="value"
+        :option="selectedOption?.raw ?? null"
+        :value="selectedOption?.value ?? null"
+      >
         <SelectValue :placeholder="placeholder">
           {{ selectedOption?.label }}
         </SelectValue>
@@ -39,6 +43,7 @@ import { cn } from "@/lib/utils";
 
 type PrimitiveValue = string | number | null;
 type SelectOption = Record<string, unknown> | PrimitiveValue;
+const EMPTY_STRING_OPTION_KEY_PREFIX = "__app_select_empty__";
 
 const props = defineProps<{
   modelValue?: string | number | null;
@@ -55,8 +60,15 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: PrimitiveValue): void;
 }>();
 
-function toPrimitiveValue(value: unknown, fallback: PrimitiveValue): PrimitiveValue {
-  if (typeof value === "string" || typeof value === "number" || value === null) {
+function toPrimitiveValue(
+  value: unknown,
+  fallback: PrimitiveValue,
+): PrimitiveValue {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    value === null
+  ) {
     return value;
   }
 
@@ -71,25 +83,37 @@ const normalizedOptions = computed(() =>
       const rawLabel = option[labelKey];
       const rawValue = option[valueKey];
       const value = toPrimitiveValue(rawValue ?? rawLabel, index);
+      const key =
+        value === ""
+          ? `${EMPTY_STRING_OPTION_KEY_PREFIX}${index}`
+          : String(value);
       return {
-        key: String(value),
+        key,
         value,
         label: String(rawLabel ?? rawValue ?? value),
         raw: option,
       };
     }
 
+    const value = option;
+    const key =
+      value === ""
+        ? `${EMPTY_STRING_OPTION_KEY_PREFIX}${index}`
+        : String(value ?? "");
     return {
-      key: String(option ?? ""),
-      value: option,
+      key,
+      value,
       label: String(option ?? ""),
       raw: option,
     };
   }),
 );
 
-const selectedOption = computed(() =>
-  normalizedOptions.value.find((option) => option.value === props.modelValue) ?? null,
+const selectedOption = computed(
+  () =>
+    normalizedOptions.value.find(
+      (option) => option.value === props.modelValue,
+    ) ?? null,
 );
 
 const stringValue = computed(() => {
@@ -103,7 +127,9 @@ const stringValue = computed(() => {
 const triggerClass = computed(() => cn("w-full", props.class));
 
 function onUpdate(value: unknown) {
-  const selected = normalizedOptions.value.find((option) => option.key === String(value));
+  const selected = normalizedOptions.value.find(
+    (option) => option.key === String(value),
+  );
   emit("update:modelValue", selected?.value ?? null);
 }
 </script>
