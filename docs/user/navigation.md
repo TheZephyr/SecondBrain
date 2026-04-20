@@ -18,6 +18,8 @@ When you expand a collection in the sidebar, you see its views.
 - The locked view is the default source view for the collection.
 - Child views appear below it and can be opened, renamed, deleted, and reordered.
 - Click `Add view` to create a new grid, kanban, or calendar child view.
+- Expanding a different collection also opens that collection in the main workspace.
+- Clicking a collection that is already open keeps the current workspace in place instead of reloading it.
 
 When creating a child view:
 

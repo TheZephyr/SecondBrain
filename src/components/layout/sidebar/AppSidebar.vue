@@ -37,7 +37,7 @@
           @click="handleCollectionClick(collection)"
         >
           <div class="flex items-center gap-2">
-            <span class="flex items-center" @click.stop="toggleExpanded(collection.id)">
+            <span class="flex items-center" @click.stop="handleCollectionChevronClick(collection)">
               <ChevronDown v-if="isExpanded(collection.id)" class="size-4" />
               <ChevronRight v-else class="size-4" />
             </span>
@@ -289,6 +289,11 @@ import type { Collection, View, ViewType } from "../../../types/models";
 import { getOrderedFieldIds } from "../../../utils/viewConfig";
 import { collectionNameSchema, viewNameSchema } from "../../../validation/schemas";
 import ViewTypePicker from "./ViewTypePicker.vue";
+import {
+  resolveCollectionChevronClick,
+  resolveCollectionRowClick,
+  type CollectionNavigationContext,
+} from "./collectionNavigation";
 import { createConfiguredView } from "./viewCreation";
 
 type ViewTypeOption = {
@@ -391,23 +396,47 @@ function isExpanded(id: number) {
   return expandedCollectionIds.value.includes(id);
 }
 
-function toggleExpanded(id: number) {
-  if (expandedCollectionIds.value.includes(id)) {
-    expandedCollectionIds.value = [];
-    closeViewPicker();
-    closeDeleteConfirm();
-    return;
-  }
-  expandedCollectionIds.value = [id];
-}
-
 function ensureExpanded(id: number) {
   expandedCollectionIds.value = [id];
 }
 
+function getCollectionNavigationContext(
+  collectionId: number,
+): CollectionNavigationContext {
+  return {
+    currentView: currentView.value,
+    expandedCollectionIds: expandedCollectionIds.value,
+    selectedCollectionId: selectedCollection.value?.id ?? null,
+    targetCollectionId: collectionId,
+  };
+}
+
+function handleCollectionChevronClick(collection: Collection) {
+  closeViewPicker();
+  closeDeleteConfirm();
+
+  const result = resolveCollectionChevronClick(
+    getCollectionNavigationContext(collection.id),
+  );
+  expandedCollectionIds.value = result.expandedCollectionIds;
+
+  if (result.shouldSelectCollection) {
+    store.selectCollection(collection);
+  }
+}
+
 function handleCollectionClick(collection: Collection) {
-  ensureExpanded(collection.id);
-  store.selectCollection(collection);
+  closeViewPicker();
+  closeDeleteConfirm();
+
+  const result = resolveCollectionRowClick(
+    getCollectionNavigationContext(collection.id),
+  );
+  expandedCollectionIds.value = result.expandedCollectionIds;
+
+  if (result.shouldSelectCollection) {
+    store.selectCollection(collection);
+  }
 }
 
 function handleViewClick(viewId: number) {
