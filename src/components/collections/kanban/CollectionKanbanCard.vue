@@ -14,7 +14,7 @@
       <div class="space-y-2">
         <div v-for="field in detailFields" :key="field.id" class="field-row flex items-start gap-2 text-sm">
           <span class="w-24 shrink-0 text-[var(--text-muted)]">{{ field.name }}</span>
-          <span class="flex-1 text-[var(--text-primary)]">
+          <span class="min-w-0 flex-1 text-[var(--text-primary)]">
             <template v-if="field.type === 'select'">
               <span
                 v-if="getDisplayText(field)"
@@ -48,7 +48,7 @@
               />
             </template>
             <template v-else-if="field.type === 'rating'">
-              <div v-if="getRatingMax(field) > 0" class="flex items-center">
+              <div v-if="getRatingMax(field) > 0" class="flex w-full min-w-0 items-center overflow-hidden">
                 <component
                   v-for="index in getRatingMax(field)"
                   :key="index"

@@ -36,22 +36,30 @@
       </button>
     </template>
     <template v-else-if="field?.type === 'url' && displayText !== '-'">
-      <div class="flex items-center gap-1">
+      <div class="flex w-full min-w-0 items-center gap-1 overflow-hidden">
         <button
           type="button"
-          :class="isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]'"
+          :class="[
+            'shrink-0 cursor-pointer',
+            isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]',
+          ]"
           title="Open link"
           @click.stop="openExternal(displayText as string)"
         >
           <Link :size="12" />
         </button>
-        <span :class="['truncate', isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]']">
+        <span
+          :class="[
+            'min-w-0 flex-1 truncate',
+            isDuplicate ? 'text-[var(--danger)]' : 'text-[var(--accent-primary)]',
+          ]"
+        >
           {{ displayText }}
         </span>
       </div>
     </template>
     <template v-else-if="field?.type === 'rating' && ratingMax > 0">
-      <div class="flex items-center">
+      <div class="flex w-full min-w-0 items-center overflow-hidden">
         <component
           v-for="index in ratingMax"
           :key="index"
