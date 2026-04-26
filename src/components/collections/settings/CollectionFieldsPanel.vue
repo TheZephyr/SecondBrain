@@ -1,143 +1,161 @@
 <template>
-  <div class="mx-auto max-h-[100vh] space-y-4 overflow-y-auto px-4 py-4 text-base">
-    <div class="overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)]">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead class="w-12">Order</TableHead>
-            <TableHead>Field</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead class="w-36 text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <template v-for="field in orderedFields" :key="field.id">
-            <TableRow
-              :class="dragOverFieldId === field.id ? 'bg-[var(--bg-hover)]' : undefined"
-              @dragover.prevent="onDragOver(field.id)"
-              @drop.prevent="onDrop(field.id)"
-            >
-              <TableCell>
-                <button
-                  type="button"
-                  class="flex size-8 items-center justify-center text-[var(--text-muted)]"
-                  draggable="true"
-                  title="Drag to reorder"
-                  @dragstart="event => onDragStart(field.id, event)"
-                  @dragend="onDragEnd"
-                >
-                  <GripVertical :size="14" />
-                </button>
-              </TableCell>
-              <TableCell>
-                <span>{{ field.name }}</span>
-              </TableCell>
-              <TableCell>
-                <AppBadge class="gap-1">
-                  <component :is="iconMap[FIELD_TYPE_META[field.type as FieldType].icon]" :size="12" class="text-[var(--text-primary)]" />
-                  <span>{{ FIELD_TYPE_META[field.type as FieldType].displayName }}</span>
-                </AppBadge>
-              </TableCell>
-              <TableCell>
-                <div class="flex items-center justify-end gap-2">
-                  <AppButton
-                    text
-                    class="h-8 w-8 p-0 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
-                    title="Edit field"
-                    @click="toggleEdit(field)"
-                  >
-                    <template #icon>
-                      <Pencil :size="18" />
-                    </template>
-                  </AppButton>
-                  <AppButton
-                    text
-                    class="h-8 w-8 p-0 text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
-                    title="Delete field"
-                    @click="$emit('delete-field', field)"
-                  >
-                    <template #icon>
-                      <Trash2 :size="18" />
-                    </template>
-                  </AppButton>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow v-if="editingFieldId === field.id">
-              <TableCell :colspan="4" class="bg-[var(--bg-primary)]">
-                <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-                  <div class="mb-3 flex items-center gap-2 text-base tracking-wide text-[var(--text-secondary)]">
-                    <Pencil :size="14" />
-                    Edit Field
-                  </div>
-                  <div class="flex flex-col gap-3 md:flex-row md:items-center">
-                    <AppInput v-model="editDraft.name" type="text" placeholder="Field name" class="flex-1" />
-                    <AppBadge class="gap-1">
-                      <component
-                        :is="iconMap[FIELD_TYPE_META[field.type as FieldType].icon]"
-                        :size="12"
-                        class="text-[var(--text-muted)]"
-                      />
-                      <span>{{ FIELD_TYPE_META[field.type as FieldType].displayName }}</span>
-                    </AppBadge>
-                  </div>
-                  <FieldOptionsForm
-                    v-model="editDraft.options"
-                    :type="field.type"
-                    :items="items"
-                    :fieldName="field.name"
-                    class="mt-4"
-                  />
-                  <div class="mt-4 flex justify-end gap-2">
-                    <AppButton severity="secondary" text @click="cancelEdit">Cancel</AppButton>
-                    <AppButton @click="submitEditField(field)">Save</AppButton>
-                  </div>
-                </div>
-              </TableCell>
-            </TableRow>
+  <div class="flex h-full min-h-0 flex-col px-4 py-4">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <AppInput
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search fields"
+        class="w-full md:max-w-sm"
+      />
+      <div class="flex items-center gap-2">
+        <AppButton class="gap-2" @click="createFieldDraft">
+          <template #icon>
+            <Plus class="size-4" />
           </template>
-        </TableBody>
-      </Table>
+          New field
+        </AppButton>
+        <AppButton severity="secondary" text :disabled="!isDirty" @click="resetDrafts">Reset</AppButton>
+        <AppButton :disabled="!isDirty" @click="saveDrafts">Save changes</AppButton>
+      </div>
     </div>
 
-    <div ref="addFieldSectionRef" class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-      <div class="mb-3 flex items-center gap-2 text-base tracking-wide text-[var(--text-secondary)]">
-        <Plus class="size-4" />
-        Add New Field
+    <div class="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
+      <div class="min-h-0 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]">
+        <div class="max-h-full overflow-y-auto">
+          <button
+            v-for="draft in filteredDrafts"
+            :key="draft.draftId"
+            type="button"
+            class="flex w-full items-center gap-3 border-b border-[var(--border-color)] px-4 py-3 text-left last:border-b-0"
+            :class="selectedDraftId === draft.draftId ? 'bg-[var(--bg-hover)]' : 'hover:bg-[var(--bg-hover)]/60'"
+            @click="selectedDraftId = draft.draftId"
+            @dragover.prevent="onDragOver(draft.draftId)"
+            @drop.prevent="onDrop(draft.draftId)"
+          >
+            <span
+              class="flex size-7 items-center justify-center text-[var(--text-muted)]"
+              :class="searchQuery.trim() ? 'cursor-not-allowed opacity-40' : 'cursor-grab'"
+              :draggable="!searchQuery.trim()"
+              @dragstart="event => onDragStart(draft.draftId, event)"
+              @dragend="onDragEnd"
+            >
+              <GripVertical :size="14" />
+            </span>
+            <component
+              :is="iconMap[FIELD_TYPE_META[draft.type].icon]"
+              :size="14"
+              class="text-[var(--text-muted)]"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="truncate font-medium text-[var(--text-primary)]">
+                {{ draft.name || "Untitled field" }}
+              </div>
+              <div class="truncate text-sm text-[var(--text-muted)]">
+                {{ FIELD_TYPE_META[draft.type].displayName }}
+              </div>
+            </div>
+          </button>
+          <div v-if="filteredDrafts.length === 0" class="px-4 py-10 text-center text-[var(--text-muted)]">
+            No fields match your search.
+          </div>
+        </div>
       </div>
-      <div class="flex flex-col gap-3 md:flex-row md:items-center">
-        <AppInput v-model="newField.name" type="text" placeholder="Field name" class="flex-1" />
-        <AppSelect
-          v-model="newField.type"
-          :options="fieldTypeOptions"
-          optionLabel="label"
-          optionValue="value"
-          class="w-full md:w-56"
-        />
-        <AppButton class="md:self-stretch" @click="submitAddField">Add</AppButton>
+
+      <div class="min-h-0 overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+        <template v-if="selectedDraft">
+          <div class="space-y-4">
+            <AppInput
+              :modelValue="selectedDraft.name"
+              type="text"
+              placeholder="Field name"
+              class="w-full"
+              @update:modelValue="value => updateSelectedDraft({ name: value ?? '' })"
+            />
+
+            <AppSelect
+              v-if="selectedDraft.id === null"
+              :modelValue="selectedDraft.type"
+              :options="fieldTypeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-full"
+              @update:modelValue="value => updateSelectedDraftType((value as FieldType | null) ?? 'text')"
+            />
+            <AppBadge v-else class="gap-1">
+              <component :is="iconMap[FIELD_TYPE_META[selectedDraft.type].icon]" :size="12" />
+              <span>{{ FIELD_TYPE_META[selectedDraft.type].displayName }}</span>
+            </AppBadge>
+
+            <div class="space-y-2">
+              <div class="text-base font-semibold uppercase text-[var(--text-muted)]">Description</div>
+              <AppTextarea
+                :modelValue="selectedDraft.description"
+                :rows="3"
+                class="w-full"
+                placeholder="Add description"
+                @update:modelValue="value => updateSelectedDraft({ description: value ?? '' })"
+              />
+            </div>
+
+            <FieldOptionsForm
+              :modelValue="selectedDraft.options"
+              :type="selectedDraft.type"
+              :items="items"
+              :fieldName="selectedDraft.name"
+              @update:modelValue="value => updateSelectedDraft({ options: value })"
+            />
+
+            <div class="flex justify-end">
+              <AppButton
+                text
+                class="text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+                @click="deleteSelectedDraft"
+              >
+                <template #icon>
+                  <Trash2 class="size-4" />
+                </template>
+                Delete field
+              </AppButton>
+            </div>
+          </div>
+        </template>
+        <div v-else class="flex h-full items-center justify-center text-[var(--text-muted)]">
+          Select a field to edit its options.
+        </div>
       </div>
-      <FieldOptionsForm v-model="newField.options" :type="newField.type" class="mt-4" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type Component } from "vue";
+import { computed, ref, watch, type Component } from "vue";
 import * as icons from "lucide-vue-next";
-import { GripVertical, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { GripVertical, Plus, Trash2 } from "lucide-vue-next";
 import AppBadge from "@/components/app/ui/AppBadge.vue";
 import AppButton from "@/components/app/ui/AppButton.vue";
 import AppInput from "@/components/app/ui/AppInput.vue";
 import AppSelect from "@/components/app/ui/AppSelect.vue";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import AppTextarea from "@/components/app/ui/AppTextarea.vue";
 import type { Field, FieldOptions, FieldType, Item } from "../../../types/models";
 import { FIELD_TYPE_META, FIELD_TYPE_OPTIONS } from "../../../types/models";
 import { getDefaultOptions, parseFieldOptions } from "../../../utils/fieldOptions";
-import type { FieldDraftInput } from "../types";
 import FieldOptionsForm from "./FieldOptionsForm.vue";
 
-type EditDraft = {
+type FieldDraft = {
+  draftId: string;
+  id: number | null;
   name: string;
+  type: FieldType;
+  description: string;
+  options: FieldOptions;
+  originalChoices: string[];
+};
+
+type SavedFieldDraft = {
+  id: number | null;
+  name: string;
+  type: FieldType;
+  description: string | null;
   options: FieldOptions;
 };
 
@@ -147,142 +165,194 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "add-field", value: FieldDraftInput): void;
-  (e: "delete-field", value: Field): void;
-  (e: "reorder-fields", value: Field[]): void;
-  (e: "update-field", value: { field: Field; name: string; options: FieldOptions; removedOptions: string[] }): void;
+  (e: "save-fields", value: { drafts: SavedFieldDraft[]; deletedFieldIds: number[] }): void;
 }>();
 
 const fieldTypeOptions = FIELD_TYPE_OPTIONS;
 const iconMap = icons as unknown as Record<string, Component>;
 
-const newField = ref<FieldDraftInput>(createEmptyFieldDraft());
-const addFieldSectionRef = ref<HTMLElement | null>(null);
-const editingFieldId = ref<number | null>(null);
-const editingOriginalChoices = ref<string[]>([]);
-const editDraft = ref<EditDraft>({
-  name: "",
-  options: getDefaultOptions("text"),
-});
-const draggedFieldId = ref<number | null>(null);
-const dragOverFieldId = ref<number | null>(null);
+const searchQuery = ref("");
+const drafts = ref<FieldDraft[]>([]);
+const deletedFieldIds = ref<number[]>([]);
+const selectedDraftId = ref<string | null>(null);
+const draggedDraftId = ref<string | null>(null);
+const baselineSignature = ref("");
+let nextDraftSequence = 0;
 
-function createEmptyFieldDraft(): FieldDraftInput {
+const filteredDrafts = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) {
+    return drafts.value;
+  }
+
+  return drafts.value.filter((draft) =>
+    draft.name.toLowerCase().includes(query),
+  );
+});
+
+const selectedDraft = computed(
+  () => drafts.value.find((draft) => draft.draftId === selectedDraftId.value) ?? null,
+);
+
+const isDirty = computed(() => currentSignature() !== baselineSignature.value);
+
+function getChoices(options: FieldOptions): string[] {
+  const parsed = options as { choices?: string[] };
+  return parsed.choices ? [...parsed.choices] : [];
+}
+
+function buildDraft(field: Field): FieldDraft {
   return {
-    name: "",
-    type: "text",
-    options: getDefaultOptions("text"),
+    draftId: `field-${field.id}`,
+    id: field.id,
+    name: field.name,
+    type: field.type,
+    description: field.description ?? "",
+    options: parseFieldOptions(field.type, field.options),
+    originalChoices: field.type === "select" || field.type === "multiselect"
+      ? getChoices(parseFieldOptions(field.type, field.options))
+      : [],
   };
 }
 
-watch(
-  () => newField.value.type,
-  (type) => {
-    newField.value.options = getDefaultOptions(type);
-  },
-);
-
-function submitAddField() {
-  emit("add-field", { ...newField.value, options: { ...newField.value.options } });
-  newField.value = createEmptyFieldDraft();
+function currentSignature() {
+  return JSON.stringify({
+    drafts: drafts.value.map((draft) => ({
+      id: draft.id,
+      name: draft.name,
+      type: draft.type,
+      description: draft.description.trim(),
+      options: draft.options,
+    })),
+    deletedFieldIds: [...deletedFieldIds.value].sort((a, b) => a - b),
+  });
 }
 
-function onDragStart(fieldId: number, event: DragEvent) {
-  draggedFieldId.value = fieldId;
-  dragOverFieldId.value = null;
-  if (event.dataTransfer) {
-    event.dataTransfer.setData("text/plain", String(fieldId));
-    event.dataTransfer.effectAllowed = "move";
-  }
+function resetDrafts() {
+  drafts.value = props.orderedFields.map((field) => buildDraft(field));
+  deletedFieldIds.value = [];
+  selectedDraftId.value = drafts.value[0]?.draftId ?? null;
+  baselineSignature.value = currentSignature();
 }
 
-function onDragOver(fieldId: number) {
-  if (draggedFieldId.value === null || draggedFieldId.value === fieldId) {
+function createFieldDraft() {
+  nextDraftSequence += 1;
+  const draftId = `new-${nextDraftSequence}`;
+  drafts.value.push({
+    draftId,
+    id: null,
+    name: "",
+    type: "text",
+    description: "",
+    options: getDefaultOptions("text"),
+    originalChoices: [],
+  });
+  selectedDraftId.value = draftId;
+}
+
+function updateSelectedDraft(patch: Partial<Pick<FieldDraft, "name" | "description" | "options">>) {
+  if (!selectedDraft.value) {
     return;
   }
-  dragOverFieldId.value = fieldId;
+
+  drafts.value = drafts.value.map((draft) =>
+    draft.draftId === selectedDraft.value?.draftId ? { ...draft, ...patch } : draft,
+  );
 }
 
-function onDrop(targetFieldId: number) {
-  const draggedId = draggedFieldId.value;
-  if (!draggedId || draggedId === targetFieldId) {
+function updateSelectedDraftType(type: FieldType) {
+  if (!selectedDraft.value) {
+    return;
+  }
+
+  drafts.value = drafts.value.map((draft) =>
+    draft.draftId === selectedDraft.value?.draftId
+      ? {
+          ...draft,
+          type,
+          options: getDefaultOptions(type),
+          originalChoices: [],
+        }
+      : draft,
+  );
+}
+
+function deleteSelectedDraft() {
+  if (!selectedDraft.value) {
+    return;
+  }
+
+  if (selectedDraft.value.id !== null) {
+    deletedFieldIds.value = [...deletedFieldIds.value, selectedDraft.value.id];
+  }
+
+  drafts.value = drafts.value.filter(
+    (draft) => draft.draftId !== selectedDraft.value?.draftId,
+  );
+  selectedDraftId.value = drafts.value[0]?.draftId ?? null;
+}
+
+function onDragStart(draftId: string, event: DragEvent) {
+  if (searchQuery.value.trim()) {
+    return;
+  }
+  draggedDraftId.value = draftId;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draftId);
+  }
+}
+
+function onDragOver(draftId: string) {
+  if (!draggedDraftId.value || draggedDraftId.value === draftId || searchQuery.value.trim()) {
+    return;
+  }
+}
+
+function onDrop(targetDraftId: string) {
+  if (!draggedDraftId.value || draggedDraftId.value === targetDraftId || searchQuery.value.trim()) {
     onDragEnd();
     return;
   }
 
-  const next = [...props.orderedFields];
-  const draggedIndex = next.findIndex((field) => field.id === draggedId);
-  const targetIndex = next.findIndex((field) => field.id === targetFieldId);
+  const next = [...drafts.value];
+  const draggedIndex = next.findIndex((draft) => draft.draftId === draggedDraftId.value);
+  const targetIndex = next.findIndex((draft) => draft.draftId === targetDraftId);
   if (draggedIndex < 0 || targetIndex < 0) {
     onDragEnd();
     return;
   }
 
-  const [draggedField] = next.splice(draggedIndex, 1);
-  next.splice(targetIndex, 0, draggedField);
-  emit("reorder-fields", next);
+  const [moved] = next.splice(draggedIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  drafts.value = next;
   onDragEnd();
 }
 
 function onDragEnd() {
-  draggedFieldId.value = null;
-  dragOverFieldId.value = null;
+  draggedDraftId.value = null;
 }
 
-function toggleEdit(field: Field) {
-  if (editingFieldId.value === field.id) {
-    cancelEdit();
-    return;
-  }
-
-  editingFieldId.value = field.id;
-  editDraft.value = {
-    name: field.name,
-    options: parseFieldOptions(field.type, field.options),
-  };
-
-  if (field.type === "select" || field.type === "multiselect") {
-    const parsed = parseFieldOptions(field.type, field.options) as { choices?: string[] };
-    editingOriginalChoices.value = parsed.choices ? [...parsed.choices] : [];
-  } else {
-    editingOriginalChoices.value = [];
-  }
-}
-
-function cancelEdit() {
-  editingFieldId.value = null;
-  editDraft.value = {
-    name: "",
-    options: getDefaultOptions("text"),
-  };
-  editingOriginalChoices.value = [];
-}
-
-function submitEditField(field: Field) {
-  const currentOptions = editDraft.value.options;
-  const removedOptions = editingOriginalChoices.value.filter(
-    (option) => !(currentOptions as { choices?: string[] }).choices?.includes(option),
-  );
-
-  emit("update-field", {
-    field,
-    name: editDraft.value.name,
-    options: { ...currentOptions },
-    removedOptions,
+function saveDrafts() {
+  emit("save-fields", {
+    drafts: drafts.value.map((draft) => ({
+      id: draft.id,
+      name: draft.name,
+      type: draft.type,
+      description: draft.description.trim() || null,
+      options: draft.options,
+    })),
+    deletedFieldIds: [...deletedFieldIds.value],
   });
-
-  cancelEdit();
 }
 
-function focusAddField() {
-  addFieldSectionRef.value?.scrollIntoView({
-    block: "center",
-    behavior: "smooth",
-  });
+watch(
+  () => props.orderedFields,
+  () => {
+    resetDrafts();
+  },
+  { immediate: true, deep: true },
+);
 
-  const input = addFieldSectionRef.value?.querySelector("input");
-  input?.focus();
-}
-
-defineExpose({ focusAddField });
+defineExpose({ createFieldDraft });
 </script>

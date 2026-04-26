@@ -13,10 +13,7 @@
         v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
         :orderedFields="sourceOrderedFields"
         :items="items"
-        @add-field="addField"
-        @update-field="updateField"
-        @delete-field="confirmDeleteField"
-        @reorder-fields="onFieldsReorder"
+        @save-fields="saveFieldDrafts"
       />
       <CollectionChildFieldsPanel
         v-else-if="activeCollectionPanel === 'fields' && activeView"
@@ -25,12 +22,11 @@
         :viewType="activeView.type"
         :groupingFieldId="groupingFieldId"
         :groupingFields="groupingFields"
-        @toggle-field="onToggleSelectedField"
-        @reorder-selected="onReorderSelectedFields"
-        @update:groupingFieldId="onUpdateGroupingFieldId"
+        @save-view-fields="saveChildViewFields"
       />
       <template v-else>
         <CollectionGrid
+          :collectionId="collection.id"
           v-if="activeView?.type === 'grid'"
           :viewId="activeView.id"
           :items="items"
@@ -55,6 +51,7 @@
           @open-add-item="openAddItemDialog"
         />
         <CollectionKanbanView
+          :collectionId="collection.id"
           v-else-if="activeView?.type === 'kanban'"
           :viewId="activeView.id"
           :items="items"
@@ -69,6 +66,7 @@
           :saveViewConfig="store.saveViewConfig"
           @edit-item="openEditItemDialog"
           @add-item="openAddItemDialogWithData"
+          @update-item="onInlineUpdateItem"
         />
         <CollectionCalendarView
           v-else-if="activeView?.type === 'calendar'"
@@ -123,7 +121,7 @@ import type {
   ViewConfig,
 } from "../../types/models";
 import { parseMultiselectValue } from "../../utils/fieldValues";
-import { serializeFieldOptions } from "../../utils/fieldOptions";
+import { parseFieldOptions, serializeFieldOptions } from "../../utils/fieldOptions";
 import { mergeViewConfig } from "../../utils/viewConfig";
 import {
   collectionNameSchema,
@@ -135,7 +133,6 @@ import CollectionItemEditorDialog from "./CollectionItemEditorDialog.vue";
 import CollectionKanbanView from "./kanban/CollectionKanbanView.vue";
 import type {
   CollectionSettingsSavePayload,
-  FieldDraftInput,
   ItemEditorSavePayload,
 } from "./types";
 import CollectionChildFieldsPanel from "./settings/CollectionChildFieldsPanel.vue";
@@ -371,105 +368,25 @@ async function saveItem(payload: ItemEditorSavePayload) {
   initialItemData.value = null;
 }
 
-async function addField(newField: FieldDraftInput) {
-  const nameResult = fieldNameSchema.safeParse(newField.name);
-  if (!nameResult.success) {
-    notifications.push({
-      severity: "warn",
-      summary: "Invalid field name",
-      detail:
-        nameResult.error.issues[0]?.message ||
-        "Please enter a valid field name.",
-      life: 5000,
-    });
-    return;
-  }
-
-  if (!validateFieldOptions(newField.type, newField.options)) {
-    return;
-  }
-
-  const nextOrderIndex =
-    fields.value.reduce(
-      (maxOrder, field) => Math.max(maxOrder, field.order_index),
-      -1,
-    ) + 1;
-
-  await store.addField({
-    collectionId: props.collection.id,
-    name: nameResult.data,
-    type: newField.type,
-    options: serializeFieldOptions(newField.options),
-    orderIndex: nextOrderIndex,
-  });
-}
-
-async function updateField(payload: {
-  field: Field;
-  name: string;
-  options: FieldOptions;
-  removedOptions: string[];
-}) {
-  const nameResult = fieldNameSchema.safeParse(payload.name);
-  if (!nameResult.success) {
-    notifications.push({
-      severity: "warn",
-      summary: "Invalid field name",
-      detail:
-        nameResult.error.issues[0]?.message ||
-        "Please enter a valid field name.",
-      life: 5000,
-    });
-    return;
-  }
-
-  if (!validateFieldOptions(payload.field.type, payload.options)) {
-    return;
-  }
-
-  await store.updateField({
-    id: payload.field.id,
-    name: nameResult.data,
-    type: payload.field.type,
-    options: serializeFieldOptions(payload.options),
-    orderIndex: payload.field.order_index,
-  });
-
-  await clearRemovedOptions(payload.field, payload.removedOptions);
-}
-
-async function confirmDeleteField(field: Field) {
-  const accepted = await confirm({
-    title: "Delete Field",
-    description: `Delete "${field.name}" field? All data in this field will be lost.`,
-    confirmLabel: "Delete",
-    cancelLabel: "Cancel",
-    destructive: true,
-  });
-
-  if (accepted) {
-    await store.deleteField(field.id);
-  }
-}
-
 function validateFieldOptions(type: FieldType, options: FieldOptions) {
   if (type !== "date") return true;
   const dateOptions = options as {
-    highlight?: { type?: string; date?: string; color?: string } | null;
+    highlight?: { type?: string; date?: string | null; target?: string; color?: string } | null;
   };
   const highlight = dateOptions.highlight;
   if (!highlight) return true;
 
   const hasType = Boolean(highlight.type);
-  const hasDate = Boolean(highlight.date);
   const hasColor = Boolean(highlight.color);
-  const complete = hasType && hasDate && hasColor;
+  const requiresDate = (highlight.target ?? "date") === "date";
+  const hasDate = !requiresDate || Boolean(highlight.date);
+  const complete = hasType && hasColor && hasDate;
 
   if (!complete) {
     notifications.push({
       severity: "warn",
       summary: "Incomplete highlight rule",
-      detail: "Highlight rules require type, date, and color before saving.",
+      detail: "Highlight rules require type and color. Custom-date highlights also require a date.",
       life: 5000,
     });
   }
@@ -517,157 +434,180 @@ async function clearRemovedOptions(field: Field, removedOptions: string[]) {
   });
 }
 
-async function onFieldsReorder(reorderedFields: Field[]) {
-  const visibleFieldIds = sourceOrderedFields.value.map((field) => field.id);
-  const visibleFieldIdSet = new Set(visibleFieldIds);
-  const reorderedFieldIds = reorderedFields.map((field) => field.id);
-  const reorderedFieldIdSet = new Set(reorderedFieldIds);
+async function saveFieldDrafts(payload: {
+  drafts: Array<{
+    id: number | null;
+    name: string;
+    type: FieldType;
+    description: string | null;
+    options: FieldOptions;
+  }>;
+  deletedFieldIds: number[];
+}) {
+  const existingFieldById = new Map(
+    fields.value.map((field) => [field.id, field]),
+  );
+  const normalizedDrafts: Array<{
+    id: number | null;
+    name: string;
+    type: FieldType;
+    description: string | null;
+    options: FieldOptions;
+  }> = [];
 
-  if (
-    reorderedFieldIds.length !== visibleFieldIds.length ||
-    reorderedFieldIdSet.size !== reorderedFieldIds.length ||
-    reorderedFieldIds.some((id) => !visibleFieldIdSet.has(id))
-  ) {
-    notifications.push({
-      severity: "warn",
-      summary: "Unable to reorder fields",
-      detail:
-        "Field list changed while reordering. Reopen the Fields panel and try again.",
-      life: 5000,
+  for (const draft of payload.drafts) {
+    const nameResult = fieldNameSchema.safeParse(draft.name);
+    if (!nameResult.success) {
+      notifications.push({
+        severity: "warn",
+        summary: "Invalid field name",
+        detail:
+          nameResult.error.issues[0]?.message ||
+          "Please enter a valid field name.",
+        life: 5000,
+      });
+      return;
+    }
+
+    if (!validateFieldOptions(draft.type, draft.options)) {
+      return;
+    }
+
+    normalizedDrafts.push({
+      ...draft,
+      name: nameResult.data,
     });
-    return;
   }
 
-  const allFieldsInOrder = [...fields.value].sort((a, b) => {
-    if (a.order_index !== b.order_index) {
-      return a.order_index - b.order_index;
-    }
-    return a.id - b.id;
-  });
-
-  let reorderedIndex = 0;
-  const completeFieldOrder = allFieldsInOrder.map((field) => {
-    if (!visibleFieldIdSet.has(field.id)) {
-      return field;
+  const removedFieldIdSet = new Set(payload.deletedFieldIds);
+  const removedOptionsByFieldId = new Map<number, string[]>();
+  for (const draft of normalizedDrafts) {
+    if (draft.id === null) {
+      continue;
     }
 
-    const nextField = reorderedFields[reorderedIndex];
-    reorderedIndex += 1;
-    return nextField;
-  });
+    const existing = existingFieldById.get(draft.id);
+    if (!existing) {
+      continue;
+    }
 
-  if (reorderedIndex !== reorderedFields.length) {
-    notifications.push({
-      severity: "warn",
-      summary: "Unable to reorder fields",
-      detail:
-        "Field reorder payload was incomplete. Reopen the Fields panel and try again.",
-      life: 5000,
-    });
-    return;
+    if (existing.type === "select" || existing.type === "multiselect") {
+      const currentChoices = (
+        parseFieldOptions(existing.type, existing.options) as { choices?: string[] }
+      ).choices ?? [];
+      const nextChoices = (draft.options as { choices?: string[] }).choices ?? [];
+      removedOptionsByFieldId.set(
+        draft.id,
+        currentChoices.filter((choice) => !nextChoices.includes(choice)),
+      );
+    }
   }
 
-  await store.reorderFields({
-    collectionId: props.collection.id,
-    fieldOrders: completeFieldOrder.map((field, index) => ({
-      id: field.id,
-      orderIndex: index,
-    })),
-  });
+  const createdFieldIds = new Map<number, number>();
+  for (const [index, draft] of normalizedDrafts.entries()) {
+    if (draft.id !== null) {
+      continue;
+    }
+
+    const created = await store.addField({
+      collectionId: props.collection.id,
+      name: draft.name,
+      type: draft.type,
+      description: draft.description,
+      options: serializeFieldOptions(draft.options),
+      orderIndex: fields.value.length + index,
+    });
+    if (created?.id) {
+      createdFieldIds.set(index, created.id);
+    }
+  }
+
+  for (const draft of normalizedDrafts) {
+    if (draft.id === null || removedFieldIdSet.has(draft.id)) {
+      continue;
+    }
+
+    const existing = existingFieldById.get(draft.id);
+    if (!existing) {
+      continue;
+    }
+
+    await store.updateField({
+      id: existing.id,
+      name: draft.name,
+      type: existing.type,
+      description: draft.description,
+      options: serializeFieldOptions(draft.options),
+      orderIndex: existing.order_index,
+    });
+
+    await clearRemovedOptions(
+      { ...existing, name: draft.name },
+      removedOptionsByFieldId.get(existing.id) ?? [],
+    );
+  }
+
+  for (const fieldId of payload.deletedFieldIds) {
+    await store.deleteField(fieldId);
+  }
+
+  await store.loadFields(props.collection.id);
+
+  const latestFieldsByName = new Map(
+    fields.value.map((field) => [field.name, field.id]),
+  );
+  const finalFieldOrders = normalizedDrafts
+    .map((draft, index) => {
+      const resolvedId =
+        draft.id ??
+        createdFieldIds.get(index) ??
+        latestFieldsByName.get(draft.name) ??
+        null;
+      return resolvedId === null
+        ? null
+        : {
+            id: resolvedId,
+            orderIndex: index,
+          };
+    })
+    .filter((entry): entry is { id: number; orderIndex: number } => Boolean(entry));
+
+  if (finalFieldOrders.length > 0) {
+    await store.reorderFields({
+      collectionId: props.collection.id,
+      fieldOrders: finalFieldOrders,
+    });
+  }
 }
 
-async function persistChildViewConfig(
-  viewId: number,
-  nextSelectedIds: number[],
-) {
-  const config = mergeViewConfig(childViewConfig.value, {
-    selectedFieldIds: nextSelectedIds,
-  });
-
-  await store.saveViewConfig(viewId, config);
-  if (activeView.value?.id === viewId) {
-    childViewConfig.value = config;
-  }
-}
-
-async function onUpdateGroupingFieldId(fieldId: number | null) {
+async function saveChildViewFields(payload: {
+  selectedFieldIds: number[];
+  groupingFieldId: number | null;
+}) {
   const viewId = activeView.value?.id;
   if (!viewId || activeView.value?.is_default === 1) {
     return;
   }
 
-  const normalized = normalizeGroupingFieldId(fieldId) ?? undefined;
+  const nextSelectedIds =
+    payload.selectedFieldIds.length > 0
+      ? payload.selectedFieldIds
+      : sourceOrderedFields.value.map((field) => field.id);
+
   const config = mergeViewConfig(childViewConfig.value, {
-    groupingFieldId: normalized,
+    selectedFieldIds: nextSelectedIds,
+    groupingFieldId: normalizeGroupingFieldId(payload.groupingFieldId) ?? undefined,
     calendarDateFieldId: undefined,
     kanbanColumnOrder:
       activeView.value?.type === "kanban"
-        ? undefined
-        : childViewConfig.value?.kanbanColumnOrder,
+        ? childViewConfig.value?.kanbanColumnOrder
+        : undefined,
   });
 
   await store.saveViewConfig(viewId, config);
   if (activeView.value?.id === viewId) {
     childViewConfig.value = config;
   }
-}
-
-async function onToggleSelectedField(payload: {
-  id: number;
-  selected: boolean;
-}) {
-  const viewId = activeView.value?.id;
-  if (!viewId || activeView.value?.is_default === 1) {
-    return;
-  }
-
-  const baseIds = selectedFieldIds.value;
-  let nextIds = baseIds;
-
-  if (payload.selected) {
-    if (!baseIds.includes(payload.id)) {
-      nextIds = [...baseIds, payload.id];
-    }
-  } else {
-    nextIds = baseIds.filter((id) => id !== payload.id);
-  }
-
-  if (nextIds === baseIds) {
-    return;
-  }
-
-  if (nextIds.length === 0) {
-    nextIds = sourceOrderedFields.value.map((field) => field.id);
-  }
-
-  await persistChildViewConfig(viewId, nextIds);
-}
-
-async function onReorderSelectedFields(payload: {
-  draggedId: number;
-  targetId: number;
-}) {
-  const viewId = activeView.value?.id;
-  if (!viewId || activeView.value?.is_default === 1) {
-    return;
-  }
-
-  const baseIds = selectedFieldIds.value;
-  if (
-    !baseIds.includes(payload.draggedId) ||
-    !baseIds.includes(payload.targetId)
-  ) {
-    return;
-  }
-
-  const nextIds = baseIds.filter((id) => id !== payload.draggedId);
-  const targetIndex = nextIds.indexOf(payload.targetId);
-  if (targetIndex < 0) {
-    return;
-  }
-  nextIds.splice(targetIndex, 0, payload.draggedId);
-
-  await persistChildViewConfig(viewId, nextIds);
 }
 
 async function confirmDeleteItem(item: Item) {

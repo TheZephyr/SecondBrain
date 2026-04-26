@@ -189,6 +189,7 @@ describe("full archive export", () => {
     expect(books?.fields[0]).toEqual({
       name: "Title",
       type: "text",
+      description: null,
       orderIndex: 0,
       options: {
         defaultValue: "Untitled",

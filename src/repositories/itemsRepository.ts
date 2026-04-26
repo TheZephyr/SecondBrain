@@ -4,12 +4,14 @@ import type {
   BulkPatchItemsInput,
   DuplicateItemInput,
   GetItemsInput,
+  GetNumberFieldRangeInput,
   ImportCollectionInput,
   InsertItemAtInput,
   Item,
   MoveItemInput,
   NewItemInput,
   PaginatedItemsResult,
+  NumberFieldRange,
   ReorderItemsInput,
   UpdateItemInput,
 } from "../types/models";
@@ -113,5 +115,15 @@ export const itemsRepository = {
     const result = await window.electronAPI.importCollection(input);
     return handleIpc(result, "db:importCollection", false);
   },
-};
 
+  async getNumberFieldRange(
+    input: GetNumberFieldRangeInput,
+  ): Promise<NumberFieldRange> {
+    const result = await window.electronAPI.getNumberFieldRange(input);
+    return handleIpc(result, "db:getNumberFieldRange", {
+      min: null,
+      max: null,
+      count: 0,
+    } satisfies NumberFieldRange);
+  },
+};

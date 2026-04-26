@@ -53,6 +53,7 @@
           :itemsFullyLoaded="itemsFullyLoaded"
           :debouncedSearchQuery="debouncedSearchQuery"
           :orderedFields="orderedFields"
+          :numberFieldRanges="numberFieldRanges"
           :duplicateMap="duplicateMap"
           :loadNextPage="loadNextPage"
           @edit-item="emitEditItem"
@@ -97,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref, toRef } from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from "vue";
 import {
   getCoreRowModel,
   useVueTable,
@@ -115,7 +116,9 @@ import type {
   InsertItemAtInput,
   Item,
   MoveItemInput,
+  NumberFieldRange,
 } from "../../../types/models";
+import { itemsRepository } from "../../../repositories/itemsRepository";
 import { parseFieldOptions } from "../../../utils/fieldOptions";
 import { normalizeUniqueKey } from "../../../utils/fieldUnique";
 import type { MultiSortMeta } from "../types";
@@ -138,6 +141,7 @@ type RowContextMenuPayload = {
 };
 
 const props = defineProps<{
+  collectionId: number;
   viewId: number;
   items: Item[];
   itemsTotal: number;
@@ -149,6 +153,8 @@ const props = defineProps<{
   multiSortMeta: MultiSortMeta[];
   loadNextPage: () => Promise<void>;
 }>();
+
+const numberFieldRanges = ref<Record<number, NumberFieldRange>>({});
 
 const emit = defineEmits<{
   (e: "update:searchQuery", value: string): void;
@@ -230,6 +236,36 @@ const duplicateMap = computed(() => {
   return map;
 });
 
+async function loadNumberFieldRanges() {
+  const numberFields = props.orderedFields.filter((field) => {
+    if (field.type !== "number") {
+      return false;
+    }
+
+    const options = parseFieldOptions(field.type, field.options) as {
+      colorScale?: unknown;
+    };
+    return Boolean(options.colorScale);
+  });
+
+  if (numberFields.length === 0) {
+    numberFieldRanges.value = {};
+    return;
+  }
+
+  const entries = await Promise.all(
+    numberFields.map(async (field) => {
+      const range = await itemsRepository.getNumberFieldRange({
+        collectionId: props.collectionId,
+        fieldName: field.name,
+      });
+      return [field.id, range] as const;
+    }),
+  );
+
+  numberFieldRanges.value = Object.fromEntries(entries);
+}
+
 const contextMenuOpen = ref(false);
 const contextMenuRow = ref<Item | null>(null);
 const contextMenuRowIndex = ref<number | null>(null);
@@ -305,6 +341,14 @@ onMounted(() => {
   window.addEventListener("click", handleWindowClick);
   window.addEventListener("scroll", handleWindowClick, true);
 });
+
+watch(
+  () => [props.collectionId, props.orderedFields] as const,
+  () => {
+    void loadNumberFieldRanges();
+  },
+  { immediate: true, deep: true },
+);
 
 onBeforeUnmount(() => {
   window.removeEventListener("click", handleWindowClick);

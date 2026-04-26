@@ -53,10 +53,12 @@
         :key="String(column.key)"
         :column="column"
         :viewOrderedFields="orderedFields"
+        :numberFieldRanges="numberFieldRanges"
         :isUncategorized="column.key === null"
         :colorOptions="groupingOptions"
         @add-item="onAddItem"
         @edit-item="emit('edit-item', $event)"
+        @update-item="emit('update-item', $event)"
         @card-drop="onCardDrop"
         @column-drop="onColumnDrop"
       />
@@ -65,19 +67,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef } from "vue";
+import { computed, ref, toRef, watch } from "vue";
 import type {
   Field,
   Item,
   ItemData,
   ItemSortSpec,
   ViewConfig,
+  NumberFieldRange,
 } from "../../../types/models";
 import type { LoadItemsOptions } from "../../../composables/collection/useCollectionItemsQuery";
 import { useCollectionKanban } from "../../../composables/collection/kanban/useCollectionKanban";
+import { itemsRepository } from "../../../repositories/itemsRepository";
+import { parseFieldOptions } from "../../../utils/fieldOptions";
 import CollectionKanbanColumn from "./CollectionKanbanColumn.vue";
 
 const props = defineProps<{
+  collectionId: number;
   viewId: number;
   items: Item[];
   itemsLoading: boolean;
@@ -94,9 +100,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "edit-item", value: Item): void;
   (e: "add-item", value: ItemData): void;
+  (e: "update-item", value: { id: number; data: Item["data"] }): void;
 }>();
 
 const boardRef = ref<HTMLElement | null>(null);
+const numberFieldRanges = ref<Record<number, NumberFieldRange>>({});
 
 const {
   selectFields,
@@ -164,6 +172,36 @@ function onAddItem(columnKey: string | null) {
   });
 }
 
+async function loadNumberFieldRanges() {
+  const numberFields = props.orderedFields.filter((field) => {
+    if (field.type !== "number") {
+      return false;
+    }
+
+    const options = parseFieldOptions(field.type, field.options) as {
+      colorScale?: unknown;
+    };
+    return Boolean(options.colorScale);
+  });
+
+  if (numberFields.length === 0) {
+    numberFieldRanges.value = {};
+    return;
+  }
+
+  const entries = await Promise.all(
+    numberFields.map(async (field) => {
+      const range = await itemsRepository.getNumberFieldRange({
+        collectionId: props.collectionId,
+        fieldName: field.name,
+      });
+      return [field.id, range] as const;
+    }),
+  );
+
+  numberFieldRanges.value = Object.fromEntries(entries);
+}
+
 function onColumnDrop(payload: { fromKey: string; toKey: string }) {
   void reorderColumns(payload.fromKey, payload.toKey);
 }
@@ -203,4 +241,12 @@ function onCardDrop(payload: {
 
   void moveItemToColumn(item, payload.targetColumnKey, payload.afterItemId);
 }
+
+watch(
+  () => [props.collectionId, props.orderedFields] as const,
+  () => {
+    void loadNumberFieldRanges();
+  },
+  { immediate: true, deep: true },
+);
 </script>

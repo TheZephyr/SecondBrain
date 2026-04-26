@@ -59,17 +59,20 @@
       </div>
     </template>
     <template v-else-if="field?.type === 'rating' && ratingMax > 0">
-      <div class="flex w-full min-w-0 items-center overflow-hidden">
-        <component
-          v-for="index in ratingMax"
-          :key="index"
-          :is="ratingIconComponent"
-          :size="16"
-          :fill="index <= ratingValue ? ratingColor : 'transparent'"
-          :stroke-width="index <= ratingValue ? 0 : 1.5"
-          :class="index <= ratingValue ? ratingFilledClass : 'text-[var(--text-muted)]'"
-        />
-      </div>
+      <InteractiveRatingInput
+        :modelValue="ratingValue"
+        :icon="ratingIcon"
+        :color="ratingColor"
+        :valueColors="ratingValueColors"
+        :max="ratingMax"
+        :filledClass="ratingFilledClass"
+        @update:modelValue="commitRatingValue"
+      />
+    </template>
+    <template v-else-if="field?.type === 'number' && numberShowAsChip && displayText !== '-'">
+      <span class="inline-flex h-5 items-center rounded-full border px-2 py-3 text-base leading-none" :style="numberChipStyle">
+        {{ displayText }}
+      </span>
     </template>
     <template v-else>
       <span class="block w-full truncate" :class="field?.type === 'number' ? 'text-right' : ''" :style="displayStyle">
@@ -83,10 +86,16 @@
 import { computed, inject, ref } from "vue";
 import * as icons from "lucide-vue-next";
 import { Link } from "lucide-vue-next";
-import type { BooleanIcon, DateFieldOptions, Field, ItemDataValue, RatingFieldOptions } from "../../../types/models";
+import InteractiveRatingInput from "@/components/collections/InteractiveRatingInput.vue";
+import type { BooleanIcon, DateFieldOptions, Field, ItemDataValue, NumberFieldOptions, NumberFieldRange, RatingFieldOptions } from "../../../types/models";
 import { systemRepository } from "../../../repositories/systemRepository";
-import { formatDateWithFieldOptions, parseDateValue } from "../../../utils/date";
-import { parseFieldOptions } from "../../../utils/fieldOptions";
+import { formatDateWithFieldOptions } from "../../../utils/date";
+import { formatNumberWithFieldOptions, resolveDateHighlightStyle, resolveNumberColorScaleStyle } from "../../../utils/fieldPresentation";
+import {
+  getRatingValueColor,
+  getSelectChoiceColor,
+  parseFieldOptions,
+} from "../../../utils/fieldOptions";
 import { normalizeUniqueKey } from "../../../utils/fieldUnique";
 import { parseBooleanValue, parseMultiselectValue, parseRatingValue } from "../../../utils/fieldValues";
 import { getChipStyle } from "../../../utils/selectChip";
@@ -99,6 +108,7 @@ const props = defineProps<{
   rowIndex: number;
   rowIds: number[];
   orderedFields: Field[];
+  numberFieldRange?: NumberFieldRange;
   duplicateMap?: Map<string, Set<string>>;
 }>();
 
@@ -115,14 +125,23 @@ const cellRef = ref<HTMLElement | null>(null);
 
 const fieldOptions = computed(() => (props.field ? parseFieldOptions(props.field.type, props.field.options) : null));
 const dateOptions = computed<DateFieldOptions>(() => (fieldOptions.value ?? {}) as DateFieldOptions);
+const numberOptions = computed(() => (fieldOptions.value ?? {}) as NumberFieldOptions);
 const ratingFieldOptions = computed<RatingFieldOptions>(() => (fieldOptions.value ?? {}) as RatingFieldOptions);
 const selectOptions = computed(() => ((fieldOptions.value as { choices?: string[] } | null)?.choices ?? []));
 const ratingMin = computed(() => (Number.isFinite(ratingFieldOptions.value.min) ? Number(ratingFieldOptions.value.min) : 0));
 const ratingMax = computed(() => Math.max(Number.isFinite(ratingFieldOptions.value.max) ? Number(ratingFieldOptions.value.max) : 5, ratingMin.value));
-const ratingColor = computed(() => ratingFieldOptions.value.color ?? "currentColor");
 const ratingValue = computed(() => parseRatingValue(props.value ?? null) ?? 0);
-const ratingIconComponent = computed(() => booleanIconMap[(ratingFieldOptions.value.icon ?? "star") as BooleanIcon]);
+const ratingIcon = computed(() => (ratingFieldOptions.value.icon ?? "star") as BooleanIcon);
+const ratingValueColors = computed(() => ratingFieldOptions.value.optionColors ?? {});
+const ratingColor = computed(() =>
+  props.field
+    ? getRatingValueColor(props.field, ratingValue.value) ??
+      ratingFieldOptions.value.color ??
+      "currentColor"
+    : ratingFieldOptions.value.color ?? "currentColor",
+);
 const booleanIconComponent = computed(() => booleanIconMap[((fieldOptions.value as { icon?: BooleanIcon })?.icon ?? "square") as BooleanIcon]);
+const numberShowAsChip = computed(() => Boolean(numberOptions.value.showAsChip));
 
 const displayText = computed(() => {
   const field = props.field;
@@ -132,20 +151,10 @@ const displayText = computed(() => {
   if (field.type === "date") {
     return formatDateWithFieldOptions(value, dateOptions.value);
   }
+  if (field.type === "number") {
+    return formatNumberWithFieldOptions(value, numberOptions.value);
+  }
   return value;
-});
-
-const shouldHighlightDate = computed(() => {
-  const field = props.field;
-  if (!field || field.type !== "date") return false;
-  const highlight = dateOptions.value.highlight;
-  if (!highlight || !highlight.type || !highlight.date || !highlight.color) return false;
-
-  const valueDate = parseDateValue(props.value ?? null);
-  const compareDate = parseDateValue(highlight.date);
-  if (!valueDate || !compareDate) return false;
-
-  return highlight.type === "<" ? valueDate.getTime() < compareDate.getTime() : valueDate.getTime() > compareDate.getTime();
 });
 
 const uniqueKey = computed(() => (props.field ? normalizeUniqueKey(props.field, props.value ?? null) : null));
@@ -158,20 +167,46 @@ const displayStyle = computed(() => {
   if (isDuplicate.value) {
     return { color: "var(--danger)" };
   }
-  if (shouldHighlightDate.value) {
-    return { color: dateOptions.value.highlight?.color ?? undefined };
+  if (props.field?.type === "date") {
+    return resolveDateHighlightStyle(props.value ?? null, dateOptions.value);
+  }
+  if (props.field?.type === "number") {
+    return resolveNumberColorScaleStyle(
+      props.value ?? null,
+      numberOptions.value,
+      props.numberFieldRange,
+    );
   }
   return {};
 });
 
 const ratingFilledClass = computed(() => (isDuplicate.value ? "text-[var(--danger)]" : "text-[var(--primary)]"));
-const chipStyle = computed(() => getChipStyle(String(displayText.value), selectOptions.value));
+const chipStyle = computed(() =>
+  getChipStyle(
+    String(displayText.value),
+    selectOptions.value,
+    props.field
+      ? { [String(displayText.value)]: getSelectChoiceColor(props.field, String(displayText.value)) ?? "" }
+      : undefined,
+  ),
+);
+const numberChipStyle = computed(() =>
+  resolveNumberColorScaleStyle(
+    props.value ?? null,
+    numberOptions.value,
+    props.numberFieldRange,
+  ),
+);
 const multiselectDisplay = computed(() => parseMultiselectValue(props.value ?? null));
 const isSelected = computed(() => (props.field ? selectionContext.isSelected(props.rowId, props.field.name) : false));
 const booleanValue = computed(() => parseBooleanValue(props.value ?? null));
 
 function getMultiChipStyle(option: string) {
-  return getChipStyle(option, selectOptions.value);
+  return getChipStyle(
+    option,
+    selectOptions.value,
+    props.field ? { [option]: getSelectChoiceColor(props.field, option) ?? "" } : undefined,
+  );
 }
 
 function onSelect() {
@@ -188,6 +223,9 @@ function onDoubleClick() {
     toggleBoolean();
     return;
   }
+  if (props.field.type === "rating") {
+    return;
+  }
 
   editingContext.startEdit(props.rowId, props.field.name, cellRef.value);
 }
@@ -196,6 +234,12 @@ function toggleBoolean() {
   if (!props.field) return;
   editingContext.startEdit(props.rowId, props.field.name, cellRef.value);
   void editingContext.commitEdit(booleanValue.value ? "0" : "1");
+}
+
+function commitRatingValue(value: number | null) {
+  if (!props.field) return;
+  editingContext.startEdit(props.rowId, props.field.name, cellRef.value);
+  void editingContext.commitEdit(value);
 }
 
 async function openExternal(url: string) {

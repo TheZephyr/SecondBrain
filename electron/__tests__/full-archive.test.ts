@@ -39,6 +39,7 @@ function createTestDatabase(): Database.Database {
       collection_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
+      description TEXT DEFAULT NULL,
       options TEXT,
       order_index INTEGER DEFAULT 0,
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
@@ -90,18 +91,20 @@ function insertField(
     collectionId: number;
     name: string;
     type: string;
+    description?: string | null;
     options: string | null;
     orderIndex: number;
   },
 ): number {
   const info = database
     .prepare(
-      "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO fields (collection_id, name, type, description, options, order_index) VALUES (?, ?, ?, ?, ?, ?)",
     )
     .run(
       input.collectionId,
       input.name,
       input.type,
+      input.description ?? null,
       input.options,
       input.orderIndex,
     );
@@ -443,6 +446,9 @@ describe("full archive export", () => {
       });
       expect(fieldsByName.get("Count")?.options).toEqual({
         defaultValue: 12,
+        showAsChip: false,
+        showThousandsSeparator: false,
+        colorScale: null,
         uniqueCheck: true,
       });
       expect(fieldsByName.get("CountCopy")?.options).toEqual({
@@ -564,6 +570,7 @@ describe("full archive restore", () => {
                 orderIndex: 2,
                 options: {
                   choices: ["Sci-Fi", "Classic"],
+                  optionColors: {},
                   defaultValue: ["Sci-Fi"],
                   uniqueCheck: true,
                 },
@@ -595,6 +602,9 @@ describe("full archive restore", () => {
                 orderIndex: 5,
                 options: {
                   defaultValue: 12,
+                  showAsChip: false,
+                  showThousandsSeparator: false,
+                  colorScale: null,
                   uniqueCheck: true,
                 },
               },

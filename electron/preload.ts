@@ -55,6 +55,7 @@ const electronAPI: IElectronAPI = {
 
   // Items
   getItems: (input) => invoke("db:getItems", input),
+  getNumberFieldRange: (input) => invoke("db:getNumberFieldRange", input),
   addItem: (item) => invoke("db:addItem", item),
   insertItemAt: (input) => invoke("db:insertItemAt", input),
   duplicateItem: (input) => invoke("db:duplicateItem", input),

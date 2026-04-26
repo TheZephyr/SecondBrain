@@ -283,6 +283,7 @@ export const useCollectionsStore = defineStore("collections", () => {
       collection_id: field.collectionId,
       name: field.name,
       type: field.type,
+      description: field.description ?? null,
       options: field.options,
       order_index: field.orderIndex ?? 0,
     };

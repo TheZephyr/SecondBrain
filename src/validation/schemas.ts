@@ -17,6 +17,17 @@ export const fieldNameSchema = z
   })
   .transform((value) => normalizeFieldName(value));
 
+export const fieldDescriptionSchema = z
+  .union([z.string().max(2000), z.null(), z.undefined()])
+  .transform((value) => {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  });
+
 export const positiveIntSchema = z.number().int().positive();
 export const orderIndexSchema = z.number().int().min(0);
 export const nonNegativeIntSchema = z.number().int().min(0);
@@ -173,6 +184,7 @@ export const NewFieldInputSchema = z.object({
   collectionId: positiveIntSchema,
   name: fieldNameSchema,
   type: fieldTypeSchema,
+  description: fieldDescriptionSchema.optional(),
   options: z.string().nullable(),
   orderIndex: orderIndexSchema.optional(),
 });
@@ -181,8 +193,14 @@ export const UpdateFieldInputSchema = z.object({
   id: positiveIntSchema,
   name: fieldNameSchema,
   type: fieldTypeSchema,
+  description: fieldDescriptionSchema.optional(),
   options: z.string().nullable(),
   orderIndex: orderIndexSchema.optional(),
+});
+
+export const GetNumberFieldRangeInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  fieldName: fieldNameSchema,
 });
 
 export const FieldOrderUpdateSchema = z.object({

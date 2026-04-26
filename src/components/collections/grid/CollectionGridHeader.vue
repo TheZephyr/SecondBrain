@@ -32,6 +32,7 @@
               class="flex-shrink-0 text-[var(--text-muted)]"
             />
             <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
+            <FieldDescriptionHint :description="headerMeta(header)?.field?.description" />
           </span>
           <span v-if="getSortEntry(headerMeta(header)?.field)" class="flex items-center gap-1 text-[var(--text-muted)]">
             <ChevronUp v-if="getSortEntry(headerMeta(header)?.field)?.order === 1" :size="12" />
@@ -61,6 +62,7 @@ import type { Header, HeaderGroup } from "@tanstack/vue-table";
 import * as icons from "lucide-vue-next";
 import { ChevronDown, ChevronUp, Plus } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
+import FieldDescriptionHint from "@/components/collections/FieldDescriptionHint.vue";
 import { FIELD_TYPE_META, type Field } from "../../../types/models";
 import type { MultiSortMeta } from "../types";
 import type { GridColumnMeta, GridRow } from "./types";

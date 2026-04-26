@@ -7,6 +7,7 @@ export type MultiSortMeta = { field: string; order: 1 | -1 }
 export type FieldDraftInput = {
   name: string
   type: FieldType
+  description?: string | null
   options: FieldOptions
 }
 

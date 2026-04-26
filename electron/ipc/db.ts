@@ -2,6 +2,7 @@ import { shell } from "electron";
 import type {
   ItemData,
   GetItemsInput,
+  GetNumberFieldRangeInput,
   NewCollectionInput,
   NewViewInput,
   UpdateViewInput,
@@ -41,6 +42,7 @@ import {
   BulkPatchItemsInputSchema,
   ImportCollectionInputSchema,
   GetItemsInputSchema,
+  GetNumberFieldRangeInputSchema,
   itemDataSchema,
   ReorderItemsInputSchema,
   positiveIntSchema,
@@ -236,6 +238,22 @@ handleIpc("db:getItems", async (_, input: GetItemsInput) => {
     items: parsedItems,
   };
 });
+
+handleIpc(
+  "db:getNumberFieldRange",
+  async (_, input: GetNumberFieldRangeInput) => {
+    const parsedInput = parseOrThrow(
+      GetNumberFieldRangeInputSchema,
+      input,
+      "db:getNumberFieldRange",
+    );
+
+    return invokeDbWorker({
+      type: "getNumberFieldRange",
+      input: parsedInput,
+    });
+  },
+);
 
 handleIpc("db:addItem", async (_, item: NewItemInput) => {
   const input = parseOrThrow(NewItemInputSchema, item, "db:addItem");

@@ -93,7 +93,7 @@
                 :key="index"
                 :is="ratingIconComponent"
                 :size="16"
-                :fill="index <= option.value ? ratingColor : 'transparent'"
+                :fill="index <= option.value ? getRatingColor(option.value) : 'transparent'"
                 :stroke-width="index <= option.value ? 0 : 1.5"
                 :class="index <= option.value ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
               />
@@ -195,6 +195,7 @@ const ratingMax = computed(() => {
 })
 
 const ratingColor = computed(() => ratingFieldOptions.value.color ?? 'currentColor')
+const ratingValueColors = computed(() => ratingFieldOptions.value.optionColors ?? {})
 
 const ratingIconComponent = computed(() => {
   const icon = (ratingFieldOptions.value.icon ?? 'star') as BooleanIcon
@@ -302,6 +303,17 @@ function resolveEditValue(value: ItemDataValue | null, field: Field): EditValue 
   }
 
   return value ?? ''
+}
+
+function getRatingColor(value: number | null): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const optionColor = ratingValueColors.value[String(value)]
+    if (typeof optionColor === 'string' && optionColor.trim().length > 0) {
+      return optionColor
+    }
+  }
+
+  return ratingColor.value
 }
 
 function updateOverlayPosition() {

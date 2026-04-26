@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="mb-2 text-base font-semibold uppercase text-[var(--text-muted)]">Options</div>
-    <div class="space-y-2">
-      <div v-for="(choice, index) in choices" :key="index" class="space-y-1">
+    <div class="space-y-3">
+      <div v-for="(choice, index) in choices" :key="index" class="space-y-2 rounded-md border border-[var(--border-color)] p-3">
         <div class="flex items-center gap-2">
           <AppInput :modelValue="choice" class="flex-1" @update:modelValue="value => updateChoice(index, value)" />
           <AppButton
@@ -16,6 +16,32 @@
             </template>
           </AppButton>
         </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            type="color"
+            :value="normalizeColor(getChoiceColor(choice))"
+            class="h-9 w-12 cursor-pointer rounded-md border border-[var(--border-color)] bg-transparent p-1"
+            @input="event => updateChoiceColor(choice, (event.target as HTMLInputElement).value)"
+          />
+          <AppInput
+            :modelValue="getChoiceColor(choice)"
+            placeholder="#000000"
+            class="w-32"
+            @update:modelValue="value => updateChoiceColor(choice, value ?? '')"
+          />
+          <button
+            v-for="color in paletteColors"
+            :key="`${choice}-${color}`"
+            type="button"
+            class="size-6 rounded-full border border-[var(--border-color)]"
+            :style="{ backgroundColor: color }"
+            :title="color"
+            @click="updateChoiceColor(choice, color)"
+          />
+          <AppButton text class="h-8 px-2" @click="clearChoiceColor(choice)">Clear</AppButton>
+        </div>
+
         <div
           v-if="confirmingChoice === choice"
           class="rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-2 text-base"
@@ -58,10 +84,22 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: FieldOptions): void;
 }>();
 
+const paletteColors = [
+  "#ef4444",
+  "#f97316",
+  "#f59e0b",
+  "#84cc16",
+  "#10b981",
+  "#06b6d4",
+  "#3b82f6",
+  "#a855f7",
+];
+
 const confirmingChoice = ref<string | null>(null);
 const confirmingCount = ref(0);
 
 const choices = computed(() => props.modelValue.choices ?? []);
+const optionColors = computed(() => props.modelValue.optionColors ?? {});
 const selectDefault = computed(() => (props.modelValue as SelectFieldOptions).defaultValue ?? null);
 const multiselectDefault = computed(() => (props.modelValue as MultiselectFieldOptions).defaultValue ?? []);
 
@@ -69,12 +107,31 @@ function emitOptions(next: FieldOptions) {
   emit("update:modelValue", next);
 }
 
+function normalizeColor(value: string) {
+  return /^#[\da-fA-F]{6}$/.test(value.trim()) ? value.trim() : "#000000";
+}
+
+function getChoiceColor(choice: string) {
+  return optionColors.value[choice] ?? "";
+}
+
 function updateChoice(index: number, value: string | null | undefined) {
   const nextValue = value ?? "";
-  const next = [...choices.value];
-  const previous = next[index];
-  next[index] = nextValue;
-  let nextOptions: FieldOptions = { ...props.modelValue, choices: next } as FieldOptions;
+  const nextChoices = [...choices.value];
+  const previous = nextChoices[index];
+  nextChoices[index] = nextValue;
+  const nextOptionColors = { ...optionColors.value };
+
+  if (previous !== nextValue && nextOptionColors[previous]) {
+    nextOptionColors[nextValue] = nextOptionColors[previous] as string;
+    delete nextOptionColors[previous];
+  }
+
+  let nextOptions: FieldOptions = {
+    ...props.modelValue,
+    choices: nextChoices,
+    optionColors: nextOptionColors,
+  } as FieldOptions;
 
   if (props.type === "select" && selectDefault.value === previous) {
     nextOptions = { ...nextOptions, defaultValue: nextValue || null } as FieldOptions;
@@ -92,7 +149,31 @@ function updateChoice(index: number, value: string | null | undefined) {
 }
 
 function addChoice() {
-  emitOptions({ ...props.modelValue, choices: [...choices.value, ""] } as FieldOptions);
+  emitOptions({
+    ...props.modelValue,
+    choices: [...choices.value, ""],
+    optionColors: { ...optionColors.value },
+  } as FieldOptions);
+}
+
+function updateChoiceColor(choice: string, value: string | null | undefined) {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  const nextOptionColors = { ...optionColors.value };
+
+  if (!trimmed) {
+    delete nextOptionColors[choice];
+  } else {
+    nextOptionColors[choice] = trimmed;
+  }
+
+  emitOptions({
+    ...props.modelValue,
+    optionColors: nextOptionColors,
+  } as FieldOptions);
+}
+
+function clearChoiceColor(choice: string) {
+  updateChoiceColor(choice, "");
 }
 
 function requestRemoveChoice(choice: string) {
@@ -124,8 +205,15 @@ function cancelRemoveChoice() {
 }
 
 function removeChoice(choice: string) {
-  const next = choices.value.filter((option) => option !== choice);
-  let nextOptions: FieldOptions = { ...props.modelValue, choices: next } as FieldOptions;
+  const nextChoices = choices.value.filter((option) => option !== choice);
+  const nextOptionColors = { ...optionColors.value };
+  delete nextOptionColors[choice];
+
+  let nextOptions: FieldOptions = {
+    ...props.modelValue,
+    choices: nextChoices,
+    optionColors: nextOptionColors,
+  } as FieldOptions;
 
   if (props.type === "select" && selectDefault.value === choice) {
     nextOptions = { ...nextOptions, defaultValue: null } as FieldOptions;

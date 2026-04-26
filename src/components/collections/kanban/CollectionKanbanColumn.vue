@@ -42,7 +42,14 @@
 
       <template v-for="(item, index) in column.items" :key="item.id">
         <div v-if="dropIndicatorIndex === index" class="h-0.5 w-full rounded bg-[var(--accent-primary)]" />
-        <CollectionKanbanCard :item="item" :viewOrderedFields="viewOrderedFields" @edit="emit('edit-item', $event)" @drag-start="onCardDragStart" />
+        <CollectionKanbanCard
+          :item="item"
+          :viewOrderedFields="viewOrderedFields"
+          :numberFieldRanges="numberFieldRanges"
+          @edit="emit('edit-item', $event)"
+          @update-item="emit('update-item', $event)"
+          @drag-start="onCardDragStart"
+        />
       </template>
       <div v-if="dropIndicatorIndex === column.items.length" class="h-0.5 w-full rounded bg-[var(--accent-primary)]" />
     </div>
@@ -54,13 +61,14 @@ import { computed, ref } from "vue";
 import { GripVertical, Plus } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
 import type { KanbanColumn } from "../../../composables/collection/kanban/useCollectionKanban";
-import type { Field, Item } from "../../../types/models";
+import type { Field, Item, NumberFieldRange } from "../../../types/models";
 import { getChipStyle } from "../../../utils/selectChip";
 import CollectionKanbanCard from "./CollectionKanbanCard.vue";
 
 const props = defineProps<{
   column: KanbanColumn;
   viewOrderedFields: Field[];
+  numberFieldRanges: Record<number, NumberFieldRange>;
   isUncategorized: boolean;
   colorOptions: string[];
 }>();
@@ -68,6 +76,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "add-item", value: string | null): void;
   (e: "edit-item", value: Item): void;
+  (e: "update-item", value: { id: number; data: Item["data"] }): void;
   (e: "card-drop", value: { itemId: number; targetColumnKey: string | null; afterItemId?: number | null }): void;
   (e: "column-drop", value: { fromKey: string; toKey: string }): void;
 }>();

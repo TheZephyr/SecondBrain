@@ -1,6 +1,7 @@
 import type {
   ImportCollectionInput,
   GetItemsInput,
+  GetNumberFieldRangeInput,
   NewCollectionInput,
   NewViewInput,
   UpdateViewInput,
@@ -41,6 +42,7 @@ export type DbWorkerOperation =
   | { type: "reorderFields"; input: ReorderFieldsInput }
   | { type: "deleteField"; id: number }
   | { type: "getItems"; input: GetItemsInput }
+  | { type: "getNumberFieldRange"; input: GetNumberFieldRangeInput }
   | { type: "addItem"; input: NewItemInput }
   | { type: "insertItemAt"; input: InsertItemAtInput }
   | { type: "duplicateItem"; input: DuplicateItemInput }

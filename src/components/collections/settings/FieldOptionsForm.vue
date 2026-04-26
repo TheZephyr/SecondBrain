@@ -5,6 +5,11 @@
       :modelValue="modelValue as DateFieldOptions"
       @update:modelValue="onUpdate"
     />
+    <FieldOptionsNumber
+      v-else-if="type === 'number'"
+      :modelValue="modelValue as NumberFieldOptions"
+      @update:modelValue="onUpdate"
+    />
     <FieldOptionsSelect
       v-else-if="type === 'select' || type === 'multiselect'"
       :modelValue="modelValue as SelectFieldOptions | MultiselectFieldOptions"
@@ -23,6 +28,15 @@
       :modelValue="modelValue as BooleanFieldOptions"
       @update:modelValue="onUpdate"
     />
+    <template v-else-if="type === 'longtext'">
+      <div class="flex items-center justify-between gap-2">
+        <div class="text-base text-[var(--text-secondary)]">Enable rich text</div>
+        <AppSwitch
+          :modelValue="Boolean((modelValue as LongTextFieldOptions).richText)"
+          @update:modelValue="value => emitOptions({ ...props.modelValue, richText: value })"
+        />
+      </div>
+    </template>
 
     <template v-if="type !== 'boolean'">
       <div class="flex items-center justify-between gap-2">
@@ -41,12 +55,15 @@ import type {
   DateFieldOptions,
   FieldOptions,
   FieldType,
+  LongTextFieldOptions,
   MultiselectFieldOptions,
+  NumberFieldOptions,
   RatingFieldOptions,
   SelectFieldOptions,
 } from "../../../types/models";
 import FieldOptionsBoolean from "./FieldOptionsBoolean.vue";
 import FieldOptionsDate from "./FieldOptionsDate.vue";
+import FieldOptionsNumber from "./FieldOptionsNumber.vue";
 import FieldOptionsRating from "./FieldOptionsRating.vue";
 import FieldOptionsSelect from "./FieldOptionsSelect.vue";
 

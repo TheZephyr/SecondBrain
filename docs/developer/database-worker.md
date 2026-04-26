@@ -26,6 +26,8 @@ This page covers the SQLite schema, worker execution model, and transaction-heav
 - `items`
 - `items_fts` virtual table when FTS is available
 
+The `fields` table now includes a nullable `description` column. Schema upgrades use `PRAGMA user_version` migrations in `electron/db/init.ts`, and startup also repairs missing columns defensively for older databases that already have a stale version marker.
+
 The same file also enables important SQLite pragmas:
 
 - WAL mode
@@ -39,6 +41,7 @@ The same file also enables important SQLite pragmas:
 Operations include:
 
 - CRUD for collections, views, fields, and items
+- field-range aggregation for number presentation
 - paginated item queries with search and sort
 - reorder and bulk mutation operations
 - collection import
@@ -72,6 +75,7 @@ Item queries are intentionally backend-driven.
 - Renderer sends `collectionId`, `limit`, `offset`, optional search, and sort.
 - Worker resolves field metadata and builds safe SQL.
 - Total count and page data are returned together.
+- Number color-scale UI uses a separate worker aggregate query to fetch min/max for one numeric field across the full collection.
 
 This avoids loading the full collection into the renderer just to search or sort.
 

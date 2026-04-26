@@ -36,7 +36,7 @@ The bridge includes grouped methods for:
 - collections
 - views and view config
 - fields
-- items and bulk mutations
+- items, bulk mutations, and numeric field range lookup
 - collection import/export file helpers
 - backups
 - full archive export, preview, and restore

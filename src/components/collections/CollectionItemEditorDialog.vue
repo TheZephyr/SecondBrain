@@ -15,7 +15,10 @@
           :class="field.type === 'longtext' ? 'md:col-span-2' : ''"
         >
           <FieldLabel :for="getFieldInputId(field)" :class="labelClass(field)">
-            {{ field.name }}
+            <span class="inline-flex items-center gap-1">
+              <span>{{ field.name }}</span>
+              <FieldDescriptionHint :description="field.description" />
+            </span>
           </FieldLabel>
 
           <AppInput
@@ -74,7 +77,7 @@
                       v-for="option in getMultiselectValue(field.name)"
                       :key="option"
                       class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
-                      :style="getChipStyle(option, getSelectChoices(field))"
+                      :style="getChipStyle(option, getSelectChoices(field), getOptionColors(field))"
                     >
                       {{ option }}
                     </span>
@@ -137,14 +140,15 @@
             </button>
           </div>
 
-          <AppSelect
+          <InteractiveRatingInput
             v-else-if="field.type === 'rating'"
             :modelValue="getRatingValue(field.name)"
-            :options="getRatingOptions(field)"
-            optionLabel="label"
-            optionValue="value"
-            class="w-full"
-            @update:modelValue="value => setRatingValue(field.name, typeof value === 'number' ? value : null)"
+            :icon="getRatingIcon(field)"
+            :color="getRatingColor(field)"
+            :valueColors="getRatingValueColors(field)"
+            :max="getRatingMax(field)"
+            :size="18"
+            @update:modelValue="value => setRatingValue(field.name, value)"
           />
         </Field>
       </div>
@@ -168,6 +172,8 @@ import AppInput from "@/components/app/ui/AppInput.vue";
 import AppNumberField from "@/components/app/ui/AppNumberField.vue";
 import AppSelect from "@/components/app/ui/AppSelect.vue";
 import AppTextarea from "@/components/app/ui/AppTextarea.vue";
+import FieldDescriptionHint from "@/components/collections/FieldDescriptionHint.vue";
+import InteractiveRatingInput from "@/components/collections/InteractiveRatingInput.vue";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -176,7 +182,11 @@ import { useFieldUniqueCheck } from "../../composables/collection/useFieldUnique
 import { systemRepository } from "../../repositories/systemRepository";
 import type { BooleanIcon, Field as ItemField, Item, ItemData, RatingFieldOptions } from "../../types/models";
 import { formatDateForStorage, parseDateValue } from "../../utils/date";
-import { getSelectChoices, parseFieldOptions } from "../../utils/fieldOptions";
+import {
+  getSelectChoices,
+  getSelectOptionColors,
+  parseFieldOptions,
+} from "../../utils/fieldOptions";
 import { getChipStyle } from "../../utils/selectChip";
 import type { ItemEditorSavePayload } from "./types";
 
@@ -297,18 +307,26 @@ function getRatingMax(field: ItemField) {
   return Math.max(Number.isFinite(options.max) ? Number(options.max) : 5, getRatingMin(field));
 }
 
-function getRatingOptions(field: ItemField) {
-  const options: Array<{ label: string; value: number | null }> = [{ label: "None", value: null }];
-  const min = getRatingMin(field);
-  const max = getRatingMax(field);
-  for (let i = min; i <= max; i += 1) {
-    options.push({ label: `${i} / ${max} *`, value: i });
-  }
-  return options;
-}
-
 function getBooleanIcon(field: ItemField) {
   return booleanIconMap[((parseFieldOptions(field.type, field.options) as { icon?: BooleanIcon }).icon ?? "square") as BooleanIcon];
+}
+
+function getRatingColor(field: ItemField) {
+  return (parseFieldOptions(field.type, field.options) as RatingFieldOptions).color ?? "currentColor";
+}
+
+function getRatingValueColors(field: ItemField) {
+  return (
+    parseFieldOptions(field.type, field.options) as RatingFieldOptions
+  ).optionColors ?? {};
+}
+
+function getRatingIcon(field: ItemField) {
+  return ((parseFieldOptions(field.type, field.options) as RatingFieldOptions).icon ?? "star") as BooleanIcon;
+}
+
+function getOptionColors(field: ItemField) {
+  return getSelectOptionColors(field);
 }
 
 function toggleMultiselectOption(fieldName: string, option: string) {

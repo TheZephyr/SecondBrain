@@ -55,6 +55,7 @@
           :rowIndex="rowIndex"
           :rowIds="rowIds"
           :orderedFields="orderedFields"
+          :numberFieldRange="cellMeta(cell)?.field ? numberFieldRanges[cellMeta(cell)?.field?.id ?? 0] : undefined"
           :duplicateMap="duplicateMap"
         />
       </template>
@@ -67,7 +68,7 @@ import { computed } from "vue";
 import type { Cell, Row } from "@tanstack/vue-table";
 import { ChevronRight } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
-import type { Field, Item, ItemDataValue } from "../../../types/models";
+import type { Field, Item, ItemDataValue, NumberFieldRange } from "../../../types/models";
 import type { GridColumnMeta, GridRow } from "./types";
 import CollectionGridCell from "./CollectionGridCell.vue";
 
@@ -83,6 +84,7 @@ const props = defineProps<{
   gridTemplateColumns: string;
   orderedFields: Field[];
   rowIds: number[];
+  numberFieldRanges: Record<number, NumberFieldRange>;
   duplicateMap: Map<string, Set<string>>;
   isSelected: boolean;
 }>();

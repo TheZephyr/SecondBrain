@@ -21,7 +21,7 @@
           class="absolute left-0 top-0 w-full" :style="{ transform: `translateY(${virtualRow.start}px)` }">
           <CollectionGridRow :row="rowAt(virtualRow.index)" :virtualIndex="virtualRow.index"
             :rowIndex="virtualRow.index" :totalRows="rows.length" :gridTemplateColumns="gridTemplateColumns"
-            :orderedFields="orderedFields" :rowIds="rowIds" :duplicateMap="duplicateMap"
+            :orderedFields="orderedFields" :rowIds="rowIds" :duplicateMap="duplicateMap" :numberFieldRanges="numberFieldRanges"
             :isSelected="isRowSelected(rowAt(virtualRow.index).original.id)" @edit-item="$emit('edit-item', $event)"
             @row-contextmenu="$emit('row-contextmenu', $event)" @toggle-row-selection="onToggleRowSelection" />
         </div>
@@ -45,7 +45,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Row } from '@tanstack/vue-table'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { FileText, Search } from 'lucide-vue-next'
-import type { Field, Item } from '../../../types/models'
+import type { Field, Item, NumberFieldRange } from '../../../types/models'
 import CollectionGridRow from './CollectionGridRow.vue'
 import CollectionGridAddRow from './CollectionGridAddRow.vue'
 
@@ -64,6 +64,7 @@ const props = defineProps<{
   itemsFullyLoaded: boolean
   debouncedSearchQuery: string
   orderedFields: Field[]
+  numberFieldRanges: Record<number, NumberFieldRange>
   duplicateMap: Map<string, Set<string>>
   loadNextPage: () => Promise<void>
 }>()
