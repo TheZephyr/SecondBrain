@@ -4,6 +4,8 @@
     class="cell flex h-10 w-full items-center px-3 text-base text-[var(--text-primary)]"
     :class="isSelected ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''"
     data-grid-cell
+    :data-row-id="rowId"
+    :data-field-name="field?.name"
     @click="onSelect"
     @dblclick="onDoubleClick"
   >
