@@ -1,14 +1,9 @@
 <template>
-  <div
-    class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)]"
-    :style="{ gridTemplateColumns }"
-  >
-    <div
-      v-for="(header, index) in headers"
-      :key="header.id"
+  <div class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)]"
+    :style="{ gridTemplateColumns }">
+    <div v-for="(header, index) in headers" :key="header.id"
       class="relative flex h-10 items-center border-r border-[var(--border-color)]"
-      :class="index === headers.length - 1 ? 'border-r-0' : ''"
-    >
+      :class="index === headers.length - 1 ? 'border-r-0' : ''">
       <template v-if="headerMeta(header)?.type === 'rowNumber'">
         <span class="sr-only">Row</span>
       </template>
@@ -20,17 +15,12 @@
         </AppButton>
       </template>
       <template v-else>
-        <button
-          type="button"
+        <button type="button"
           class="flex h-full w-full items-center justify-between gap-2 px-3 text-left text-base font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          @click="event => toggleSort(headerMeta(header)?.field, event)"
-        >
+          @click="event => toggleSort(headerMeta(header)?.field, event)">
           <span class="flex min-w-0 items-center gap-1.5">
-            <component
-              :is="iconMap[FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text'].icon]"
-              :size="14"
-              class="flex-shrink-0 text-[var(--text-muted)]"
-            />
+            <component :is="iconMap[FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text'].icon]" :size="14"
+              class="flex-shrink-0 text-[var(--text-muted)]" />
             <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
             <FieldDescriptionHint :description="headerMeta(header)?.field?.description" />
           </span>
@@ -42,15 +32,13 @@
             </span>
           </span>
         </button>
-        <div
-          v-if="headerMeta(header)?.field"
-          class="absolute right-0 top-2 bottom-2 w-px bg-[var(--border-color)] pointer-events-none"
-        />
-        <div
-          v-if="headerMeta(header)?.field"
-          class="absolute right-0 top-0 h-full w-[1px] cursor-col-resize touch-none bg-transparent transition-colors duration-100 hover:bg-[var(--accent-primary)]"
-          @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)"
-        />
+        <!-- Resize handle: 10px transparent hitbox centered on the column border -->
+        <div v-if="headerMeta(header)?.field"
+          class="absolute -right-[5px] top-0 h-full w-[10px] cursor-col-resize touch-none z-10 group/resize"
+          @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)">
+          <!-- 3px visual bar, centered inside the 10px hitbox, accent-colored on hover -->
+          <div class="absolute inset-y-2 left-[3.5px] w-[3px] rounded-full bg-transparent transition-colors duration-100 group-hover/resize:bg-[var(--accent-primary)]" />
+        </div>
       </template>
     </div>
   </div>
