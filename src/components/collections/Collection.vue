@@ -1,6 +1,6 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <div class="flex min-h-0 flex-1 flex-col">
+  <div class="flex h-full min-h-0 min-w-0 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <CollectionSettingsPanel v-if="collectionSettingsOpen" :collection="collection" :fields="fields"
         :itemsTotal="itemsTotal" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
       <CollectionFieldsPanel v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"

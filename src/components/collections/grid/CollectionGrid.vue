@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full w-full min-h-0 flex-col" @click="closeContextMenu">
+  <div class="flex h-full w-full min-h-0 min-w-0 flex-col" @click="closeContextMenu">
     <CollectionGridToolbar
       v-model:searchQuery="searchModel"
       :multiSortMeta="multiSortMeta"
@@ -31,34 +31,39 @@
       </AppButton>
     </div>
 
-    <div v-else class="flex min-h-0 flex-1 flex-col">
+    <div v-else class="flex min-h-0 min-w-0 flex-1 flex-col">
       <div
-        class="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
+        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
       >
-        <CollectionGridHeader
-          :headerGroups="headerGroups"
-          :gridTemplateColumns="gridTemplateColumns"
-          :multiSortMeta="multiSortMeta"
-          @sort="onSort"
-          @manage-fields="notifyAddField"
-          @set-column-width="onSetColumnWidth"
-          @persist-column-widths="onPersistColumnWidths"
-        />
-        <CollectionGridBody
-          class="min-h-0 flex-1"
-          :rows="rows"
-          :gridTemplateColumns="gridTemplateColumns"
-          :itemsTotal="itemsTotal"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :debouncedSearchQuery="debouncedSearchQuery"
-          :orderedFields="orderedFields"
-          :numberFieldRanges="numberFieldRanges"
-          :duplicateMap="duplicateMap"
-          :loadNextPage="loadNextPage"
-          @edit-item="emitEditItem"
-          @row-contextmenu="onRowContextMenu"
-        />
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-auto overflow-y-hidden" ref="gridScrollRef" @wheel.passive="onGridWheel">
+          <div class="min-w-fit flex min-h-0 flex-1 flex-col">
+            <CollectionGridHeader
+              :headerGroups="headerGroups"
+              :gridTemplateColumns="gridTemplateColumns"
+              :multiSortMeta="multiSortMeta"
+              @sort="onSort"
+              @manage-fields="notifyAddField"
+              @set-column-width="onSetColumnWidth"
+              @reset-column-width="onResetColumnWidth"
+              @persist-column-widths="onPersistColumnWidths"
+            />
+            <CollectionGridBody
+              class="min-h-0 flex-1"
+              :rows="rows"
+              :gridTemplateColumns="gridTemplateColumns"
+              :itemsTotal="itemsTotal"
+              :itemsLoading="itemsLoading"
+              :itemsFullyLoaded="itemsFullyLoaded"
+              :debouncedSearchQuery="debouncedSearchQuery"
+              :orderedFields="orderedFields"
+              :numberFieldRanges="numberFieldRanges"
+              :duplicateMap="duplicateMap"
+              :loadNextPage="loadNextPage"
+              @edit-item="emitEditItem"
+              @row-contextmenu="onRowContextMenu"
+            />
+          </div>
+        </div>
         <CollectionGridFooter :itemsTotal="itemsTotal" />
       </div>
 
@@ -155,6 +160,7 @@ const props = defineProps<{
 }>();
 
 const numberFieldRanges = ref<Record<number, NumberFieldRange>>({});
+const gridScrollRef = ref<HTMLElement | null>(null);
 
 const emit = defineEmits<{
   (e: "update:searchQuery", value: string): void;
@@ -175,7 +181,7 @@ const searchModel = computed({
   set: (value: string) => emit("update:searchQuery", value),
 });
 
-const { columns, gridTemplateColumns, setColumnWidth, persistColumnWidths } =
+const { columns, gridTemplateColumns, setColumnWidth, resetColumnWidth, persistColumnWidths } =
   useGridColumns({
     orderedFields: computed(() => props.orderedFields),
     viewId: toRef(props, "viewId"),
@@ -294,6 +300,11 @@ function onSetColumnWidth(payload: { fieldId: number; width: number }) {
   setColumnWidth(payload.fieldId, payload.width);
 }
 
+function onResetColumnWidth(payload: { fieldId: number }) {
+  resetColumnWidth(payload.fieldId);
+  void persistColumnWidths();
+}
+
 function onPersistColumnWidths() {
   void persistColumnWidths();
 }
@@ -323,6 +334,17 @@ function onRowContextMenu(payload: RowContextMenuPayload) {
 
 function closeContextMenu() {
   contextMenuOpen.value = false;
+}
+
+function onGridWheel(event: WheelEvent) {
+  const scrollContainer = gridScrollRef.value;
+  if (!scrollContainer) {
+    return;
+  }
+
+  if (event.shiftKey) {
+    scrollContainer.scrollLeft += event.deltaY || event.deltaX;
+  }
 }
 
 function emitEditItem(item: Item) {

@@ -35,7 +35,8 @@
         <!-- Resize handle: 10px transparent hitbox centered on the column border -->
         <div v-if="headerMeta(header)?.field"
           class="absolute -right-[5px] top-0 h-full w-[10px] cursor-col-resize touch-none z-10 group/resize"
-          @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)">
+          @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)"
+          @dblclick.stop.prevent="$emit('reset-column-width', { fieldId: headerMeta(header)?.field?.id as number })">
           <!-- 3px visual bar, centered inside the 10px hitbox, accent-colored on hover -->
           <div class="absolute inset-y-2 left-[3.5px] w-[3px] rounded-full bg-transparent transition-colors duration-100 group-hover/resize:bg-[var(--accent-primary)]" />
         </div>
@@ -65,6 +66,7 @@ const emit = defineEmits<{
   (e: "sort", value: MultiSortMeta[]): void;
   (e: "manage-fields"): void;
   (e: "set-column-width", value: { fieldId: number; width: number }): void;
+  (e: "reset-column-width", value: { fieldId: number }): void;
   (e: "persist-column-widths"): void;
 }>();
 

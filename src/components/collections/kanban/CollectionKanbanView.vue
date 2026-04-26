@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col">
+  <div class="flex h-full min-h-0 min-w-0 flex-col">
     <div
       v-if="selectFields.length === 0"
       class="flex flex-1 flex-col items-center justify-center px-8 text-center"
@@ -45,7 +45,7 @@
     <div
       v-else
       ref="boardRef"
-      class="kanban-board flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden p-4"
+      class="kanban-board flex min-h-0 min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden p-4"
       @wheel.passive="onBoardWheel"
     >
       <CollectionKanbanColumn
@@ -156,8 +156,12 @@ function onBoardWheel(event: WheelEvent) {
   const target = event.target as HTMLElement | null;
   const inColumnScroll = target?.closest("[data-kanban-scroll]");
 
-  if (event.shiftKey || !inColumnScroll) {
-    board.scrollLeft += event.deltaY;
+  // In some OS/browser combinations, Shift+Wheel translates deltaY to deltaX natively.
+  // We handle both just to be safe.
+  if (event.shiftKey) {
+    board.scrollLeft += event.deltaY || event.deltaX;
+  } else if (!inColumnScroll) {
+    board.scrollLeft += event.deltaY || event.deltaX;
   }
 }
 
