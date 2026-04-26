@@ -49,7 +49,7 @@ function handleIpc<T, A extends unknown[]>(
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1400,
+    width: 1600,
     height: 900,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
