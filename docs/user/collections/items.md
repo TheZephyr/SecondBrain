@@ -19,6 +19,14 @@ Each kanban column includes a `+` button.
 3. The grouping field is prefilled with that column's value.
 4. Complete the remaining fields and save.
 
+## Floating Add Button
+
+A floating `+` button is available in the bottom-right corner of the content area (when at least one field is defined).
+
+1. Click the floating `+` button.
+2. The app creates a new item and immediately opens the `Edit Item` dialog.
+3. Complete the fields and save.
+
 ## Edit Items
 
 You can edit items in two main ways.

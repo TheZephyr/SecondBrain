@@ -1,98 +1,48 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <div class="flex min-h-0 flex-1 flex-col">
-      <CollectionSettingsPanel
-        v-if="collectionSettingsOpen"
-        :collection="collection"
-        :fields="fields"
-        :itemsTotal="itemsTotal"
-        @save-settings="saveSettings"
-        @delete-collection="confirmDeleteCollection"
-      />
-      <CollectionFieldsPanel
-        v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
-        :orderedFields="sourceOrderedFields"
-        :items="items"
-        @save-fields="saveFieldDrafts"
-      />
-      <CollectionChildFieldsPanel
-        v-else-if="activeCollectionPanel === 'fields' && activeView"
-        :orderedFields="sourceOrderedFields"
-        :selectedFieldIds="selectedFieldIds"
-        :viewType="activeView.type"
-        :groupingFieldId="groupingFieldId"
-        :groupingFields="groupingFields"
-        @save-view-fields="saveChildViewFields"
-      />
+      <CollectionSettingsPanel v-if="collectionSettingsOpen" :collection="collection" :fields="fields"
+        :itemsTotal="itemsTotal" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
+      <CollectionFieldsPanel v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
+        :orderedFields="sourceOrderedFields" :items="items" @save-fields="saveFieldDrafts" />
+      <CollectionChildFieldsPanel v-else-if="activeCollectionPanel === 'fields' && activeView"
+        :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" :viewType="activeView.type"
+        :groupingFieldId="groupingFieldId" :groupingFields="groupingFields" @save-view-fields="saveChildViewFields" />
       <template v-else>
-        <CollectionGrid
-          :collectionId="collection.id"
-          v-if="activeView?.type === 'grid'"
-          :viewId="activeView.id"
-          :items="items"
-          :itemsTotal="itemsTotal"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :orderedFields="viewOrderedFields"
-          :searchQuery="searchQuery"
-          :debouncedSearchQuery="debouncedSearchQuery"
-          :multiSortMeta="multiSortMeta"
-          :loadNextPage="loadNextPage"
-          @update:searchQuery="searchQuery = $event"
-          @update:multiSortMeta="multiSortMeta = $event"
-          @sort="onItemsSort"
-          @edit-item="openEditItemDialog"
-          @delete-item="confirmDeleteItem"
-          @update-item="onInlineUpdateItem"
-          @insert-item-at="onInsertItemAt"
-          @duplicate-item="onDuplicateItem"
-          @move-item="onMoveItem"
-          @manage-fields="store.setActiveCollectionPanel('fields')"
-          @open-add-item="openAddItemDialog"
-        />
-        <CollectionKanbanView
-          :collectionId="collection.id"
-          v-else-if="activeView?.type === 'kanban'"
-          :viewId="activeView.id"
-          :items="items"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :itemsSearch="itemsSearch"
-          :itemsSort="itemsSort"
-          :orderedFields="viewOrderedFields"
-          :loadItems="loadCollectionItems"
-          :groupingFieldId="groupingFieldId"
-          :childViewConfig="childViewConfig"
-          :saveViewConfig="store.saveViewConfig"
-          @edit-item="openEditItemDialog"
-          @add-item="openAddItemDialogWithData"
-          @update-item="onInlineUpdateItem"
-        />
-        <CollectionCalendarView
-          v-else-if="activeView?.type === 'calendar'"
-          :viewId="activeView.id"
-          :items="items"
-          :itemsLoading="itemsLoading"
-          :itemsFullyLoaded="itemsFullyLoaded"
-          :itemsSearch="itemsSearch"
-          :itemsSort="itemsSort"
-          :orderedFields="viewOrderedFields"
-          :loadItems="loadCollectionItems"
-          :groupingFieldId="groupingFieldId"
-          @edit-item="openEditItemDialog"
-        />
+        <CollectionGrid :collectionId="collection.id" v-if="activeView?.type === 'grid'" :viewId="activeView.id"
+          :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :orderedFields="viewOrderedFields" :searchQuery="searchQuery" :debouncedSearchQuery="debouncedSearchQuery"
+          :multiSortMeta="multiSortMeta" :loadNextPage="loadNextPage" @update:searchQuery="searchQuery = $event"
+          @update:multiSortMeta="multiSortMeta = $event" @sort="onItemsSort" @edit-item="openEditItemDialog"
+          @delete-item="confirmDeleteItem" @update-item="onInlineUpdateItem" @insert-item-at="onInsertItemAt"
+          @duplicate-item="onDuplicateItem" @move-item="onMoveItem"
+          @manage-fields="store.setActiveCollectionPanel('fields')" @open-add-item="openAddItemDialog" />
+        <CollectionKanbanView :collectionId="collection.id" v-else-if="activeView?.type === 'kanban'"
+          :viewId="activeView.id" :items="items" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :itemsSearch="itemsSearch" :itemsSort="itemsSort" :orderedFields="viewOrderedFields"
+          :loadItems="loadCollectionItems" :groupingFieldId="groupingFieldId" :childViewConfig="childViewConfig"
+          :saveViewConfig="store.saveViewConfig" @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData"
+          @update-item="onInlineUpdateItem" />
+        <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :viewId="activeView.id" :items="items"
+          :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
+          :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
+          :groupingFieldId="groupingFieldId" @edit-item="openEditItemDialog" />
       </template>
     </div>
 
-    <CollectionItemEditorDialog
-      :visible="showAddItemForm"
-      :orderedFields="viewOrderedFields"
-      :editingItem="editingItem"
-      :items="items"
-      :initialData="initialItemData"
-      @update:visible="onItemDialogVisibilityChange"
-      @save="saveItem"
-    />
+    <div v-if="!collectionSettingsOpen && activeCollectionPanel !== 'fields' && sourceOrderedFields.length > 0"
+      class="fixed bottom-16 right-6 z-40">
+      <AppButton class="h-8 w-24 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 hover:scale-110 
+        hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95" @click="quickAddItem">
+        <template #icon>
+          <Plus />
+        </template>
+        Add item
+      </AppButton>
+    </div>
+
+    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="viewOrderedFields" :editingItem="editingItem"
+      :items="items" :initialData="initialItemData" @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
   </div>
 </template>
 
@@ -135,9 +85,15 @@ import type {
   CollectionSettingsSavePayload,
   ItemEditorSavePayload,
 } from "./types";
+import { Plus } from "lucide-vue-next";
+import AppButton from "@/components/app/ui/AppButton.vue";
 import CollectionChildFieldsPanel from "./settings/CollectionChildFieldsPanel.vue";
 import CollectionFieldsPanel from "./settings/CollectionFieldsPanel.vue";
 import CollectionSettingsPanel from "./settings/CollectionSettingsPanel.vue";
+import {
+  createDefaultItemFormData,
+  buildItemDataFromForm,
+} from "../../composables/collection/useCollectionItemForm";
 
 const store = useStore();
 const { confirm } = useAppConfirm();
@@ -318,6 +274,19 @@ function openEditItemDialog(item: Item) {
   editingItem.value = item;
   initialItemData.value = null;
   showAddItemForm.value = true;
+}
+
+async function quickAddItem() {
+  const collectionId = props.collection.id;
+  if (!collectionId || sourceOrderedFields.value.length === 0) return;
+
+  const formData = createDefaultItemFormData(sourceOrderedFields.value);
+  const data = buildItemDataFromForm(formData, sourceOrderedFields.value);
+
+  const created = await store.addItem({ collectionId, data });
+  if (created) {
+    openEditItemDialog(created);
+  }
 }
 
 function onItemDialogVisibilityChange(nextVisible: boolean) {
@@ -566,9 +535,9 @@ async function saveFieldDrafts(payload: {
       return resolvedId === null
         ? null
         : {
-            id: resolvedId,
-            orderIndex: index,
-          };
+          id: resolvedId,
+          orderIndex: index,
+        };
     })
     .filter((entry): entry is { id: number; orderIndex: number } => Boolean(entry));
 
