@@ -14,29 +14,49 @@
           </template>
           New field
         </AppButton>
-        <AppButton severity="secondary" text :disabled="!isDirty" @click="resetDrafts">Reset</AppButton>
-        <AppButton :disabled="!isDirty" @click="saveDrafts">Save changes</AppButton>
+        <AppButton
+          severity="secondary"
+          text
+          :disabled="!isDirty"
+          @click="resetDrafts"
+          >Reset</AppButton
+        >
+        <AppButton :disabled="!isDirty" @click="saveDrafts"
+          >Save changes</AppButton
+        >
       </div>
     </div>
 
-    <div class="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-      <div class="min-h-0 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]">
+    <div
+      class="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]"
+    >
+      <div
+        class="min-h-0 overflow-hidden rounded-xl border border-(--border-color) bg-(--bg-primary)"
+      >
         <div class="max-h-full overflow-y-auto">
           <button
             v-for="draft in filteredDrafts"
             :key="draft.draftId"
             type="button"
-            class="flex w-full items-center gap-3 border-b border-[var(--border-color)] px-4 py-3 text-left last:border-b-0"
-            :class="selectedDraftId === draft.draftId ? 'bg-[var(--bg-hover)]' : 'hover:bg-[var(--bg-hover)]/60'"
+            class="flex w-full items-center gap-3 border-b border-(--border-color) px-4 py-3 text-left last:border-b-0"
+            :class="
+              selectedDraftId === draft.draftId
+                ? 'bg-(--bg-hover)'
+                : 'hover:bg-(--bg-hover)/60'
+            "
             @click="selectedDraftId = draft.draftId"
             @dragover.prevent="onDragOver(draft.draftId)"
             @drop.prevent="onDrop(draft.draftId)"
           >
             <span
-              class="flex size-7 items-center justify-center text-[var(--text-muted)]"
-              :class="searchQuery.trim() ? 'cursor-not-allowed opacity-40' : 'cursor-grab'"
+              class="flex size-7 items-center justify-center text-(--text-muted)"
+              :class="
+                searchQuery.trim()
+                  ? 'cursor-not-allowed opacity-40'
+                  : 'cursor-grab'
+              "
               :draggable="!searchQuery.trim()"
-              @dragstart="event => onDragStart(draft.draftId, event)"
+              @dragstart="(event) => onDragStart(draft.draftId, event)"
               @dragend="onDragEnd"
             >
               <GripVertical :size="14" />
@@ -44,24 +64,29 @@
             <component
               :is="iconMap[FIELD_TYPE_META[draft.type].icon]"
               :size="14"
-              class="text-[var(--text-muted)]"
+              class="text-(--text-muted)"
             />
             <div class="min-w-0 flex-1">
-              <div class="truncate font-medium text-[var(--text-primary)]">
+              <div class="truncate font-medium text-(--text-primary)">
                 {{ draft.name || "Untitled field" }}
               </div>
-              <div class="truncate text-sm text-[var(--text-muted)]">
+              <div class="truncate text-sm text-(--text-muted)">
                 {{ FIELD_TYPE_META[draft.type].displayName }}
               </div>
             </div>
           </button>
-          <div v-if="filteredDrafts.length === 0" class="px-4 py-10 text-center text-[var(--text-muted)]">
+          <div
+            v-if="filteredDrafts.length === 0"
+            class="px-4 py-10 text-center text-(--text-muted)"
+          >
             No fields match your search.
           </div>
         </div>
       </div>
 
-      <div class="min-h-0 overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
+      <div
+        class="min-h-0 overflow-y-auto rounded-xl border border-(--border-color) bg-(--bg-primary) p-4"
+      >
         <template v-if="selectedDraft">
           <div class="space-y-4">
             <AppInput
@@ -69,7 +94,9 @@
               type="text"
               placeholder="Field name"
               class="w-full"
-              @update:modelValue="value => updateSelectedDraft({ name: value ?? '' })"
+              @update:modelValue="
+                (value) => updateSelectedDraft({ name: value ?? '' })
+              "
             />
 
             <AppSelect
@@ -79,21 +106,33 @@
               optionLabel="label"
               optionValue="value"
               class="w-full"
-              @update:modelValue="value => updateSelectedDraftType((value as FieldType | null) ?? 'text')"
+              @update:modelValue="
+                (value) =>
+                  updateSelectedDraftType((value as FieldType | null) ?? 'text')
+              "
             />
             <AppBadge v-else class="gap-1">
-              <component :is="iconMap[FIELD_TYPE_META[selectedDraft.type].icon]" :size="12" />
+              <component
+                :is="iconMap[FIELD_TYPE_META[selectedDraft.type].icon]"
+                :size="12"
+              />
               <span>{{ FIELD_TYPE_META[selectedDraft.type].displayName }}</span>
             </AppBadge>
 
             <div class="space-y-2">
-              <div class="text-base font-semibold uppercase text-[var(--text-muted)]">Description</div>
+              <div
+                class="text-base font-semibold uppercase text-(--text-muted)"
+              >
+                Description
+              </div>
               <AppTextarea
                 :modelValue="selectedDraft.description"
                 :rows="3"
                 class="w-full"
                 placeholder="Add description"
-                @update:modelValue="value => updateSelectedDraft({ description: value ?? '' })"
+                @update:modelValue="
+                  (value) => updateSelectedDraft({ description: value ?? '' })
+                "
               />
             </div>
 
@@ -102,13 +141,15 @@
               :type="selectedDraft.type"
               :items="items"
               :fieldName="selectedDraft.name"
-              @update:modelValue="value => updateSelectedDraft({ options: value })"
+              @update:modelValue="
+                (value) => updateSelectedDraft({ options: value })
+              "
             />
 
             <div class="flex justify-end">
               <AppButton
                 text
-                class="text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+                class="text-(--danger) hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
                 @click="deleteSelectedDraft"
               >
                 <template #icon>
@@ -119,7 +160,10 @@
             </div>
           </div>
         </template>
-        <div v-else class="flex h-full items-center justify-center text-[var(--text-muted)]">
+        <div
+          v-else
+          class="flex h-full items-center justify-center text-(--text-muted)"
+        >
           Select a field to edit its options.
         </div>
       </div>
@@ -136,9 +180,17 @@ import AppButton from "@/components/app/ui/AppButton.vue";
 import AppInput from "@/components/app/ui/AppInput.vue";
 import AppSelect from "@/components/app/ui/AppSelect.vue";
 import AppTextarea from "@/components/app/ui/AppTextarea.vue";
-import type { Field, FieldOptions, FieldType, Item } from "../../../types/models";
+import type {
+  Field,
+  FieldOptions,
+  FieldType,
+  Item,
+} from "../../../types/models";
 import { FIELD_TYPE_META, FIELD_TYPE_OPTIONS } from "../../../types/models";
-import { getDefaultOptions, parseFieldOptions } from "../../../utils/fieldOptions";
+import {
+  getDefaultOptions,
+  parseFieldOptions,
+} from "../../../utils/fieldOptions";
 import FieldOptionsForm from "./FieldOptionsForm.vue";
 
 type FieldDraft = {
@@ -165,7 +217,10 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "save-fields", value: { drafts: SavedFieldDraft[]; deletedFieldIds: number[] }): void;
+  (
+    e: "save-fields",
+    value: { drafts: SavedFieldDraft[]; deletedFieldIds: number[] },
+  ): void;
 }>();
 
 const fieldTypeOptions = FIELD_TYPE_OPTIONS;
@@ -191,7 +246,9 @@ const filteredDrafts = computed(() => {
 });
 
 const selectedDraft = computed(
-  () => drafts.value.find((draft) => draft.draftId === selectedDraftId.value) ?? null,
+  () =>
+    drafts.value.find((draft) => draft.draftId === selectedDraftId.value) ??
+    null,
 );
 
 const isDirty = computed(() => currentSignature() !== baselineSignature.value);
@@ -209,9 +266,10 @@ function buildDraft(field: Field): FieldDraft {
     type: field.type,
     description: field.description ?? "",
     options: parseFieldOptions(field.type, field.options),
-    originalChoices: field.type === "select" || field.type === "multiselect"
-      ? getChoices(parseFieldOptions(field.type, field.options))
-      : [],
+    originalChoices:
+      field.type === "select" || field.type === "multiselect"
+        ? getChoices(parseFieldOptions(field.type, field.options))
+        : [],
   };
 }
 
@@ -250,13 +308,17 @@ function createFieldDraft() {
   selectedDraftId.value = draftId;
 }
 
-function updateSelectedDraft(patch: Partial<Pick<FieldDraft, "name" | "description" | "options">>) {
+function updateSelectedDraft(
+  patch: Partial<Pick<FieldDraft, "name" | "description" | "options">>,
+) {
   if (!selectedDraft.value) {
     return;
   }
 
   drafts.value = drafts.value.map((draft) =>
-    draft.draftId === selectedDraft.value?.draftId ? { ...draft, ...patch } : draft,
+    draft.draftId === selectedDraft.value?.draftId
+      ? { ...draft, ...patch }
+      : draft,
   );
 }
 
@@ -304,20 +366,32 @@ function onDragStart(draftId: string, event: DragEvent) {
 }
 
 function onDragOver(draftId: string) {
-  if (!draggedDraftId.value || draggedDraftId.value === draftId || searchQuery.value.trim()) {
+  if (
+    !draggedDraftId.value ||
+    draggedDraftId.value === draftId ||
+    searchQuery.value.trim()
+  ) {
     return;
   }
 }
 
 function onDrop(targetDraftId: string) {
-  if (!draggedDraftId.value || draggedDraftId.value === targetDraftId || searchQuery.value.trim()) {
+  if (
+    !draggedDraftId.value ||
+    draggedDraftId.value === targetDraftId ||
+    searchQuery.value.trim()
+  ) {
     onDragEnd();
     return;
   }
 
   const next = [...drafts.value];
-  const draggedIndex = next.findIndex((draft) => draft.draftId === draggedDraftId.value);
-  const targetIndex = next.findIndex((draft) => draft.draftId === targetDraftId);
+  const draggedIndex = next.findIndex(
+    (draft) => draft.draftId === draggedDraftId.value,
+  );
+  const targetIndex = next.findIndex(
+    (draft) => draft.draftId === targetDraftId,
+  );
   if (draggedIndex < 0 || targetIndex < 0) {
     onDragEnd();
     return;

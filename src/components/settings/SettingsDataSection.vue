@@ -1,20 +1,28 @@
 <template>
-  <section id="data" class="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
+  <section
+    id="data"
+    class="rounded-xl border border-(--border-color) bg-(--bg-secondary) p-6"
+  >
     <div class="mb-3 flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-xl font-semibold text-[var(--text-primary)]">Data</h2>
+        <h2 class="text-xl font-semibold text-(--text-primary)">Data</h2>
       </div>
       <AppBadge severity="info">Import & Export</AppBadge>
     </div>
-    <div class="rounded-lg border border-[var(--border-color)]">
+    <div class="rounded-lg">
       <div class="grid gap-4 lg:grid-cols-2">
         <AppCard title="Full Archive Export">
           <div class="space-y-4">
-            <p class="text-sm text-[var(--text-secondary)]">
-              Export the entire database to a single JSON archive for cross-machine migration or long-term storage.
+            <p class="text-sm text-(--text-secondary)">
+              Export the entire database to a single JSON archive for
+              cross-machine migration or long-term storage.
             </p>
             <div class="space-y-2">
-              <label for="archiveDescription" class="text-sm text-[var(--text-secondary)]">Description</label>
+              <label
+                for="archiveDescription"
+                class="text-sm text-(--text-secondary)"
+                >Description</label
+              >
               <AppTextarea
                 id="archiveDescription"
                 v-model="archiveDescription"
@@ -24,18 +32,26 @@
                 placeholder="Optional notes about this archive"
               />
             </div>
-            <AppButton label="Export Full Archive" :loading="exportingArchive" @click="exportArchive" />
-            <div v-if="lastArchiveExportPath" class="text-xs text-[var(--text-muted)]">
-              Last export: <span class="font-mono">{{ lastArchiveExportPath }}</span>
+            <AppButton
+              label="Export Full Archive"
+              :loading="exportingArchive"
+              @click="exportArchive"
+            />
+            <div
+              v-if="lastArchiveExportPath"
+              class="text-xs text-(--text-muted)"
+            >
+              Last export:
+              <span class="font-mono">{{ lastArchiveExportPath }}</span>
             </div>
           </div>
         </AppCard>
 
         <AppCard title="Full Archive Restore">
           <div class="space-y-4">
-            <p class="text-sm text-[var(--text-secondary)]">
-              Restore a full archive into the current database. Existing data will be replaced after a mandatory
-              pre-restore backup is created.
+            <p class="text-sm text-(--text-secondary)">
+              Restore a full archive into the current database. Existing data
+              will be replaced after a mandatory pre-restore backup is created.
             </p>
             <AppButton
               label="Select Archive File"
@@ -49,13 +65,21 @@
       </div>
     </div>
 
-    <div class="mt-6 rounded-lg border border-[var(--border-color)] p-4">
-      <div class="text-sm font-medium text-[var(--text-primary)]">Collection Import/Export</div>
-      <p class="mt-2 text-sm text-[var(--text-secondary)]">
-        Collection-level CSV/JSON import and export stays in Collection Settings for per-collection workflows.
+    <div class="mt-6 rounded-lg border border-(--border-color) p-4">
+      <div class="text-sm font-medium text-(--text-primary)">
+        Collection Import/Export
+      </div>
+      <p class="mt-2 text-sm text-(--text-secondary)">
+        Collection-level CSV/JSON import and export stays in Collection Settings
+        for per-collection workflows.
       </p>
       <div class="mt-4">
-        <AppButton label="Back to Dashboard" severity="secondary" outlined @click="store.showDashboard()" />
+        <AppButton
+          label="Back to Dashboard"
+          severity="secondary"
+          outlined
+          @click="store.showDashboard()"
+        />
       </div>
     </div>
 

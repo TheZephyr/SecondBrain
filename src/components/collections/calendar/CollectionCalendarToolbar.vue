@@ -1,21 +1,23 @@
 <template>
-  <div class="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 py-2">
+  <div
+    class="flex flex-wrap items-center gap-3 border-b border-(--border-color) bg-(--bg-secondary) px-3 py-2"
+  >
     <div class="flex items-center gap-2">
       <AppButton
         text
-        class="h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        class="h-8 w-8 rounded-md text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)"
         @click="emit('previous-month')"
       >
         <template #icon>
           <ChevronLeft class="size-4" />
         </template>
       </AppButton>
-      <div class="min-w-40 text-base font-semibold text-[var(--text-primary)]">
+      <div class="min-w-40 text-base font-semibold text-(--text-primary)">
         {{ monthLabel }}
       </div>
       <AppButton
         text
-        class="h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        class="h-8 w-8 rounded-md text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)"
         @click="emit('next-month')"
       >
         <template #icon>
@@ -26,7 +28,7 @@
 
     <div class="flex-1" />
 
-    <div v-if="showLoadingState" class="text-base text-[var(--text-muted)]">
+    <div v-if="showLoadingState" class="text-base text-(--text-muted)">
       Loading all items...
     </div>
   </div>

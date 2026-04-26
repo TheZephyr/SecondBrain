@@ -43,8 +43,8 @@ const props = withDefaults(
     color: "currentColor",
     max: 5,
     size: 16,
-    filledClass: "text-[var(--primary)]",
-    emptyClass: "text-[var(--text-muted)]",
+    filledClass: "text-primary",
+    emptyClass: "text-(--text-muted)",
   },
 );
 
@@ -73,7 +73,7 @@ const colorValue = computed(() => {
   const optionColor = props.valueColors?.[key];
   return optionColor && optionColor.trim().length > 0
     ? optionColor
-    : props.color ?? "currentColor";
+    : (props.color ?? "currentColor");
 });
 
 function commitValue(nextValue: number) {

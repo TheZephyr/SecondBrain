@@ -1,30 +1,53 @@
 <template>
-  <section id="backup" class="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
+  <section
+    id="backup"
+    class="rounded-xl border border-(--border-color) bg-(--bg-secondary) p-6"
+  >
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h2 class="text-xl font-semibold text-[var(--text-primary)]">Backup</h2>
-        <p class="mt-1 max-w-2xl text-sm text-[var(--text-muted)]">
-          Backups are full SQLite snapshots for disaster recovery and undo. They are separate from CSV/JSON export.
+        <h2 class="text-xl font-semibold text-(--text-primary)">Backup</h2>
+        <p class="mt-1 max-w-2xl text-sm text-(--text-muted)">
+          Backups are full SQLite snapshots for disaster recovery and undo. They
+          are separate from CSV/JSON export.
         </p>
       </div>
       <AppBadge severity="info">Data backup</AppBadge>
     </div>
 
-    <div class="mb-6 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
-      <div class="mb-2 text-sm font-medium text-[var(--text-secondary)]">Backup storage location</div>
-      <div class="break-all font-mono text-sm text-[var(--text-primary)]">{{ backupDirectory }}</div>
+    <div
+      class="mb-6 rounded-lg border border-(--border-color) bg-(--bg-secondary) p-4"
+    >
+      <div class="mb-2 text-sm font-medium text-(--text-secondary)">
+        Backup storage location
+      </div>
+      <div class="break-all font-mono text-sm text-(--text-primary)">
+        {{ backupDirectory }}
+      </div>
       <div class="mt-3 flex flex-wrap gap-3">
-        <AppButton label="Reveal in Explorer" severity="secondary" outlined @click="openBackupsFolder" />
-        <AppButton label="Open Backups Folder" text @click="openBackupsFolder" />
+        <AppButton
+          label="Reveal in Explorer"
+          severity="secondary"
+          outlined
+          @click="openBackupsFolder"
+        />
+        <AppButton
+          label="Open Backups Folder"
+          text
+          @click="openBackupsFolder"
+        />
       </div>
     </div>
 
-    <div class="mb-6 rounded-lg border border-[var(--border-color)]">
+    <div class="mb-6 rounded-lg">
       <div class="grid gap-4 lg:grid-cols-3">
         <AppCard title="Automatic Backups">
           <div class="space-y-4">
             <div class="flex items-center justify-between gap-4">
-              <label for="automaticBackupsEnabled" class="text-sm text-[var(--text-secondary)]">Enable on startup</label>
+              <label
+                for="automaticBackupsEnabled"
+                class="text-sm text-(--text-secondary)"
+                >Enable on startup</label
+              >
               <AppSwitch
                 inputId="automaticBackupsEnabled"
                 :modelValue="automaticBackupsEnabled"
@@ -32,7 +55,11 @@
               />
             </div>
             <div class="space-y-2">
-              <label for="automaticBackupsLimit" class="text-sm text-[var(--text-secondary)]">Startup backups to keep</label>
+              <label
+                for="automaticBackupsLimit"
+                class="text-sm text-(--text-secondary)"
+                >Startup backups to keep</label
+              >
               <AppNumberField
                 inputId="automaticBackupsLimit"
                 :modelValue="automaticBackupsLimit"
@@ -43,14 +70,19 @@
                 inputClass="w-full"
                 class="w-full"
               />
-              <p class="text-xs text-[var(--text-muted)]">Use 0 for unlimited retention.</p>
+              <p class="text-xs text-(--text-muted)">
+                Use 0 for unlimited retention.
+              </p>
             </div>
           </div>
         </AppCard>
 
         <AppCard title="Manual Retention">
           <div class="space-y-2">
-            <label for="manualBackupsLimit" class="text-sm text-[var(--text-secondary)]">
+            <label
+              for="manualBackupsLimit"
+              class="text-sm text-(--text-secondary)"
+            >
               Manual + pre-restore backups to keep
             </label>
             <AppNumberField
@@ -63,15 +95,16 @@
               inputClass="w-full"
               class="w-full"
             />
-            <p class="text-xs text-[var(--text-muted)]">
-              Pre-restore backups count against this limit. Use 0 for unlimited retention.
+            <p class="text-xs text-(--text-muted)">
+              Pre-restore backups count against this limit. Use 0 for unlimited
+              retention.
             </p>
           </div>
         </AppCard>
 
         <AppCard title="Save Changes">
           <div class="space-y-3">
-            <p class="text-sm text-[var(--text-secondary)]">
+            <p class="text-sm text-(--text-secondary)">
               Startup backups run before the database worker initializes.
             </p>
             <AppButton
@@ -86,15 +119,26 @@
       </div>
     </div>
 
-    <div class="mb-6 rounded-lg border border-[var(--border-color)] p-4">
+    <div class="mb-6 rounded-lg border border-(--border-color) p-4">
       <div class="mb-3 flex items-center justify-between gap-4">
         <div>
-          <h3 class="text-lg font-semibold text-[var(--text-primary)]">Existing Backups</h3>
-          <p class="text-sm text-[var(--text-muted)]">Newest first.</p>
+          <h3 class="text-lg font-semibold text-(--text-primary)">
+            Existing Backups
+          </h3>
+          <p class="text-sm text-(--text-muted)">Newest first.</p>
         </div>
         <div class="flex gap-2">
-          <AppButton label="Create Backup Now" :loading="creatingBackup" @click="createBackupNow" />
-          <AppButton text rounded aria-label="Refresh backups" @click="loadBackups">
+          <AppButton
+            label="Create Backup Now"
+            :loading="creatingBackup"
+            @click="createBackupNow"
+          />
+          <AppButton
+            text
+            rounded
+            aria-label="Refresh backups"
+            @click="loadBackups"
+          >
             <template #icon>
               <RefreshCw class="size-4" />
             </template>
@@ -104,29 +148,42 @@
 
       <div
         v-if="loadingBackups"
-        class="rounded-lg border border-dashed border-[var(--border-color)] p-6 text-sm text-[var(--text-muted)]"
+        class="rounded-lg border border-dashed border-(--border-color) p-6 text-sm text-(--text-muted)"
       >
         Loading backups...
       </div>
       <div
         v-else-if="backups.length === 0"
-        class="rounded-lg border border-dashed border-[var(--border-color)] p-6 text-sm text-[var(--text-muted)]"
+        class="rounded-lg border border-dashed border-(--border-color) p-6 text-sm text-(--text-muted)"
       >
-        No backups yet. Create your first backup or restart the app to generate an automatic startup backup.
+        No backups yet. Create your first backup or restart the app to generate
+        an automatic startup backup.
       </div>
-      <div v-else class="overflow-hidden rounded-lg border border-[var(--border-color)]">
+      <div
+        v-else
+        class="overflow-hidden rounded-lg border border-(--border-color)"
+      >
         <div
           v-for="backup in backups"
           :key="backup.fileName"
-          class="flex flex-col gap-4 border-b border-[var(--border-color)] bg-[var(--bg-primary)] p-4 last:border-b-0 md:flex-row md:items-center md:justify-between"
+          class="flex flex-col gap-4 border-b border-(--border-color) bg-(--bg-primary) p-4 last:border-b-0 md:flex-row md:items-center md:justify-between"
         >
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
-              <span class="font-medium text-[var(--text-primary)]">{{ formatBackupDate(backup.createdAt) }}</span>
-              <AppBadge :value="formatLabel(backup.label)" :severity="tagSeverity(backup.label)" />
+              <span class="font-medium text-(--text-primary)">{{
+                formatBackupDate(backup.createdAt)
+              }}</span>
+              <AppBadge
+                :value="formatLabel(backup.label)"
+                :severity="tagSeverity(backup.label)"
+              />
             </div>
-            <div class="text-sm text-[var(--text-secondary)]">{{ formatFileSize(backup.sizeBytes) }}</div>
-            <div class="break-all font-mono text-xs text-[var(--text-muted)]">{{ backup.fileName }}</div>
+            <div class="text-sm text-(--text-secondary)">
+              {{ formatFileSize(backup.sizeBytes) }}
+            </div>
+            <div class="break-all font-mono text-xs text-(--text-muted)">
+              {{ backup.fileName }}
+            </div>
           </div>
 
           <div class="flex flex-wrap gap-2">
@@ -259,6 +316,9 @@ function formatFileSize(sizeBytes: number): string {
 }
 
 onMounted(async () => {
-  await Promise.all([settingsStore.loadBackupSettings(), settingsStore.loadBackups()]);
+  await Promise.all([
+    settingsStore.loadBackupSettings(),
+    settingsStore.loadBackups(),
+  ]);
 });
 </script>

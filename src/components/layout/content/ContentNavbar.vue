@@ -1,30 +1,38 @@
 <template>
   <div
-    class="grid h-12 grid-cols-[1fr_auto_1fr] items-center border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-4"
+    class="grid h-12 grid-cols-[1fr_auto_1fr] items-center border-b border-(--border-color) bg-(--bg-secondary) px-4"
   >
-    <div class="flex min-w-0 items-center gap-2 text-base text-[var(--text-muted)] justify-self-start">
+    <div
+      class="flex min-w-0 items-center gap-2 text-base text-(--text-muted) justify-self-start"
+    >
       <span>Collections</span>
       <span>/</span>
-      <span class="min-w-0 truncate text-[var(--text-primary)]">
+      <span class="min-w-0 truncate text-(--text-primary)">
         {{ selectedCollection?.name || "" }}
       </span>
       <span>/</span>
-      <span class="min-w-0 truncate text-[var(--text-primary)]">
+      <span class="min-w-0 truncate text-(--text-primary)">
         {{ activeViewName }}
       </span>
       <template v-if="breadcrumbTabName">
         <span>/</span>
-        <span class="min-w-0 truncate text-[var(--text-muted)]">
+        <span class="min-w-0 truncate text-(--text-muted)">
           {{ breadcrumbTabName }}
         </span>
       </template>
     </div>
 
-    <div class="rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-1">
+    <div
+      class="rounded-md border border-(--border-color) bg-(--bg-primary) p-1"
+    >
       <AppButton
         text
         class="h-6 px-2 text-base font-semibold"
-        :class="activeCollectionPanel === 'data' ? activeButtonClass : inactiveButtonClass"
+        :class="
+          activeCollectionPanel === 'data'
+            ? activeButtonClass
+            : inactiveButtonClass
+        "
         :aria-pressed="activeCollectionPanel === 'data'"
         @click="setPanel('data')"
       >
@@ -33,7 +41,11 @@
       <AppButton
         text
         class="h-6 px-2 text-base font-semibold"
-        :class="activeCollectionPanel === 'fields' ? activeButtonClass : inactiveButtonClass"
+        :class="
+          activeCollectionPanel === 'fields'
+            ? activeButtonClass
+            : inactiveButtonClass
+        "
         :aria-pressed="activeCollectionPanel === 'fields'"
         @click="setPanel('fields')"
       >
@@ -72,11 +84,14 @@ const {
   activeViewId,
 } = storeToRefs(store);
 
-const activeButtonClass = "bg-[var(--accent-light)] text-[var(--accent-primary)]";
-const inactiveButtonClass = "text-[var(--text-secondary)] hover:text-[var(--text-primary)]";
+const activeButtonClass = "bg-(--accent-light) text-(--accent-primary)";
+const inactiveButtonClass =
+  "text-(--text-secondary) hover:text-(--text-primary)";
 
 const activeViewName = computed(() => {
-  const activeView = currentViews.value.find((view) => view.id === activeViewId.value);
+  const activeView = currentViews.value.find(
+    (view) => view.id === activeViewId.value,
+  );
   return activeView?.name ?? "View";
 });
 

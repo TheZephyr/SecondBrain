@@ -1,14 +1,14 @@
 <template>
   <div class="relative">
     <AppCard
-      class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] shadow-sm"
+      class="rounded-lg border border-(--border-color) bg-(--bg-primary) shadow-sm"
       draggable="true"
       data-kanban-card
       :data-item-id="item.id"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
     >
-      <div class="pr-6 text-sm font-semibold text-[var(--text-primary)]">
+      <div class="pr-6 text-sm font-semibold text-(--text-primary)">
         {{ titleText }}
       </div>
       <div class="space-y-2">
@@ -17,44 +17,65 @@
           :key="field.id"
           class="field-row flex items-start gap-2 text-sm"
         >
-          <span class="inline-flex w-24 shrink-0 items-center gap-1 text-[var(--text-muted)]">
+          <span
+            class="inline-flex w-24 shrink-0 items-center gap-1 text-(--text-muted)"
+          >
             <span class="truncate">{{ field.name }}</span>
             <FieldDescriptionHint :description="field.description" />
           </span>
-          <span class="min-w-0 flex-1 text-[var(--text-primary)]">
+          <span class="min-w-0 flex-1 text-(--text-primary)">
             <template v-if="field.type === 'select'">
               <span
                 v-if="getDisplayText(field)"
                 class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
-                :style="getChipStyle(String(getDisplayText(field)), getSelectChoices(field), getOptionColors(field))"
+                :style="
+                  getChipStyle(
+                    String(getDisplayText(field)),
+                    getSelectChoices(field),
+                    getOptionColors(field),
+                  )
+                "
               >
                 {{ getDisplayText(field) }}
               </span>
-              <span v-else class="text-[var(--text-muted)]">-</span>
+              <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else-if="field.type === 'multiselect'">
-              <div v-if="getMultiValues(field).length > 0" class="flex flex-wrap gap-1">
+              <div
+                v-if="getMultiValues(field).length > 0"
+                class="flex flex-wrap gap-1"
+              >
                 <span
                   v-for="option in getMultiValues(field)"
                   :key="option"
                   class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
-                  :style="getChipStyle(option, getSelectChoices(field), getOptionColors(field))"
+                  :style="
+                    getChipStyle(
+                      option,
+                      getSelectChoices(field),
+                      getOptionColors(field),
+                    )
+                  "
                 >
                   {{ option }}
                 </span>
               </div>
-              <span v-else class="text-[var(--text-muted)]">-</span>
+              <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else-if="field.type === 'number'">
               <span
                 v-if="getDisplayText(field)"
                 class="inline-flex items-center rounded-full border leading-none"
-                :class="showNumberAsChip(field) ? 'h-5 px-2 py-0.5 text-xs' : 'border-transparent px-0 py-0 text-sm'"
+                :class="
+                  showNumberAsChip(field)
+                    ? 'h-5 px-2 py-0.5 text-xs'
+                    : 'border-transparent px-0 py-0 text-sm'
+                "
                 :style="getNumberStyle(field)"
               >
                 {{ getDisplayText(field) }}
               </span>
-              <span v-else class="text-[var(--text-muted)]">-</span>
+              <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else-if="field.type === 'boolean'">
               <component
@@ -62,7 +83,11 @@
                 :size="16"
                 :fill="getBooleanValue(field) ? 'currentColor' : 'transparent'"
                 :stroke-width="getBooleanValue(field) ? 0 : 1.5"
-                :class="getBooleanValue(field) ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'"
+                :class="
+                  getBooleanValue(field)
+                    ? 'text-primary'
+                    : 'text-(--text-muted)'
+                "
               />
             </template>
             <template v-else-if="field.type === 'rating'">
@@ -74,15 +99,15 @@
                 :valueColors="getRatingValueColors(field)"
                 :max="getRatingMax(field)"
                 :size="14"
-                @update:modelValue="value => updateRating(field, value)"
+                @update:modelValue="(value) => updateRating(field, value)"
               />
-              <span v-else class="text-[var(--text-muted)]">-</span>
+              <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else>
               <span v-if="getDisplayText(field)" class="block truncate">
                 {{ getDisplayText(field) }}
               </span>
-              <span v-else class="text-[var(--text-muted)]">-</span>
+              <span v-else class="text-(--text-muted)">-</span>
             </template>
           </span>
         </div>
@@ -209,7 +234,10 @@ function getRatingValue(field: Field): number | null {
 }
 
 function getRatingMax(field: Field) {
-  const options = parseFieldOptions(field.type, field.options) as RatingFieldOptions;
+  const options = parseFieldOptions(
+    field.type,
+    field.options,
+  ) as RatingFieldOptions;
   const min = Number.isFinite(options.min) ? Number(options.min) : 0;
   const max = Number.isFinite(options.max) ? Number(options.max) : 5;
   return Math.max(max, min);
@@ -218,20 +246,22 @@ function getRatingMax(field: Field) {
 function getRatingColor(field: Field) {
   return (
     getRatingValueColor(field, getRatingValue(field)) ??
-    (parseFieldOptions(field.type, field.options) as RatingFieldOptions).color ??
+    (parseFieldOptions(field.type, field.options) as RatingFieldOptions)
+      .color ??
     "currentColor"
   );
 }
 
 function getRatingValueColors(field: Field) {
   return (
-    parseFieldOptions(field.type, field.options) as RatingFieldOptions
-  ).optionColors ?? {};
+    (parseFieldOptions(field.type, field.options) as RatingFieldOptions)
+      .optionColors ?? {}
+  );
 }
 
 function getRatingIconName(field: Field) {
-  return ((parseFieldOptions(field.type, field.options) as RatingFieldOptions).icon ??
-    "star") as BooleanIcon;
+  return ((parseFieldOptions(field.type, field.options) as RatingFieldOptions)
+    .icon ?? "star") as BooleanIcon;
 }
 
 function showNumberAsChip(field: Field) {

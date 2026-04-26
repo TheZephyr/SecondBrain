@@ -1,16 +1,22 @@
 <template>
-  <div class="flex h-10 items-center border-b border-[var(--border-color)] bg-[var(--bg-secondary)] px-2 py-5">
+  <div
+    class="flex h-10 items-center border-b border-(--border-color) bg-(--bg-secondary) px-2 py-5"
+  >
     <div class="flex items-center gap-1">
       <AppButton
         text
-        class="h-7 gap-1.5 rounded-md px-2 text-base text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+        class="h-7 gap-1.5 rounded-md px-2 text-base text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary)"
       >
         <template #icon>
           <Filter class="size-4" />
         </template>
         <span>Filter</span>
       </AppButton>
-      <AppButton text class="h-7 gap-1.5 rounded-md px-2 text-base" :class="sortButtonClass">
+      <AppButton
+        text
+        class="h-7 gap-1.5 rounded-md px-2 text-base"
+        :class="sortButtonClass"
+      >
         <template #icon>
           <ArrowUpDown class="size-4" />
         </template>
@@ -21,8 +27,16 @@
     <div class="flex-1" />
 
     <div class="relative">
-      <Search :size="16" class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-      <AppInput v-model="searchModel" class="h-7 w-40 pl-8 text-base md:w-52" type="text" placeholder="Search..." />
+      <Search
+        :size="16"
+        class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-(--text-muted)"
+      />
+      <AppInput
+        v-model="searchModel"
+        class="h-7 w-40 pl-8 text-base md:w-52"
+        type="text"
+        placeholder="Search..."
+      />
     </div>
   </div>
 </template>
@@ -50,9 +64,9 @@ const searchModel = computed({
 
 const sortButtonClass = computed(() => {
   if (props.multiSortMeta.length > 0) {
-    return "bg-[var(--accent-light)] text-[var(--accent-primary)]";
+    return "bg-(--accent-light) text-(--accent-primary)";
   }
 
-  return "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]";
+  return "text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary)";
 });
 </script>

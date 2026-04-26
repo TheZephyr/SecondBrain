@@ -1,5 +1,8 @@
 <template>
-  <div class="flex h-full w-full min-h-0 min-w-0 flex-col" @click="closeContextMenu">
+  <div
+    class="flex h-full w-full min-h-0 min-w-0 flex-col"
+    @click="closeContextMenu"
+  >
     <CollectionGridToolbar
       v-model:searchQuery="searchModel"
       :multiSortMeta="multiSortMeta"
@@ -12,16 +15,14 @@
       <Columns
         :size="64"
         :stroke-width="1.5"
-        class="mb-5 text-[var(--text-muted)]"
+        class="mb-5 text-(--text-muted)"
       />
-      <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-        No Fields Yet
-      </h3>
-      <p class="mt-2 text-base text-[var(--text-muted)]">
+      <h3 class="text-lg font-semibold text-(--text-primary)">No Fields Yet</h3>
+      <p class="mt-2 text-base text-(--text-muted)">
         Define the structure of your collection by adding fields
       </p>
       <AppButton
-        class="mt-6 min-w-[140px] gap-2 px-4 text-white"
+        class="mt-6 min-w-35 gap-2 px-4 text-white"
         @click.stop="notifyAddField"
       >
         <template #icon>
@@ -33,9 +34,13 @@
 
     <div v-else class="flex min-h-0 min-w-0 flex-1 flex-col">
       <div
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--bg-primary)]"
+        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-(--bg-primary)"
       >
-        <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-auto overflow-y-hidden" ref="gridScrollRef" @wheel.passive="onGridWheel">
+        <div
+          class="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-auto overflow-y-hidden"
+          ref="gridScrollRef"
+          @wheel.passive="onGridWheel"
+        >
           <div class="min-w-fit flex min-h-0 flex-1 flex-col">
             <CollectionGridHeader
               :headerGroups="headerGroups"
@@ -75,7 +80,7 @@
 
       <div
         v-if="contextMenuOpen"
-        class="fixed z-50 min-w-48 rounded-md border border-[var(--border-color)] bg-[var(--bg-secondary)] p-1 text-base shadow-lg"
+        class="fixed z-50 min-w-48 rounded-md border border-(--border-color) bg-(--bg-secondary) p-1 text-base shadow-lg"
         :style="{
           left: `${contextMenuPosition.x}px`,
           top: `${contextMenuPosition.y}px`,
@@ -85,12 +90,12 @@
         <template v-for="(item, index) in contextMenuItems" :key="index">
           <div
             v-if="item.separator"
-            class="my-1 border-t border-[var(--border-color)]"
+            class="my-1 border-t border-(--border-color)"
           />
           <button
             v-else
             type="button"
-            class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary) disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="item.disabled"
             @click="onContextMenuAction(item)"
           >
@@ -103,7 +108,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  ref,
+  toRef,
+  watch,
+} from "vue";
 import {
   getCoreRowModel,
   useVueTable,
@@ -181,11 +194,16 @@ const searchModel = computed({
   set: (value: string) => emit("update:searchQuery", value),
 });
 
-const { columns, gridTemplateColumns, setColumnWidth, resetColumnWidth, persistColumnWidths } =
-  useGridColumns({
-    orderedFields: computed(() => props.orderedFields),
-    viewId: toRef(props, "viewId"),
-  });
+const {
+  columns,
+  gridTemplateColumns,
+  setColumnWidth,
+  resetColumnWidth,
+  persistColumnWidths,
+} = useGridColumns({
+  orderedFields: computed(() => props.orderedFields),
+  viewId: toRef(props, "viewId"),
+});
 
 const selection = useGridSelection();
 const editing = useGridEditing({

@@ -27,7 +27,7 @@
             :modelValue="getTextValue(field.name) ?? ''"
             type="text"
             class="w-full"
-            @update:modelValue="value => setTextValue(field.name, value)"
+            @update:modelValue="(value) => setTextValue(field.name, value)"
           />
 
           <AppTextarea
@@ -36,7 +36,7 @@
             :modelValue="getTextValue(field.name) ?? ''"
             :rows="3"
             class="w-full"
-            @update:modelValue="value => setTextValue(field.name, value)"
+            @update:modelValue="(value) => setTextValue(field.name, value)"
           />
 
           <AppNumberField
@@ -45,7 +45,7 @@
             :modelValue="getNumberValue(field.name)"
             inputClass="w-full"
             class="w-full"
-            @update:modelValue="value => setNumberValue(field.name, value)"
+            @update:modelValue="(value) => setNumberValue(field.name, value)"
           />
 
           <input
@@ -54,7 +54,13 @@
             :value="getDateInputValue(field.name)"
             type="date"
             class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
-            @input="event => updateDateInputValue(field.name, (event.target as HTMLInputElement).value)"
+            @input="
+              (event) =>
+                updateDateInputValue(
+                  field.name,
+                  (event.target as HTMLInputElement).value,
+                )
+            "
           />
 
           <AppSelect
@@ -62,7 +68,13 @@
             :modelValue="getSelectValue(field.name)"
             :options="getSelectChoices(field)"
             class="w-full"
-            @update:modelValue="value => setSelectValue(field.name, typeof value === 'string' ? value : null)"
+            @update:modelValue="
+              (value) =>
+                setSelectValue(
+                  field.name,
+                  typeof value === 'string' ? value : null,
+                )
+            "
           />
 
           <Popover v-else-if="field.type === 'multiselect'">
@@ -77,14 +89,20 @@
                       v-for="option in getMultiselectValue(field.name)"
                       :key="option"
                       class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
-                      :style="getChipStyle(option, getSelectChoices(field), getOptionColors(field))"
+                      :style="
+                        getChipStyle(
+                          option,
+                          getSelectChoices(field),
+                          getOptionColors(field),
+                        )
+                      "
                     >
                       {{ option }}
                     </span>
                   </template>
-                  <span v-else class="text-[var(--text-muted)]">Select options</span>
+                  <span v-else class="text-(--text-muted)">Select options</span>
                 </div>
-                <ChevronDown class="size-4 text-[var(--text-muted)]" />
+                <ChevronDown class="size-4 text-(--text-muted)" />
               </button>
             </PopoverTrigger>
             <PopoverContent class="w-72 p-0">
@@ -97,10 +115,16 @@
                       v-for="option in getSelectChoices(field)"
                       :key="option"
                       :value="option"
-                      @select.prevent="toggleMultiselectOption(field.name, option)"
+                      @select.prevent="
+                        toggleMultiselectOption(field.name, option)
+                      "
                     >
                       <div class="flex w-full items-center gap-2">
-                        <AppCheckbox :modelValue="getMultiselectValue(field.name).includes(option)" />
+                        <AppCheckbox
+                          :modelValue="
+                            getMultiselectValue(field.name).includes(option)
+                          "
+                        />
                         <span>{{ option }}</span>
                       </div>
                     </CommandItem>
@@ -110,14 +134,27 @@
             </PopoverContent>
           </Popover>
 
-          <div v-else-if="field.type === 'boolean'" class="flex min-h-9 items-center gap-2">
-            <button type="button" class="flex items-center" @click="setBooleanValue(field.name, !getBooleanValue(field.name))">
+          <div
+            v-else-if="field.type === 'boolean'"
+            class="flex min-h-9 items-center gap-2"
+          >
+            <button
+              type="button"
+              class="flex items-center"
+              @click="setBooleanValue(field.name, !getBooleanValue(field.name))"
+            >
               <component
                 :is="getBooleanIcon(field)"
                 :size="20"
-                :fill="getBooleanValue(field.name) ? 'currentColor' : 'transparent'"
+                :fill="
+                  getBooleanValue(field.name) ? 'currentColor' : 'transparent'
+                "
                 :stroke-width="getBooleanValue(field.name) ? 0 : 1.5"
-                :class="getBooleanValue(field.name) ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'"
+                :class="
+                  getBooleanValue(field.name)
+                    ? 'text-(--text-primary)'
+                    : 'text-(--text-muted)'
+                "
               />
             </button>
           </div>
@@ -128,11 +165,11 @@
               :modelValue="getTextValue(field.name) ?? ''"
               type="text"
               class="w-full pr-8"
-              @update:modelValue="value => setTextValue(field.name, value)"
+              @update:modelValue="(value) => setTextValue(field.name, value)"
             />
             <button
               type="button"
-              class="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--accent-primary)]"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-(--accent-primary)"
               title="Open link"
               @click="openExternal(getTextValue(field.name))"
             >
@@ -148,15 +185,19 @@
             :valueColors="getRatingValueColors(field)"
             :max="getRatingMax(field)"
             :size="18"
-            @update:modelValue="value => setRatingValue(field.name, value)"
+            @update:modelValue="(value) => setRatingValue(field.name, value)"
           />
         </Field>
       </div>
     </form>
 
     <template #footer>
-      <AppButton severity="secondary" text @click="cancelDialog">Cancel</AppButton>
-      <AppButton @click="saveDialog">{{ editingItem ? "Update" : "Add" }}</AppButton>
+      <AppButton severity="secondary" text @click="cancelDialog"
+        >Cancel</AppButton
+      >
+      <AppButton @click="saveDialog">{{
+        editingItem ? "Update" : "Add"
+      }}</AppButton>
     </template>
   </AppDialog>
 </template>
@@ -174,13 +215,30 @@ import AppSelect from "@/components/app/ui/AppSelect.vue";
 import AppTextarea from "@/components/app/ui/AppTextarea.vue";
 import FieldDescriptionHint from "@/components/collections/FieldDescriptionHint.vue";
 import InteractiveRatingInput from "@/components/collections/InteractiveRatingInput.vue";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useCollectionItemForm } from "../../composables/collection/useCollectionItemForm";
 import { useFieldUniqueCheck } from "../../composables/collection/useFieldUniqueCheck";
 import { systemRepository } from "../../repositories/systemRepository";
-import type { BooleanIcon, Field as ItemField, Item, ItemData, RatingFieldOptions } from "../../types/models";
+import type {
+  BooleanIcon,
+  Field as ItemField,
+  Item,
+  ItemData,
+  RatingFieldOptions,
+} from "../../types/models";
 import { formatDateForStorage, parseDateValue } from "../../utils/date";
 import {
   getSelectChoices,
@@ -286,7 +344,7 @@ function saveDialog() {
 }
 
 function labelClass(field: ItemField) {
-  return duplicateFields.value.has(field.name) ? "text-[var(--danger)]" : "";
+  return duplicateFields.value.has(field.name) ? "text-(--danger)" : "";
 }
 
 function getDateInputValue(fieldName: string) {
@@ -298,31 +356,48 @@ function updateDateInputValue(fieldName: string, value: string) {
 }
 
 function getRatingMin(field: ItemField) {
-  const options = parseFieldOptions(field.type, field.options) as RatingFieldOptions;
+  const options = parseFieldOptions(
+    field.type,
+    field.options,
+  ) as RatingFieldOptions;
   return Number.isFinite(options.min) ? Number(options.min) : 0;
 }
 
 function getRatingMax(field: ItemField) {
-  const options = parseFieldOptions(field.type, field.options) as RatingFieldOptions;
-  return Math.max(Number.isFinite(options.max) ? Number(options.max) : 5, getRatingMin(field));
+  const options = parseFieldOptions(
+    field.type,
+    field.options,
+  ) as RatingFieldOptions;
+  return Math.max(
+    Number.isFinite(options.max) ? Number(options.max) : 5,
+    getRatingMin(field),
+  );
 }
 
 function getBooleanIcon(field: ItemField) {
-  return booleanIconMap[((parseFieldOptions(field.type, field.options) as { icon?: BooleanIcon }).icon ?? "square") as BooleanIcon];
+  return booleanIconMap[
+    ((parseFieldOptions(field.type, field.options) as { icon?: BooleanIcon })
+      .icon ?? "square") as BooleanIcon
+  ];
 }
 
 function getRatingColor(field: ItemField) {
-  return (parseFieldOptions(field.type, field.options) as RatingFieldOptions).color ?? "currentColor";
+  return (
+    (parseFieldOptions(field.type, field.options) as RatingFieldOptions)
+      .color ?? "currentColor"
+  );
 }
 
 function getRatingValueColors(field: ItemField) {
   return (
-    parseFieldOptions(field.type, field.options) as RatingFieldOptions
-  ).optionColors ?? {};
+    (parseFieldOptions(field.type, field.options) as RatingFieldOptions)
+      .optionColors ?? {}
+  );
 }
 
 function getRatingIcon(field: ItemField) {
-  return ((parseFieldOptions(field.type, field.options) as RatingFieldOptions).icon ?? "star") as BooleanIcon;
+  return ((parseFieldOptions(field.type, field.options) as RatingFieldOptions)
+    .icon ?? "star") as BooleanIcon;
 }
 
 function getOptionColors(field: ItemField) {
@@ -332,7 +407,10 @@ function getOptionColors(field: ItemField) {
 function toggleMultiselectOption(fieldName: string, option: string) {
   const current = getMultiselectValue(fieldName);
   if (current.includes(option)) {
-    setMultiselectValue(fieldName, current.filter((entry) => entry !== option));
+    setMultiselectValue(
+      fieldName,
+      current.filter((entry) => entry !== option),
+    );
     return;
   }
   setMultiselectValue(fieldName, [...current, option]);

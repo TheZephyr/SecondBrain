@@ -1,39 +1,41 @@
 <template>
   <div
-    class="group grid items-center border-b border-[var(--border-color)] text-base text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)]"
-    :class="isSelected ? 'bg-[var(--bg-hover)]' : ''"
+    class="group grid items-center border-b border-(--border-color) text-base text-(--text-primary) transition-colors hover:bg-(--bg-hover)"
+    :class="isSelected ? 'bg-(--bg-hover)' : ''"
     :style="{ gridTemplateColumns }"
     :aria-rowindex="virtualIndex + 1"
-    @contextmenu.prevent="event => emitRowContextMenu(event)"
+    @contextmenu.prevent="(event) => emitRowContextMenu(event)"
   >
     <div
       v-for="(cell, cellIndex) in cells"
       :key="cell.id"
-      class="flex h-10 items-center border-r border-[var(--border-color)]"
+      class="flex h-10 items-center border-r border-(--border-color)"
       :class="cellIndex === cells.length - 1 ? 'border-r-0' : ''"
     >
       <template v-if="cellMeta(cell)?.type === 'rowNumber'">
         <div class="relative flex h-10 w-full items-center justify-end pr-2">
           <span
-            class="text-right text-base text-[var(--text-muted)] transition-opacity"
+            class="text-right text-base text-(--text-muted) transition-opacity"
             :class="isSelected ? 'opacity-0' : 'group-hover:opacity-0'"
           >
             {{ rowIndex + 1 }}
           </span>
           <div
             class="absolute right-1 flex items-center gap-1 transition-opacity"
-            :class="isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+            :class="
+              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            "
           >
             <input
               type="checkbox"
-              class="h-3.5 w-3.5 cursor-pointer rounded border border-[var(--border-color)] accent-[var(--accent-primary)]"
+              class="h-3.5 w-3.5 cursor-pointer rounded border border-(--border-color) accent-(--accent-primary)"
               :checked="isSelected"
               @click.stop
-              @change="event => emitRowSelectionToggle(event)"
+              @change="(event) => emitRowSelectionToggle(event)"
             />
             <AppButton
               text
-              class="h-6 w-6 p-0 text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]"
+              class="h-6 w-6 p-0 text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary)"
               title="Expand"
               @click.stop="emitEditItem"
             >
@@ -55,7 +57,11 @@
           :rowIndex="rowIndex"
           :rowIds="rowIds"
           :orderedFields="orderedFields"
-          :numberFieldRange="cellMeta(cell)?.field ? numberFieldRanges[cellMeta(cell)?.field?.id ?? 0] : undefined"
+          :numberFieldRange="
+            cellMeta(cell)?.field
+              ? numberFieldRanges[cellMeta(cell)?.field?.id ?? 0]
+              : undefined
+          "
           :duplicateMap="duplicateMap"
         />
       </template>
@@ -68,7 +74,12 @@ import { computed } from "vue";
 import type { Cell, Row } from "@tanstack/vue-table";
 import { ChevronRight } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
-import type { Field, Item, ItemDataValue, NumberFieldRange } from "../../../types/models";
+import type {
+  Field,
+  Item,
+  ItemDataValue,
+  NumberFieldRange,
+} from "../../../types/models";
 import type { GridColumnMeta, GridRow } from "./types";
 import CollectionGridCell from "./CollectionGridCell.vue";
 
@@ -91,8 +102,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "edit-item", value: Item): void;
-  (e: "row-contextmenu", value: { event: MouseEvent; row: Item; rowIndex: number; totalRows: number }): void;
-  (e: "toggle-row-selection", value: { rowId: number; selected: boolean }): void;
+  (
+    e: "row-contextmenu",
+    value: {
+      event: MouseEvent;
+      row: Item;
+      rowIndex: number;
+      totalRows: number;
+    },
+  ): void;
+  (
+    e: "toggle-row-selection",
+    value: { rowId: number; selected: boolean },
+  ): void;
 }>();
 
 const cells = computed(() => props.row.getVisibleCells());

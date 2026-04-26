@@ -6,24 +6,38 @@
     @update:visible="$emit('update:visible', $event)"
   >
     <div v-if="preview" class="space-y-4">
-      <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-        <div class="text-sm font-medium text-[var(--text-secondary)]">Archive file</div>
-        <div class="mt-1 break-all font-mono text-sm text-[var(--text-primary)]">
+      <div
+        class="rounded-lg border border-(--border-color) bg-(--bg-primary) p-4"
+      >
+        <div class="text-sm font-medium text-(--text-secondary)">
+          Archive file
+        </div>
+        <div class="mt-1 break-all font-mono text-sm text-(--text-primary)">
           {{ preview.filePath }}
         </div>
         <div class="mt-3 grid gap-3 md:grid-cols-2">
-          <div class="rounded-md border border-[var(--border-color)] p-3">
-            <div class="text-xs uppercase tracking-wide text-[var(--text-muted)]">Archive</div>
-            <div class="mt-2 text-sm text-[var(--text-secondary)]">
-              <div>{{ preview.archiveSummary.stats.collectionCount }} collections</div>
-              <div>{{ preview.archiveSummary.stats.totalFieldCount }} fields</div>
+          <div class="rounded-md border border-(--border-color) p-3">
+            <div class="text-xs uppercase tracking-wide text-(--text-muted)">
+              Archive
+            </div>
+            <div class="mt-2 text-sm text-(--text-secondary)">
+              <div>
+                {{ preview.archiveSummary.stats.collectionCount }} collections
+              </div>
+              <div>
+                {{ preview.archiveSummary.stats.totalFieldCount }} fields
+              </div>
               <div>{{ preview.archiveSummary.stats.totalItemCount }} items</div>
             </div>
           </div>
-          <div class="rounded-md border border-[var(--border-color)] p-3">
-            <div class="text-xs uppercase tracking-wide text-[var(--text-muted)]">Current Database</div>
-            <div class="mt-2 text-sm text-[var(--text-secondary)]">
-              <div>{{ preview.currentDbSummary.collectionCount }} collections</div>
+          <div class="rounded-md border border-(--border-color) p-3">
+            <div class="text-xs uppercase tracking-wide text-(--text-muted)">
+              Current Database
+            </div>
+            <div class="mt-2 text-sm text-(--text-secondary)">
+              <div>
+                {{ preview.currentDbSummary.collectionCount }} collections
+              </div>
               <div>{{ preview.currentDbSummary.totalFieldCount }} fields</div>
               <div>{{ preview.currentDbSummary.totalItemCount }} items</div>
             </div>
@@ -33,29 +47,43 @@
 
       <div
         class="rounded-lg border p-4 text-sm"
-        :class="preview.willReplaceExistingData
-          ? 'border-[color-mix(in_srgb,var(--warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-[var(--text-secondary)]'
-          : 'border-[var(--border-color)] bg-[var(--bg-primary)] text-[var(--text-secondary)]'"
+        :class="
+          preview.willReplaceExistingData
+            ? 'border-[color-mix(in_srgb,var(--warning)_40%,transparent)] bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-(--text-secondary)'
+            : 'border-(--border-color) bg-(--bg-primary) text-(--text-secondary)'
+        "
       >
-        <div class="font-medium text-[var(--text-primary)]">
-          {{ preview.willReplaceExistingData ? "Existing data will be replaced." : "Current database is empty." }}
+        <div class="font-medium text-(--text-primary)">
+          {{
+            preview.willReplaceExistingData
+              ? "Existing data will be replaced."
+              : "Current database is empty."
+          }}
         </div>
         <div class="mt-1">
-          A <span class="font-medium">pre_restore</span> backup will be created automatically before the restore begins.
+          A <span class="font-medium">pre_restore</span> backup will be created
+          automatically before the restore begins.
         </div>
       </div>
 
-      <div class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-4">
-        <div class="text-sm font-medium text-[var(--text-primary)]">Collections in archive</div>
+      <div
+        class="rounded-lg border border-(--border-color) bg-(--bg-primary) p-4"
+      >
+        <div class="text-sm font-medium text-(--text-primary)">
+          Collections in archive
+        </div>
         <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
           <div
             v-for="collection in preview.archiveSummary.collections"
             :key="collection.name"
-            class="flex items-center justify-between rounded-md border border-[var(--border-color)] px-3 py-2 text-sm"
+            class="flex items-center justify-between rounded-md border border-(--border-color) px-3 py-2 text-sm"
           >
-            <span class="font-medium text-[var(--text-primary)]">{{ collection.name }}</span>
-            <span class="text-[var(--text-muted)]">
-              {{ collection.stats.fieldCount }} fields, {{ collection.stats.itemCount }} items
+            <span class="font-medium text-(--text-primary)">{{
+              collection.name
+            }}</span>
+            <span class="text-(--text-muted)">
+              {{ collection.stats.fieldCount }} fields,
+              {{ collection.stats.itemCount }} items
             </span>
           </div>
         </div>
@@ -63,10 +91,19 @@
     </div>
 
     <template #footer>
-      <AppButton severity="secondary" text :disabled="restoring" @click="$emit('update:visible', false)">
+      <AppButton
+        severity="secondary"
+        text
+        :disabled="restoring"
+        @click="$emit('update:visible', false)"
+      >
         Cancel
       </AppButton>
-      <AppButton severity="danger" :loading="restoring" @click="$emit('confirm')">
+      <AppButton
+        severity="danger"
+        :loading="restoring"
+        @click="$emit('confirm')"
+      >
         Restore Full Archive
       </AppButton>
     </template>

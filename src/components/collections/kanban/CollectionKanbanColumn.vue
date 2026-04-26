@@ -1,14 +1,19 @@
 <template>
-  <div class="flex h-full min-h-0 w-[240px] flex-shrink-0 flex-col rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]">
+  <div
+    class="flex h-full min-h-0 w-60 shrink-0 flex-col rounded-lg border border-(--border-color) bg-(--bg-secondary)"
+  >
     <div
       class="flex items-center gap-2 px-3 py-2"
-      :class="headerDragOver ? 'bg-[var(--bg-hover)]' : ''"
+      :class="headerDragOver ? 'bg-(--bg-hover)' : ''"
       @dragover="onHeaderDragOver"
       @drop="onHeaderDrop"
       @dragleave="onHeaderDragLeave"
     >
       <div class="flex-1">
-        <span class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none" :style="chipStyle">
+        <span
+          class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
+          :style="chipStyle"
+        >
           {{ column.label }}
         </span>
       </div>
@@ -19,7 +24,7 @@
       </AppButton>
       <span
         v-if="!isUncategorized"
-        class="flex size-6 items-center justify-center text-[var(--text-muted)]"
+        class="flex size-6 items-center justify-center text-(--text-muted)"
         title="Drag to reorder"
         draggable="true"
         @dragstart="onHeaderDragStart"
@@ -38,10 +43,18 @@
       @drop="onBodyDrop"
       @dragleave="onBodyDragLeave"
     >
-      <div v-if="column.items.length === 0" class="py-4 text-sm text-[var(--text-muted)]">No items</div>
+      <div
+        v-if="column.items.length === 0"
+        class="py-4 text-sm text-(--text-muted)"
+      >
+        No items
+      </div>
 
       <template v-for="(item, index) in column.items" :key="item.id">
-        <div v-if="dropIndicatorIndex === index" class="h-0.5 w-full rounded bg-[var(--accent-primary)]" />
+        <div
+          v-if="dropIndicatorIndex === index"
+          class="h-0.5 w-full rounded bg-(--accent-primary)"
+        />
         <CollectionKanbanCard
           :item="item"
           :viewOrderedFields="viewOrderedFields"
@@ -51,7 +64,10 @@
           @drag-start="onCardDragStart"
         />
       </template>
-      <div v-if="dropIndicatorIndex === column.items.length" class="h-0.5 w-full rounded bg-[var(--accent-primary)]" />
+      <div
+        v-if="dropIndicatorIndex === column.items.length"
+        class="h-0.5 w-full rounded bg-(--accent-primary)"
+      />
     </div>
   </div>
 </template>
@@ -77,7 +93,14 @@ const emit = defineEmits<{
   (e: "add-item", value: string | null): void;
   (e: "edit-item", value: Item): void;
   (e: "update-item", value: { id: number; data: Item["data"] }): void;
-  (e: "card-drop", value: { itemId: number; targetColumnKey: string | null; afterItemId?: number | null }): void;
+  (
+    e: "card-drop",
+    value: {
+      itemId: number;
+      targetColumnKey: string | null;
+      afterItemId?: number | null;
+    },
+  ): void;
   (e: "column-drop", value: { fromKey: string; toKey: string }): void;
 }>();
 
@@ -87,7 +110,10 @@ const headerDragOver = ref(false);
 
 const chipStyle = computed(() => {
   if (props.isUncategorized) {
-    return { backgroundColor: "var(--bg-tertiary)", color: "var(--text-muted)" };
+    return {
+      backgroundColor: "var(--bg-tertiary)",
+      color: "var(--text-muted)",
+    };
   }
   return getChipStyle(props.column.label, props.colorOptions);
 });
@@ -141,7 +167,12 @@ function onBodyDragOver(event: DragEvent) {
     const midpoint = rect.top + rect.height / 2;
     const cardId = Number(cardEl.dataset.itemId);
     const index = props.column.items.findIndex((item) => item.id === cardId);
-    dropIndicatorIndex.value = index >= 0 ? (event.clientY > midpoint ? index + 1 : index) : props.column.items.length;
+    dropIndicatorIndex.value =
+      index >= 0
+        ? event.clientY > midpoint
+          ? index + 1
+          : index
+        : props.column.items.length;
   } else {
     dropIndicatorIndex.value = props.column.items.length;
   }
@@ -166,7 +197,8 @@ function onBodyDrop(event: DragEvent) {
   }
 
   const index = dropIndicatorIndex.value ?? props.column.items.length;
-  const afterItemId = index > 0 ? props.column.items[index - 1]?.id ?? null : null;
+  const afterItemId =
+    index > 0 ? (props.column.items[index - 1]?.id ?? null) : null;
   emit("card-drop", {
     itemId,
     targetColumnKey: props.column.key,

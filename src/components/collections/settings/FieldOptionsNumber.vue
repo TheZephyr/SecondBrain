@@ -1,7 +1,9 @@
 <template>
   <div class="space-y-4">
     <div>
-      <div class="mb-1 text-base font-semibold uppercase text-[var(--text-muted)]">Default Value</div>
+      <div class="mb-1 text-base font-semibold uppercase text-(--text-muted)">
+        Default Value
+      </div>
       <AppNumberField
         :modelValue="defaultValue"
         inputClass="w-full"
@@ -11,12 +13,17 @@
     </div>
 
     <div class="flex items-center justify-between gap-2">
-      <div class="text-base text-[var(--text-secondary)]">Show as chip</div>
-      <AppSwitch :modelValue="showAsChip" @update:modelValue="updateShowAsChip" />
+      <div class="text-base text-(--text-secondary)">Show as chip</div>
+      <AppSwitch
+        :modelValue="showAsChip"
+        @update:modelValue="updateShowAsChip"
+      />
     </div>
 
     <div class="flex items-center justify-between gap-2">
-      <div class="text-base text-[var(--text-secondary)]">Show thousands separator</div>
+      <div class="text-base text-(--text-secondary)">
+        Show thousands separator
+      </div>
       <AppSwitch
         :modelValue="showThousandsSeparator"
         @update:modelValue="updateThousandsSeparator"
@@ -24,7 +31,9 @@
     </div>
 
     <div class="space-y-3">
-      <div class="text-base font-semibold uppercase text-[var(--text-muted)]">Color Scale</div>
+      <div class="text-base font-semibold uppercase text-(--text-muted)">
+        Color Scale
+      </div>
       <AppSelect
         :modelValue="colorScaleMode"
         :options="colorScaleModes"
@@ -108,7 +117,8 @@ function updateThousandsSeparator(value: boolean) {
 }
 
 function updateColorScaleMode(value: string | number | null) {
-  const direction = value === "ascending" || value === "descending" ? value : null;
+  const direction =
+    value === "ascending" || value === "descending" ? value : null;
   emitOptions({
     ...props.modelValue,
     colorScale: direction

@@ -85,7 +85,7 @@ const buttonSize = computed(() => {
 const buttonClass = computed(() =>
   cn(
     props.rounded ? "rounded-full" : undefined,
-    props.text && props.severity === "danger" ? "text-[var(--danger)] hover:text-[var(--danger)]" : undefined,
+    props.text && props.severity === "danger" ? "text-(--danger) hover:text-(--danger)" : undefined,
     props.class,
   ),
 );

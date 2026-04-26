@@ -1,7 +1,7 @@
 <template>
   <span
     v-if="descriptionText"
-    class="inline-flex size-4 items-center justify-center rounded-full border border-[var(--border-color)] text-[10px] text-[var(--text-muted)]"
+    class="inline-flex size-4 items-center justify-center rounded-full border border-(--border-color) text-[10px] text-(--text-muted)"
     :title="descriptionText"
     aria-label="Field description"
   >

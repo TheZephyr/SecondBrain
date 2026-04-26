@@ -1,11 +1,15 @@
 <template>
-  <aside class="flex w-64 min-w-[240px] flex-col border-r border-[var(--border-color)] bg-[var(--bg-secondary)]">
-    <div class="border-b border-[var(--border-color)] p-4">
+  <aside
+    class="flex w-64 min-w-60 flex-col border-r border-(--border-color) bg-(--bg-secondary)"
+  >
+    <div class="border-b border-(--border-color) p-4">
       <div class="flex items-center gap-3">
-        <Brain class="size-10 pt-1 text-[var(--accent-primary)]" />
+        <Brain class="size-10 pt-1 text-(--accent-primary)" />
         <div>
-          <h1 class="text-lg font-semibold text-[var(--text-primary)]">Second Brain</h1>
-          <p class="text-xs text-[var(--text-muted)]">{{ appVersion }}</p>
+          <h1 class="text-lg font-semibold text-(--text-primary)">
+            Second Brain
+          </h1>
+          <p class="text-xs text-(--text-muted)">{{ appVersion }}</p>
         </div>
       </div>
     </div>
@@ -14,9 +18,11 @@
       <AppButton
         text
         class="w-full justify-start gap-3 rounded-md px-3 py-2 text-base"
-        :class="currentView === 'dashboard'
-          ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+        :class="
+          currentView === 'dashboard'
+            ? 'bg-(--accent-light) text-(--accent-primary)'
+            : 'text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)'
+        "
         @click="showDashboard"
       >
         <template #icon>
@@ -25,23 +31,34 @@
         <span>Dashboard</span>
       </AppButton>
 
-      <div class="h-px bg-[var(--border-color)]" />
-      <div class="px-3 pt-2 text-base font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+      <div class="h-px bg-(--border-color)" />
+      <div
+        class="px-3 pt-2 text-base font-semibold uppercase tracking-wide text-(--text-muted)"
+      >
         Collections
       </div>
 
-      <div v-for="collection in collections" :key="collection.id" class="space-y-1">
+      <div
+        v-for="collection in collections"
+        :key="collection.id"
+        class="space-y-1"
+      >
         <AppButton
           text
-          class="w-full justify-start rounded-md px-3 py-2 text-base text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+          class="w-full justify-start rounded-md px-3 py-2 text-base text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)"
           @click="handleCollectionClick(collection)"
         >
           <div class="flex items-center gap-2">
-            <span class="flex items-center" @click.stop="handleCollectionChevronClick(collection)">
+            <span
+              class="flex items-center"
+              @click.stop="handleCollectionChevronClick(collection)"
+            >
               <ChevronDown v-if="isExpanded(collection.id)" class="size-4" />
               <ChevronRight v-else class="size-4" />
             </span>
-            <span class="min-w-0 flex-1 truncate text-base">{{ collection.name }}</span>
+            <span class="min-w-0 flex-1 truncate text-base">{{
+              collection.name
+            }}</span>
           </div>
         </AppButton>
 
@@ -51,14 +68,18 @@
               <AppButton
                 text
                 class="group w-full justify-start rounded-md px-3 py-2 pl-10 text-base"
-                :class="isActiveView(sourceView.id)
-                  ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+                :class="
+                  isActiveView(sourceView.id)
+                    ? 'bg-(--accent-light) text-(--accent-primary)'
+                    : 'text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)'
+                "
                 @click="handleViewClick(sourceView.id)"
               >
                 <div class="flex w-full items-center gap-2">
-                  <LockKeyhole class="size-4 text-[var(--accent-primary)]" />
-                  <span class="flex-1 truncate text-left">{{ sourceView.name }}</span>
+                  <LockKeyhole class="size-4 text-(--accent-primary)" />
+                  <span class="flex-1 truncate text-left">{{
+                    sourceView.name
+                  }}</span>
                 </div>
               </AppButton>
             </div>
@@ -67,37 +88,42 @@
               v-for="view in childViews"
               :key="view.id"
               class="relative"
-              @dragover="event => onViewDragOver(view.id, event)"
-              @drop="event => onViewDrop(collection.id, view.id, event)"
+              @dragover="(event) => onViewDragOver(view.id, event)"
+              @drop="(event) => onViewDrop(collection.id, view.id, event)"
             >
               <AppButton
                 text
                 class="group w-full justify-start rounded-md px-3 py-2 text-base"
                 :class="[
                   isActiveView(view.id)
-                    ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-                  dragOverViewId === view.id ? 'bg-[var(--bg-hover)]' : '',
+                    ? 'bg-(--accent-light) text-(--accent-primary)'
+                    : 'text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)',
+                  dragOverViewId === view.id ? 'bg-(--bg-hover)' : '',
                 ]"
                 @click="handleViewClick(view.id)"
               >
                 <div class="flex w-full items-center gap-2">
                   <span
-                    class="flex size-5 items-center justify-center text-[var(--text-muted)]"
+                    class="flex size-5 items-center justify-center text-(--text-muted)"
                     title="Drag to reorder"
                     draggable="true"
-                    @dragstart="event => onViewDragStart(view.id, event)"
+                    @dragstart="(event) => onViewDragStart(view.id, event)"
                     @dragend="onViewDragEnd"
                     @mousedown.stop
                     @click.stop
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <component :is="getViewTypeMeta(view.type).icon" class="size-4 text-[var(--accent-primary)]" />
+                  <component
+                    :is="getViewTypeMeta(view.type).icon"
+                    class="size-4 text-(--accent-primary)"
+                  />
                   <span class="flex-1 truncate text-left">{{ view.name }}</span>
-                  <div class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div
+                    class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
+                  >
                     <span
-                      class="flex size-5 items-center justify-center rounded text-[var(--accent-primary)] hover:bg-[var(--bg-hover)]"
+                      class="flex size-5 items-center justify-center rounded text-(--accent-primary) hover:bg-(--bg-hover)"
                       title="Rename view"
                       @mousedown.stop
                       @click.stop="openEditViewModal(view)"
@@ -105,7 +131,7 @@
                       <Pencil class="size-4" />
                     </span>
                     <span
-                      class="flex size-5 items-center justify-center rounded text-[var(--danger)] hover:bg-[var(--bg-hover)]"
+                      class="flex size-5 items-center justify-center rounded text-(--danger) hover:bg-(--bg-hover)"
                       title="Delete view"
                       @mousedown.stop
                       @click.stop="toggleDeleteConfirm(view.id)"
@@ -119,21 +145,21 @@
               <div
                 v-if="confirmDeleteViewId === view.id"
                 :ref="setDeleteConfirmContainer"
-                class="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-[var(--border-color)] bg-[var(--bg-primary)] p-2 text-base text-[var(--text-secondary)] shadow-lg"
+                class="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-(--border-color) bg-(--bg-primary) p-2 text-base text-(--text-secondary) shadow-lg"
                 @mousedown.stop
               >
                 <div>Are you sure?</div>
                 <div class="mt-2 flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    class="rounded px-2 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                    class="rounded px-2 py-1 text-(--text-secondary) hover:bg-(--bg-hover)"
                     @click.stop="closeDeleteConfirm"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    class="rounded bg-[var(--accent-primary)] px-2 py-1 text-black hover:opacity-90"
+                    class="rounded bg-(--accent-primary) px-2 py-1 text-black hover:opacity-90"
                     @click.stop="confirmDeleteView(view)"
                   >
                     Delete
@@ -145,10 +171,10 @@
             <div :ref="setViewPickerContainer" class="relative">
               <AppButton
                 text
-                class="w-full justify-start rounded-md px-3 py-2 text-base text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                class="w-full justify-start rounded-md px-3 py-2 text-base text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary)"
                 :aria-expanded="isViewPickerOpen"
                 aria-controls="view-type-picker"
-                @click="event => toggleViewPicker(event, collection.id)"
+                @click="(event) => toggleViewPicker(event, collection.id)"
               >
                 <div class="flex w-full items-center gap-2 pl-1">
                   <Plus class="size-4" />
@@ -161,7 +187,7 @@
                 :open="isViewPickerOpen"
                 :placement="viewPickerPlacement"
                 :viewTypes="viewTypeOptions"
-                @select="type => handleViewTypeSelect(collection.id, type)"
+                @select="(type) => handleViewTypeSelect(collection.id, type)"
                 @close="closeViewPicker"
               />
             </div>
@@ -171,7 +197,7 @@
 
       <AppButton
         outlined
-        class="w-full justify-start gap-3 rounded-md border-[var(--border-color)] border-dashed px-3 py-2 text-base text-[var(--text-muted)]"
+        class="w-full justify-start gap-3 rounded-md border-(--border-color) border-dashed px-3 py-2 text-base text-(--text-muted)"
         @click="showNewCollectionModal = true"
       >
         <template #icon>
@@ -181,13 +207,15 @@
       </AppButton>
     </nav>
 
-    <div class="border-t border-[var(--border-color)] px-2 py-2">
+    <div class="border-t border-(--border-color) px-2 py-2">
       <AppButton
         text
         class="w-full justify-start gap-3 rounded-md px-3 py-2 text-base"
-        :class="currentView === 'settings'
-          ? 'bg-[var(--accent-light)] text-[var(--accent-primary)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'"
+        :class="
+          currentView === 'settings'
+            ? 'bg-(--accent-light) text-(--accent-primary)'
+            : 'text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)'
+        "
         @click="showSettings"
       >
         <template #icon>
@@ -207,12 +235,19 @@
   >
     <div class="space-y-4">
       <div class="space-y-2">
-        <AppInput v-model="newCollection.name" placeholder="Name" type="text" autofocus />
+        <AppInput
+          v-model="newCollection.name"
+          placeholder="Name"
+          type="text"
+          autofocus
+        />
       </div>
     </div>
 
     <template #footer>
-      <AppButton severity="secondary" text @click="cancelNewCollection">Cancel</AppButton>
+      <AppButton severity="secondary" text @click="cancelNewCollection"
+        >Cancel</AppButton
+      >
       <AppButton @click="createCollection">Create Collection</AppButton>
     </template>
   </AppDialog>
@@ -226,10 +261,20 @@
   >
     <div class="space-y-4">
       <div class="space-y-2">
-        <AppInput v-model="viewModalName" placeholder="Name" type="text" autofocus />
+        <AppInput
+          v-model="viewModalName"
+          placeholder="Name"
+          type="text"
+          autofocus
+        />
       </div>
-      <div v-if="viewModalMode === 'create' && viewModalType === 'kanban'" class="space-y-2">
-        <label class="text-base font-medium text-[var(--text-secondary)]">Stacked by</label>
+      <div
+        v-if="viewModalMode === 'create' && viewModalType === 'kanban'"
+        class="space-y-2"
+      >
+        <label class="text-base font-medium text-(--text-secondary)"
+          >Stacked by</label
+        >
         <AppSelect
           v-model="viewModalKanbanFieldId"
           :options="kanbanFieldOptions"
@@ -239,8 +284,13 @@
           class="w-full"
         />
       </div>
-      <div v-if="viewModalMode === 'create' && viewModalType === 'calendar'" class="space-y-2">
-        <label class="text-base font-medium text-[var(--text-secondary)]">Date field</label>
+      <div
+        v-if="viewModalMode === 'create' && viewModalType === 'calendar'"
+        class="space-y-2"
+      >
+        <label class="text-base font-medium text-(--text-secondary)"
+          >Date field</label
+        >
         <AppSelect
           v-model="viewModalCalendarFieldId"
           :options="calendarFieldOptions"
@@ -253,7 +303,9 @@
     </div>
 
     <template #footer>
-      <AppButton severity="secondary" text @click="closeViewModal">Cancel</AppButton>
+      <AppButton severity="secondary" text @click="closeViewModal"
+        >Cancel</AppButton
+      >
       <AppButton @click="saveViewModal">
         {{ viewModalMode === "edit" ? "Save" : "Create View" }}
       </AppButton>
@@ -262,7 +314,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component, type ComponentPublicInstance } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  type Component,
+  type ComponentPublicInstance,
+} from "vue";
 import { storeToRefs } from "pinia";
 import {
   Brain,
@@ -287,7 +348,10 @@ import { useStore } from "../../../store";
 import { useNotificationsStore } from "../../../stores/notifications";
 import type { Collection, View, ViewType } from "../../../types/models";
 import { getOrderedFieldIds } from "../../../utils/viewConfig";
-import { collectionNameSchema, viewNameSchema } from "../../../validation/schemas";
+import {
+  collectionNameSchema,
+  viewNameSchema,
+} from "../../../validation/schemas";
 import ViewTypePicker from "./ViewTypePicker.vue";
 import {
   resolveCollectionChevronClick,
@@ -305,7 +369,14 @@ type ViewTypeOption = {
 };
 
 const store = useStore();
-const { collections, selectedCollection, currentView, currentViews, activeViewId, fields } = storeToRefs(store);
+const {
+  collections,
+  selectedCollection,
+  currentView,
+  currentViews,
+  activeViewId,
+  fields,
+} = storeToRefs(store);
 const notifications = useNotificationsStore();
 
 const appVersion = __APP_VERSION__;
@@ -330,7 +401,9 @@ const viewModalKanbanFieldId = ref<number | null>(null);
 const draggedViewId = ref<number | null>(null);
 const dragOverViewId = ref<number | null>(null);
 
-const sourceView = computed(() => currentViews.value.find((view) => view.is_default === 1) ?? null);
+const sourceView = computed(
+  () => currentViews.value.find((view) => view.is_default === 1) ?? null,
+);
 
 const childViews = computed(() =>
   [...currentViews.value]
@@ -343,8 +416,12 @@ const childViews = computed(() =>
     }),
 );
 
-const sourceDateFields = computed(() => fields.value.filter((field) => field.type === "date"));
-const sourceSelectFields = computed(() => fields.value.filter((field) => field.type === "select"));
+const sourceDateFields = computed(() =>
+  fields.value.filter((field) => field.type === "date"),
+);
+const sourceSelectFields = computed(() =>
+  fields.value.filter((field) => field.type === "select"),
+);
 
 const calendarFieldOptions = computed(() =>
   sourceDateFields.value.map((field) => ({
@@ -371,25 +448,33 @@ const viewTypeOptions = computed<ViewTypeOption[]>(() => {
       label: "Kanban",
       icon: KanbanSquare,
       disabled: kanbanDisabled,
-      tooltip: kanbanDisabled ? "Add a select field to the source view first." : undefined,
+      tooltip: kanbanDisabled
+        ? "Add a select field to the source view first."
+        : undefined,
     },
     {
       type: "calendar",
       label: "Calendar",
       icon: CalendarDays,
       disabled: calendarDisabled,
-      tooltip: calendarDisabled ? "Add a date field to the source view first." : undefined,
+      tooltip: calendarDisabled
+        ? "Add a date field to the source view first."
+        : undefined,
     },
   ];
 });
 
 const isViewPickerOpen = computed(
-  () => viewPickerOpenFor.value !== null && viewPickerOpenFor.value === selectedCollection.value?.id,
+  () =>
+    viewPickerOpenFor.value !== null &&
+    viewPickerOpenFor.value === selectedCollection.value?.id,
 );
 
 const viewModalHeader = computed(() => {
   const label = getViewTypeMeta(viewModalType.value).label;
-  return viewModalMode.value === "edit" ? `Rename ${label} view` : `Create new ${label} view`;
+  return viewModalMode.value === "edit"
+    ? `Rename ${label} view`
+    : `Create new ${label} view`;
 });
 
 function isExpanded(id: number) {
@@ -449,7 +534,10 @@ function isActiveView(viewId: number) {
 }
 
 function getViewTypeMeta(type: ViewType) {
-  return viewTypeOptions.value.find((option) => option.type === type) ?? viewTypeOptions.value[0];
+  return (
+    viewTypeOptions.value.find((option) => option.type === type) ??
+    viewTypeOptions.value[0]
+  );
 }
 
 function toggleViewPicker(event: MouseEvent, collectionId: number) {
@@ -463,7 +551,9 @@ function toggleViewPicker(event: MouseEvent, collectionId: number) {
   nextTick(() => updateViewPickerPlacement());
 }
 
-function setViewPickerContainer(element: Element | ComponentPublicInstance | null) {
+function setViewPickerContainer(
+  element: Element | ComponentPublicInstance | null,
+) {
   viewPickerContainer.value = element instanceof HTMLElement ? element : null;
 }
 
@@ -481,7 +571,8 @@ function updateViewPickerPlacement() {
   const estimatedHeight = viewTypeOptions.value.length * 40 + 16;
   const spaceBelow = window.innerHeight - rect.bottom;
   const spaceAbove = rect.top;
-  viewPickerPlacement.value = spaceBelow < estimatedHeight && spaceAbove > spaceBelow ? "top" : "bottom";
+  viewPickerPlacement.value =
+    spaceBelow < estimatedHeight && spaceAbove > spaceBelow ? "top" : "bottom";
 }
 
 function buildViewName(type: ViewType) {
@@ -508,8 +599,10 @@ function openCreateViewModal(collectionId: number, type: ViewType) {
   viewModalCollectionId.value = collectionId;
   viewModalViewId.value = null;
   viewModalName.value = buildViewName(type);
-  viewModalCalendarFieldId.value = type === "calendar" ? (calendarFieldOptions.value[0]?.value ?? null) : null;
-  viewModalKanbanFieldId.value = type === "kanban" ? (kanbanFieldOptions.value[0]?.value ?? null) : null;
+  viewModalCalendarFieldId.value =
+    type === "calendar" ? (calendarFieldOptions.value[0]?.value ?? null) : null;
+  viewModalKanbanFieldId.value =
+    type === "kanban" ? (kanbanFieldOptions.value[0]?.value ?? null) : null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -541,7 +634,9 @@ async function saveViewModal() {
     notifications.push({
       severity: "warn",
       summary: "Invalid view name",
-      detail: nameResult.error.issues[0]?.message || "Please enter a valid view name.",
+      detail:
+        nameResult.error.issues[0]?.message ||
+        "Please enter a valid view name.",
       life: 5000,
     });
     return;
@@ -555,8 +650,12 @@ async function saveViewModal() {
     });
   } else {
     if (!viewModalCollectionId.value) return;
-    const calendarFieldId = viewModalType.value === "calendar" ? viewModalCalendarFieldId.value : null;
-    const kanbanFieldId = viewModalType.value === "kanban" ? viewModalKanbanFieldId.value : null;
+    const calendarFieldId =
+      viewModalType.value === "calendar"
+        ? viewModalCalendarFieldId.value
+        : null;
+    const kanbanFieldId =
+      viewModalType.value === "kanban" ? viewModalKanbanFieldId.value : null;
 
     if (viewModalType.value === "calendar" && !calendarFieldId) {
       notifications.push({
@@ -586,7 +685,9 @@ async function saveViewModal() {
       calendarFieldId,
       kanbanFieldId,
       selectedFieldIds: getOrderedFieldIds(
-        fields.value.filter((field) => field.collection_id === viewModalCollectionId.value),
+        fields.value.filter(
+          (field) => field.collection_id === viewModalCollectionId.value,
+        ),
       ),
     });
   }
@@ -617,7 +718,11 @@ function onViewDragOver(viewId: number, event: DragEvent) {
   event.preventDefault();
 }
 
-async function onViewDrop(collectionId: number, viewId: number, event: DragEvent) {
+async function onViewDrop(
+  collectionId: number,
+  viewId: number,
+  event: DragEvent,
+) {
   event.preventDefault();
   const draggedId = draggedViewId.value;
   if (!draggedId || draggedId === viewId) {
@@ -651,11 +756,15 @@ async function onViewDrop(collectionId: number, viewId: number, event: DragEvent
 }
 
 function toggleDeleteConfirm(viewId: number) {
-  confirmDeleteViewId.value = confirmDeleteViewId.value === viewId ? null : viewId;
+  confirmDeleteViewId.value =
+    confirmDeleteViewId.value === viewId ? null : viewId;
 }
 
-function setDeleteConfirmContainer(element: Element | ComponentPublicInstance | null) {
-  deleteConfirmContainer.value = element instanceof HTMLElement ? element : null;
+function setDeleteConfirmContainer(
+  element: Element | ComponentPublicInstance | null,
+) {
+  deleteConfirmContainer.value =
+    element instanceof HTMLElement ? element : null;
 }
 
 function closeDeleteConfirm() {
@@ -679,7 +788,9 @@ async function createCollection() {
   const nameResult = collectionNameSchema.safeParse(newCollection.value.name);
 
   if (!nameResult.success) {
-    const detail = nameResult.error.issues[0]?.message || "Please check your collection settings.";
+    const detail =
+      nameResult.error.issues[0]?.message ||
+      "Please check your collection settings.";
     notifications.push({
       severity: "warn",
       summary: "Invalid collection",
@@ -731,12 +842,17 @@ function handleDocumentMouseDown(event: MouseEvent) {
   const target = event.target as Node | null;
   if (
     confirmDeleteViewId.value !== null &&
-    (!deleteConfirmContainer.value || (target && !deleteConfirmContainer.value.contains(target)))
+    (!deleteConfirmContainer.value ||
+      (target && !deleteConfirmContainer.value.contains(target)))
   ) {
     closeDeleteConfirm();
   }
 
-  if (isViewPickerOpen.value && (!viewPickerContainer.value || (target && !viewPickerContainer.value.contains(target)))) {
+  if (
+    isViewPickerOpen.value &&
+    (!viewPickerContainer.value ||
+      (target && !viewPickerContainer.value.contains(target)))
+  ) {
     closeViewPicker();
   }
 }

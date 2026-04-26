@@ -1,44 +1,87 @@
 <template>
-  <div class="grid h-10 items-center border-b-2 border-[var(--border-color)] bg-[var(--bg-tertiary)]"
-    :style="{ gridTemplateColumns }">
-    <div v-for="(header, index) in headers" :key="header.id"
-      class="relative flex h-10 items-center border-r border-[var(--border-color)]"
-      :class="index === headers.length - 1 ? 'border-r-0' : ''">
+  <div
+    class="grid h-10 items-center border-b-2 border-(--border-color) bg-(--bg-tertiary)"
+    :style="{ gridTemplateColumns }"
+  >
+    <div
+      v-for="(header, index) in headers"
+      :key="header.id"
+      class="relative flex h-10 items-center border-r border-(--border-color)"
+      :class="index === headers.length - 1 ? 'border-r-0' : ''"
+    >
       <template v-if="headerMeta(header)?.type === 'rowNumber'">
         <span class="sr-only">Row</span>
       </template>
       <template v-else-if="headerMeta(header)?.type === 'addField'">
-        <AppButton text class="mx-auto h-8 w-8 p-0" title="Add field" @click.stop="$emit('manage-fields')">
+        <AppButton
+          text
+          class="mx-auto h-8 w-8 p-0"
+          title="Add field"
+          @click.stop="$emit('manage-fields')"
+        >
           <template #icon>
             <Plus class="size-4" />
           </template>
         </AppButton>
       </template>
       <template v-else>
-        <button type="button"
-          class="flex h-full w-full items-center justify-between gap-2 px-3 text-left text-base font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          @click="event => toggleSort(headerMeta(header)?.field, event)">
+        <button
+          type="button"
+          class="flex h-full w-full items-center justify-between gap-2 px-3 text-left text-base font-semibold text-(--text-secondary) hover:text-(--text-primary)"
+          @click="(event) => toggleSort(headerMeta(header)?.field, event)"
+        >
           <span class="flex min-w-0 items-center gap-1.5">
-            <component :is="iconMap[FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text'].icon]" :size="14"
-              class="flex-shrink-0 text-[var(--text-muted)]" />
-            <span class="truncate">{{ headerMeta(header)?.field?.name ?? header.id }}</span>
-            <FieldDescriptionHint :description="headerMeta(header)?.field?.description" />
+            <component
+              :is="
+                iconMap[
+                  FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text']
+                    .icon
+                ]
+              "
+              :size="14"
+              class="shrink-0 text-(--text-muted)"
+            />
+            <span class="truncate">{{
+              headerMeta(header)?.field?.name ?? header.id
+            }}</span>
+            <FieldDescriptionHint
+              :description="headerMeta(header)?.field?.description"
+            />
           </span>
-          <span v-if="getSortEntry(headerMeta(header)?.field)" class="flex items-center gap-1 text-[var(--text-muted)]">
-            <ChevronUp v-if="getSortEntry(headerMeta(header)?.field)?.order === 1" :size="12" />
-            <ChevronDown v-else-if="getSortEntry(headerMeta(header)?.field)?.order === -1" :size="12" />
+          <span
+            v-if="getSortEntry(headerMeta(header)?.field)"
+            class="flex items-center gap-1 text-(--text-muted)"
+          >
+            <ChevronUp
+              v-if="getSortEntry(headerMeta(header)?.field)?.order === 1"
+              :size="12"
+            />
+            <ChevronDown
+              v-else-if="getSortEntry(headerMeta(header)?.field)?.order === -1"
+              :size="12"
+            />
             <span v-if="multiSortMeta.length > 1" class="text-[10px]">
               {{ getSortIndex(headerMeta(header)?.field) + 1 }}
             </span>
           </span>
         </button>
         <!-- Resize handle: 10px transparent hitbox centered on the column border -->
-        <div v-if="headerMeta(header)?.field"
-          class="absolute -right-[5px] top-0 h-full w-[10px] cursor-col-resize touch-none z-10 group/resize"
-          @pointerdown.stop.prevent="event => startColumnResize(event, headerMeta(header)?.field?.id)"
-          @dblclick.stop.prevent="$emit('reset-column-width', { fieldId: headerMeta(header)?.field?.id as number })">
+        <div
+          v-if="headerMeta(header)?.field"
+          class="absolute -right-1.25 top-0 h-full w-2.5 cursor-col-resize touch-none z-10 group/resize"
+          @pointerdown.stop.prevent="
+            (event) => startColumnResize(event, headerMeta(header)?.field?.id)
+          "
+          @dblclick.stop.prevent="
+            $emit('reset-column-width', {
+              fieldId: headerMeta(header)?.field?.id as number,
+            })
+          "
+        >
           <!-- 3px visual bar, centered inside the 10px hitbox, accent-colored on hover -->
-          <div class="absolute inset-y-2 left-[3.5px] w-[3px] rounded-full bg-transparent transition-colors duration-100 group-hover/resize:bg-[var(--accent-primary)]" />
+          <div
+            class="absolute inset-y-2 left-[3.5px] w-0.75 rounded-full bg-transparent transition-colors duration-100 group-hover/resize:bg-(--accent-primary)"
+          />
         </div>
       </template>
     </div>
@@ -74,7 +117,12 @@ const headers = computed(() => props.headerGroups[0]?.headers ?? []);
 const MIN_COLUMN_WIDTH = 60;
 const iconMap = icons as unknown as Record<string, Component>;
 
-let activeResize: { fieldId: number; startX: number; startWidth: number; pointerId: number } | null = null;
+let activeResize: {
+  fieldId: number;
+  startX: number;
+  startWidth: number;
+  pointerId: number;
+} | null = null;
 
 function stopColumnResize() {
   document.removeEventListener("pointermove", onColumnResizeMove);
@@ -82,7 +130,9 @@ function stopColumnResize() {
   document.removeEventListener("pointercancel", onColumnResizeEnd);
 }
 
-function headerMeta(header: Header<GridRow, unknown>): GridColumnMeta | undefined {
+function headerMeta(
+  header: Header<GridRow, unknown>,
+): GridColumnMeta | undefined {
   return header.column.columnDef.meta as GridColumnMeta | undefined;
 }
 
@@ -92,12 +142,17 @@ function getFieldKey(field: Field) {
 
 function getSortEntry(field?: Field) {
   if (!field) return null;
-  return props.multiSortMeta.find((entry) => entry.field === getFieldKey(field)) ?? null;
+  return (
+    props.multiSortMeta.find((entry) => entry.field === getFieldKey(field)) ??
+    null
+  );
 }
 
 function getSortIndex(field?: Field) {
   if (!field) return -1;
-  return props.multiSortMeta.findIndex((entry) => entry.field === getFieldKey(field));
+  return props.multiSortMeta.findIndex(
+    (entry) => entry.field === getFieldKey(field),
+  );
 }
 
 function toggleSort(field: Field | undefined, event: MouseEvent) {
@@ -134,7 +189,10 @@ function toggleSort(field: Field | undefined, event: MouseEvent) {
     return;
   }
 
-  emit("sort", current.filter((entry) => entry.field !== fieldKey));
+  emit(
+    "sort",
+    current.filter((entry) => entry.field !== fieldKey),
+  );
 }
 
 function startColumnResize(event: PointerEvent, fieldId: number | undefined) {
@@ -144,7 +202,10 @@ function startColumnResize(event: PointerEvent, fieldId: number | undefined) {
   const headerCellElement = handleElement?.parentElement;
   if (!headerCellElement) return;
 
-  const startWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(headerCellElement.getBoundingClientRect().width));
+  const startWidth = Math.max(
+    MIN_COLUMN_WIDTH,
+    Math.round(headerCellElement.getBoundingClientRect().width),
+  );
   activeResize = {
     fieldId,
     startX: event.clientX,
@@ -161,7 +222,10 @@ function onColumnResizeMove(event: PointerEvent) {
   if (!activeResize || event.pointerId !== activeResize.pointerId) return;
 
   const deltaX = event.clientX - activeResize.startX;
-  const nextWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(activeResize.startWidth + deltaX));
+  const nextWidth = Math.max(
+    MIN_COLUMN_WIDTH,
+    Math.round(activeResize.startWidth + deltaX),
+  );
 
   emit("set-column-width", {
     fieldId: activeResize.fieldId,

@@ -30,18 +30,25 @@
     />
     <template v-else-if="type === 'longtext'">
       <div class="flex items-center justify-between gap-2">
-        <div class="text-base text-[var(--text-secondary)]">Enable rich text</div>
+        <div class="text-base text-(--text-secondary)">Enable rich text</div>
         <AppSwitch
           :modelValue="Boolean((modelValue as LongTextFieldOptions).richText)"
-          @update:modelValue="value => emitOptions({ ...props.modelValue, richText: value })"
+          @update:modelValue="
+            (value) => emitOptions({ ...props.modelValue, richText: value })
+          "
         />
       </div>
     </template>
 
     <template v-if="type !== 'boolean'">
       <div class="flex items-center justify-between gap-2">
-        <div class="text-base text-[var(--text-secondary)]">Check for unique values</div>
-        <AppSwitch :modelValue="uniqueCheck" @update:modelValue="value => updateUniqueCheck(value)" />
+        <div class="text-base text-(--text-secondary)">
+          Check for unique values
+        </div>
+        <AppSwitch
+          :modelValue="uniqueCheck"
+          @update:modelValue="(value) => updateUniqueCheck(value)"
+        />
       </div>
     </template>
   </div>
@@ -78,7 +85,9 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: FieldOptions): void;
 }>();
 
-const uniqueCheck = computed(() => Boolean((props.modelValue as { uniqueCheck?: boolean }).uniqueCheck));
+const uniqueCheck = computed(() =>
+  Boolean((props.modelValue as { uniqueCheck?: boolean }).uniqueCheck),
+);
 
 function emitOptions(next: FieldOptions) {
   emit("update:modelValue", next);

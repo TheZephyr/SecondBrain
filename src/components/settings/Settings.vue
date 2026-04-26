@@ -1,36 +1,54 @@
 <template>
   <div class="min-h-full px-6 py-8">
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <section id="general" class="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
+      <section
+        id="general"
+        class="rounded-xl border border-(--border-color) bg-(--bg-secondary) p-6"
+      >
         <div class="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h1 class="text-2xl font-semibold text-[var(--text-primary)]">Settings</h1>
-            <p class="mt-1 text-sm text-[var(--text-muted)]">
+            <h1 class="text-2xl font-semibold text-(--text-primary)">
+              Settings
+            </h1>
+            <p class="mt-1 text-sm text-(--text-muted)">
               Global preferences and recovery tools for your local data.
             </p>
           </div>
           <AppBadge value="General" severity="secondary" />
         </div>
 
-        <div class="mb-6 rounded-lg border border-[var(--border-color)]">
+        <div class="mb-6 rounded-lg">
           <div class="grid gap-4 md:grid-cols-2">
             <AppCard title="App">
-              <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+              <div class="space-y-2 text-sm text-(--text-secondary)">
                 <div class="flex items-center justify-between gap-4">
                   <span>Name</span>
-                  <span class="font-medium text-[var(--text-primary)]">Second Brain</span>
+                  <span class="font-medium text-(--text-primary)"
+                    >Second Brain</span
+                  >
                 </div>
                 <div class="flex items-center justify-between gap-4">
                   <span>Version</span>
-                  <span class="font-medium text-[var(--text-primary)]">v{{ appVersion }}</span>
+                  <span class="font-medium text-(--text-primary)"
+                    >v{{ appVersion }}</span
+                  >
                 </div>
               </div>
             </AppCard>
 
             <AppCard title="Quick Links">
               <div class="flex flex-wrap gap-3">
-                <AppButton label="Go to Dashboard" severity="secondary" outlined @click="store.showDashboard()" />
-                <AppButton label="Open Backups Folder" text @click="openBackupsFolder" />
+                <AppButton
+                  label="Go to Dashboard"
+                  severity="secondary"
+                  outlined
+                  @click="store.showDashboard()"
+                />
+                <AppButton
+                  label="Open Backups Folder"
+                  text
+                  @click="openBackupsFolder"
+                />
               </div>
             </AppCard>
           </div>
@@ -40,25 +58,30 @@
       <SettingsBackupSection />
       <SettingsDataSection />
 
-      <section id="about" class="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
+      <section
+        id="about"
+        class="rounded-xl border border-(--border-color) bg-(--bg-secondary) p-6"
+      >
         <div class="mb-3 flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-xl font-semibold text-[var(--text-primary)]">About</h2>
+            <h2 class="text-xl font-semibold text-(--text-primary)">About</h2>
           </div>
           <AppBadge severity="secondary">Build & License</AppBadge>
         </div>
-        <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+        <div class="space-y-2 text-sm text-(--text-secondary)">
           <div class="flex items-center justify-between gap-4">
             <span>Application</span>
-            <span class="font-medium text-[var(--text-primary)]">Second Brain v.{{ appVersion }}</span>
+            <span class="font-medium text-(--text-primary)"
+              >Second Brain v.{{ appVersion }}</span
+            >
           </div>
           <div class="flex items-center justify-between gap-4">
             <span>Author</span>
-            <span class="font-medium text-[var(--text-primary)]">Zephyr</span>
+            <span class="font-medium text-(--text-primary)">Zephyr</span>
           </div>
           <div class="flex items-center justify-between gap-4">
             <span>License</span>
-            <span class="font-medium text-[var(--text-primary)]">MIT License</span>
+            <span class="font-medium text-(--text-primary)">MIT License</span>
           </div>
         </div>
       </section>

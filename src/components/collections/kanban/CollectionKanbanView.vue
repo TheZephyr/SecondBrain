@@ -4,11 +4,11 @@
       v-if="selectFields.length === 0"
       class="flex flex-1 flex-col items-center justify-center px-8 text-center"
     >
-      <i class="pi pi-list mb-4 text-4xl text-[var(--text-muted)]"></i>
-      <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+      <i class="pi pi-list mb-4 text-4xl text-(--text-muted)"></i>
+      <h3 class="text-lg font-semibold text-(--text-primary)">
         No Select Fields
       </h3>
-      <p class="mt-2 max-w-md text-base text-[var(--text-muted)]">
+      <p class="mt-2 max-w-md text-base text-(--text-muted)">
         Kanban view requires at least one select field in this collection.
       </p>
     </div>
@@ -17,13 +17,11 @@
       v-else-if="groupingFieldId !== null && !groupingField"
       class="flex flex-1 flex-col items-center justify-center px-8 text-center"
     >
-      <i
-        class="pi pi-exclamation-circle mb-4 text-4xl text-[var(--text-muted)]"
-      ></i>
-      <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+      <i class="pi pi-exclamation-circle mb-4 text-4xl text-(--text-muted)"></i>
+      <h3 class="text-lg font-semibold text-(--text-primary)">
         Grouping Field Missing
       </h3>
-      <p class="mt-2 max-w-md text-base text-[var(--text-muted)]">
+      <p class="mt-2 max-w-md text-base text-(--text-muted)">
         The select field used for this Kanban view was deleted. Choose a new
         field in the Fields panel.
       </p>
@@ -33,11 +31,11 @@
       v-else-if="!groupingField"
       class="flex flex-1 flex-col items-center justify-center px-8 text-center"
     >
-      <i class="pi pi-bars mb-4 text-4xl text-[var(--text-muted)]"></i>
-      <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+      <i class="pi pi-bars mb-4 text-4xl text-(--text-muted)"></i>
+      <h3 class="text-lg font-semibold text-(--text-primary)">
         Choose a Select Field
       </h3>
-      <p class="mt-2 max-w-md text-base text-[var(--text-muted)]">
+      <p class="mt-2 max-w-md text-base text-(--text-muted)">
         Select the field that should stack items into columns.
       </p>
     </div>
