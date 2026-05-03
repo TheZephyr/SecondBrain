@@ -25,13 +25,13 @@
 
     <div
       ref="listRef"
-      class="relative min-h-0 flex-1 space-y-1 overflow-hidden"
+      class="relative min-h-0 flex-1 flex flex-col gap-1 overflow-hidden"
     >
       <button
         v-if="cell.items.length > 0"
         type="button"
         data-calendar-chip-measure
-        class="pointer-events-none invisible absolute left-1 top-0 w-full truncate rounded-md px-1.5 py-0.5 text-left text-sm text-(--text-primary)"
+        class="pointer-events-none invisible absolute left-1 top-0 w-full truncate rounded-md px-1.5 py-0.5 text-left text-[11px] text-(--text-primary)"
         tabindex="-1"
       >
         {{ cell.items[0]?.label ?? "" }}
@@ -49,7 +49,7 @@
             ref="moreButtonRef"
             type="button"
             data-calendar-more
-            class="w-full truncate rounded-md px-1.5 py-0.5 text-left text-sm text-(--accent-primary) transition-colors hover:bg-(--bg-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary)"
+            class="w-full truncate rounded-md px-1.5 py-0.5 text-left text-[11px] text-(--accent-primary) transition-colors hover:bg-(--bg-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary)"
           >
             +{{ hiddenItemCount }} more
           </button>
