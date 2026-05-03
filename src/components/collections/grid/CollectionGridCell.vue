@@ -32,19 +32,12 @@
       </div>
     </template>
     <template v-else-if="field?.type === 'boolean'">
-      <button
-        type="button"
-        class="flex items-center"
-        @click.stop="toggleBoolean"
-      >
-        <component
-          :is="booleanIconComponent"
-          :size="18"
-          :fill="booleanValue ? 'currentColor' : 'transparent'"
-          :stroke-width="booleanValue ? 0 : 1.5"
-          :class="booleanValue ? 'text-primary' : 'text-(--text-muted)'"
-        />
-      </button>
+      <InteractiveBooleanInput
+        :modelValue="booleanValue"
+        :icon="booleanIconName"
+        :color="booleanColor"
+        @update:modelValue="toggleBoolean"
+      />
     </template>
     <template v-else-if="field?.type === 'url' && displayText">
       <div class="flex w-full min-w-0 items-center gap-1 overflow-hidden">
@@ -106,11 +99,12 @@
 
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
-import * as icons from "lucide-vue-next";
 import { Link } from "lucide-vue-next";
 import InteractiveRatingInput from "@/components/collections/InteractiveRatingInput.vue";
+import InteractiveBooleanInput from "@/components/collections/InteractiveBooleanInput.vue";
 import type {
   BooleanIcon,
+  BooleanFieldOptions,
   DateFieldOptions,
   Field,
   ItemDataValue,
@@ -203,12 +197,13 @@ const ratingColor = computed(() =>
       "currentColor")
     : (ratingFieldOptions.value.color ?? "currentColor"),
 );
-const booleanIconComponent = computed(
+const booleanIconName = computed(
   () =>
-    booleanIconMap[
-      ((fieldOptions.value as { icon?: BooleanIcon })?.icon ??
-        "square") as BooleanIcon
-    ],
+    ((fieldOptions.value as BooleanFieldOptions)?.icon ??
+      "square") as BooleanIcon,
+);
+const booleanColor = computed(
+  () => (fieldOptions.value as BooleanFieldOptions)?.color ?? "",
 );
 const numberShowAsChip = computed(() =>
   Boolean(numberOptions.value.showAsChip),
@@ -334,14 +329,5 @@ async function openExternal(url: string) {
   await systemRepository.openExternal(url);
 }
 
-const booleanIconMap: Record<BooleanIcon, typeof icons.Square> = {
-  square: icons.Square,
-  circle: icons.Circle,
-  heart: icons.Heart,
-  star: icons.Star,
-  flame: icons.Flame,
-  "thumbs-up": icons.ThumbsUp,
-  "thumbs-down": icons.ThumbsDown,
-  flag: icons.Flag,
-};
+
 </script>

@@ -138,25 +138,13 @@
             v-else-if="field.type === 'boolean'"
             class="flex min-h-9 items-center gap-2"
           >
-            <button
-              type="button"
-              class="flex items-center"
-              @click="setBooleanValue(field.name, !getBooleanValue(field.name))"
-            >
-              <component
-                :is="getBooleanIcon(field)"
-                :size="20"
-                :fill="
-                  getBooleanValue(field.name) ? 'currentColor' : 'transparent'
-                "
-                :stroke-width="getBooleanValue(field.name) ? 0 : 1.5"
-                :class="
-                  getBooleanValue(field.name)
-                    ? 'text-(--text-primary)'
-                    : 'text-(--text-muted)'
-                "
-              />
-            </button>
+            <InteractiveBooleanInput
+              :modelValue="getBooleanValue(field.name)"
+              :icon="getBooleanIconName(field)"
+              :color="getBooleanColor(field)"
+              :size="20"
+              @update:modelValue="(value) => setBooleanValue(field.name, value)"
+            />
           </div>
 
           <div v-else-if="field.type === 'url'" class="relative w-full">
@@ -204,7 +192,6 @@
 
 <script setup lang="ts">
 import { computed, toRef, watch } from "vue";
-import * as icons from "lucide-vue-next";
 import { ChevronDown, Link } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
 import AppDialog from "@/components/app/ui/AppDialog.vue";
@@ -215,6 +202,7 @@ import AppSelect from "@/components/app/ui/AppSelect.vue";
 import AppTextarea from "@/components/app/ui/AppTextarea.vue";
 import FieldDescriptionHint from "@/components/collections/FieldDescriptionHint.vue";
 import InteractiveRatingInput from "@/components/collections/InteractiveRatingInput.vue";
+import InteractiveBooleanInput from "@/components/collections/InteractiveBooleanInput.vue";
 import {
   Command,
   CommandEmpty,
@@ -234,6 +222,7 @@ import { useFieldUniqueCheck } from "../../composables/collection/useFieldUnique
 import { systemRepository } from "../../repositories/systemRepository";
 import type {
   BooleanIcon,
+  BooleanFieldOptions,
   Field as ItemField,
   Item,
   ItemData,
@@ -374,11 +363,18 @@ function getRatingMax(field: ItemField) {
   );
 }
 
-function getBooleanIcon(field: ItemField) {
-  return booleanIconMap[
-    ((parseFieldOptions(field.type, field.options) as { icon?: BooleanIcon })
-      .icon ?? "square") as BooleanIcon
-  ];
+function getBooleanIconName(field: ItemField): BooleanIcon {
+  return (
+    (parseFieldOptions(field.type, field.options) as BooleanFieldOptions)
+      .icon ?? "square"
+  ) as BooleanIcon;
+}
+
+function getBooleanColor(field: ItemField): string {
+  return (
+    (parseFieldOptions(field.type, field.options) as BooleanFieldOptions)
+      .color ?? ""
+  );
 }
 
 function getRatingColor(field: ItemField) {
@@ -421,14 +417,5 @@ async function openExternal(url: string | null) {
   await systemRepository.openExternal(url);
 }
 
-const booleanIconMap: Record<BooleanIcon, typeof icons.Square> = {
-  square: icons.Square,
-  circle: icons.Circle,
-  heart: icons.Heart,
-  star: icons.Star,
-  flame: icons.Flame,
-  "thumbs-up": icons.ThumbsUp,
-  "thumbs-down": icons.ThumbsDown,
-  flag: icons.Flag,
-};
+
 </script>

@@ -108,6 +108,7 @@ export type MultiselectFieldOptions = {
 
 export type BooleanFieldOptions = {
   icon?: BooleanIcon;
+  color?: string;
 };
 
 export type UrlFieldOptions = {
@@ -382,12 +383,7 @@ export type CollectionView = {
   name: string;
 };
 
-export type FullArchiveItemValue =
-  | string
-  | number
-  | boolean
-  | null
-  | string[];
+export type FullArchiveItemValue = string | number | boolean | null | string[];
 
 export type FullArchiveItemData = Record<string, FullArchiveItemValue>;
 

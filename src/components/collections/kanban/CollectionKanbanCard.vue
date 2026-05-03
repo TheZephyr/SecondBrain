@@ -1,15 +1,9 @@
 <template>
   <div class="relative">
-    <AppCard
-      class="rounded-lg border border-(--border-color) bg-(--bg-primary) shadow-sm"
-      draggable="true"
-      data-kanban-card
-      :data-item-id="item.id"
-      @dragstart="onDragStart"
-      @dragend="onDragEnd"
-    >
+    <AppCard class="rounded-lg border border-(--border-color) bg-(--bg-primary) shadow-sm" draggable="true"
+      data-kanban-card :data-item-id="item.id" @dragstart="onDragStart" @dragend="onDragEnd">
       <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0 flex-1 break-words text-base font-semibold leading-snug text-(--text-primary)">
+        <div class="min-w-0 flex-1 wrap-break-word text-base font-semibold leading-snug text-(--text-primary)">
           {{ titleText }}
         </div>
         <DropdownMenu>
@@ -26,20 +20,12 @@
         </DropdownMenu>
       </div>
       <div class="mt-3 space-y-3">
-        <div
-          v-for="field in detailFields"
-          :key="field.id"
-          class="field-row min-w-0 text-sm"
-        >
+        <div v-for="field in detailFields" :key="field.id" class="field-row min-w-0 text-sm">
           <div class="mb-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-(--text-muted)">
             <Tooltip :delay-duration="300">
               <TooltipTrigger as-child>
                 <span class="inline-flex shrink-0">
-                  <component
-                    :is="iconMap[FIELD_TYPE_META[field.type].icon]"
-                    :size="13"
-                    class="text-(--text-muted)"
-                  />
+                  <component :is="iconMap[FIELD_TYPE_META[field.type].icon]" :size="13" class="text-(--text-muted)" />
                 </span>
               </TooltipTrigger>
               <TooltipContent side="top">
@@ -51,82 +37,51 @@
           </div>
           <div class="min-w-0 text-(--text-primary)">
             <template v-if="field.type === 'select'">
-              <span
-                v-if="getDisplayText(field)"
-                class="inline-flex h-5 items-center rounded-full px-1.5 py-1 text-xs leading-none"
-                :style="
-                  getChipStyle(
-                    String(getDisplayText(field)),
-                    getSelectChoices(field),
-                    getOptionColors(field),
-                  )
-                "
-              >
+              <span v-if="getDisplayText(field)"
+                class="inline-flex h-5 items-center rounded-full px-1.5 py-1 text-xs leading-none" :style="getChipStyle(
+                  String(getDisplayText(field)),
+                  getSelectChoices(field),
+                  getOptionColors(field),
+                )
+                  ">
                 {{ getDisplayText(field) }}
               </span>
               <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else-if="field.type === 'multiselect'">
-              <div
-                v-if="getMultiValues(field).length > 0"
-                class="flex flex-wrap gap-1"
-              >
-                <span
-                  v-for="option in getMultiValues(field)"
-                  :key="option"
-                  class="inline-flex h-5 items-center rounded-full px-1.5 py-1 text-xs leading-none"
-                  :style="
-                    getChipStyle(
-                      option,
-                      getSelectChoices(field),
-                      getOptionColors(field),
-                    )
-                  "
-                >
+              <div v-if="getMultiValues(field).length > 0" class="flex flex-wrap gap-1">
+                <span v-for="option in getMultiValues(field)" :key="option"
+                  class="inline-flex h-5 items-center rounded-full px-1.5 py-1 text-xs leading-none" :style="getChipStyle(
+                    option,
+                    getSelectChoices(field),
+                    getOptionColors(field),
+                  )
+                    ">
                   {{ option }}
                 </span>
               </div>
               <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else-if="field.type === 'number'">
-              <span
-                v-if="getDisplayText(field)"
-                class="inline-flex items-center rounded-full border leading-none"
-                :class="
-                  showNumberAsChip(field)
-                    ? 'h-5 px-2 py-0.5 text-xs'
-                    : 'border-transparent px-0 py-0 text-sm'
-                "
-                :style="getNumberStyle(field)"
-              >
+              <span v-if="getDisplayText(field)" class="inline-flex items-center rounded-full border leading-none"
+                :class="showNumberAsChip(field)
+                  ? 'h-5 px-2 py-0.5 text-xs'
+                  : 'border-transparent px-0 py-0 text-sm'
+                  " :style="getNumberStyle(field)">
                 {{ getDisplayText(field) }}
               </span>
               <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else-if="field.type === 'boolean'">
-              <component
-                :is="getBooleanIcon(field)"
-                :size="16"
-                :fill="getBooleanValue(field) ? 'currentColor' : 'transparent'"
-                :stroke-width="getBooleanValue(field) ? 0 : 1.5"
-                :class="
-                  getBooleanValue(field)
-                    ? 'text-primary'
-                    : 'text-(--text-muted)'
-                "
-              />
+              <InteractiveBooleanInput :modelValue="getBooleanValue(field)" :icon="getBooleanIconName(field)"
+                :color="getBooleanColor(field)" :size="16"
+                @update:modelValue="(value) => updateBoolean(field, value)" />
             </template>
             <template v-else-if="field.type === 'rating'">
-              <InteractiveRatingInput
-                v-if="getRatingMax(field) > 0"
-                :modelValue="getRatingValue(field)"
-                :icon="getRatingIconName(field)"
-                :color="getRatingColor(field)"
-                :valueColors="getRatingValueColors(field)"
-                :max="getRatingMax(field)"
-                :size="14"
-                @update:modelValue="(value) => updateRating(field, value)"
-              />
+              <InteractiveRatingInput v-if="getRatingMax(field) > 0" :modelValue="getRatingValue(field)"
+                :icon="getRatingIconName(field)" :color="getRatingColor(field)"
+                :valueColors="getRatingValueColors(field)" :max="getRatingMax(field)" :size="14"
+                @update:modelValue="(value) => updateRating(field, value)" />
               <span v-else class="text-(--text-muted)">-</span>
             </template>
             <template v-else>
@@ -150,6 +105,7 @@ import AppButton from "@/components/app/ui/AppButton.vue";
 import AppCard from "@/components/app/ui/AppCard.vue";
 import FieldDescriptionHint from "@/components/collections/FieldDescriptionHint.vue";
 import InteractiveRatingInput from "@/components/collections/InteractiveRatingInput.vue";
+import InteractiveBooleanInput from "@/components/collections/InteractiveBooleanInput.vue";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,6 +119,7 @@ import {
 } from "@/components/ui/tooltip";
 import type {
   BooleanIcon,
+  BooleanFieldOptions,
   DateFieldOptions,
   Field,
   Item,
@@ -244,11 +201,18 @@ function getBooleanValue(field: Field): boolean {
   return parseBooleanValue(props.item.data[field.name]);
 }
 
-function getBooleanIcon(field: Field) {
-  return booleanIconMap[
-    ((parseFieldOptions(field.type, field.options) as { icon?: BooleanIcon })
-      .icon ?? "square") as BooleanIcon
-  ];
+function getBooleanIconName(field: Field): BooleanIcon {
+  return (
+    (parseFieldOptions(field.type, field.options) as BooleanFieldOptions)
+      .icon ?? "square"
+  ) as BooleanIcon;
+}
+
+function getBooleanColor(field: Field): string {
+  return (
+    (parseFieldOptions(field.type, field.options) as BooleanFieldOptions)
+      .color ?? ""
+  );
 }
 
 function getMultiValues(field: Field): string[] {
@@ -323,6 +287,16 @@ function updateRating(field: Field, value: number | null) {
   });
 }
 
+function updateBoolean(field: Field, value: boolean) {
+  emit("update-item", {
+    id: props.item.id,
+    data: {
+      ...props.item.data,
+      [field.name]: value ? "1" : "0",
+    },
+  });
+}
+
 function onDragStart(event: DragEvent) {
   if (event.dataTransfer) {
     event.dataTransfer.setData("text/plain", String(props.item.id));
@@ -335,14 +309,5 @@ function onDragEnd() {
   // no-op
 }
 
-const booleanIconMap: Record<BooleanIcon, typeof icons.Square> = {
-  square: icons.Square,
-  circle: icons.Circle,
-  heart: icons.Heart,
-  star: icons.Star,
-  flame: icons.Flame,
-  "thumbs-up": icons.ThumbsUp,
-  "thumbs-down": icons.ThumbsDown,
-  flag: icons.Flag,
-};
+
 </script>
