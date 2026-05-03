@@ -3,7 +3,7 @@
     class="flex h-10 items-center border-b border-(--border-color) bg-(--bg-secondary) px-2 py-5"
   >
     <div class="flex items-center gap-1">
-      <AppButton
+      <!-- <AppButton
         text
         class="h-7 gap-1.5 rounded-md px-2 text-base text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary)"
       >
@@ -11,7 +11,7 @@
           <Filter class="size-4" />
         </template>
         <span>Filter</span>
-      </AppButton>
+      </AppButton> -->
       <AppButton
         text
         class="h-7 gap-1.5 rounded-md px-2 text-base"
