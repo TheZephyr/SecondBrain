@@ -33,17 +33,25 @@
       />
       <AppInput
         v-model="searchModel"
-        class="h-7 w-40 pl-8 text-base md:w-52"
+        class="h-7 w-40 pl-8 pr-8 text-base md:w-52"
         type="text"
         placeholder="Search..."
       />
+      <Button
+        v-if="searchModel"
+        type="button"
+        class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary) focus:outline-hidden"
+        @click="searchModel = ''"
+      >
+        <X :size="14" />
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { ArrowUpDown, Filter, Search } from "lucide-vue-next";
+import { ArrowUpDown, Search, X } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
 import AppInput from "@/components/app/ui/AppInput.vue";
 import type { MultiSortMeta } from "../types";
