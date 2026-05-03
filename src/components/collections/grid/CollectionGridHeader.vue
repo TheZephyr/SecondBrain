@@ -13,16 +13,22 @@
         <span class="sr-only">Row</span>
       </template>
       <template v-else-if="headerMeta(header)?.type === 'addField'">
-        <AppButton
-          text
-          class="mx-auto h-8 w-8 p-0"
-          title="Add field"
-          @click.stop="$emit('manage-fields')"
-        >
-          <template #icon>
-            <Plus class="size-4" />
-          </template>
-        </AppButton>
+        <Tooltip :delay-duration="300">
+          <TooltipTrigger as-child>
+            <AppButton
+              text
+              class="mx-auto h-8 w-8 p-0"
+              @click.stop="$emit('manage-fields')"
+            >
+              <template #icon>
+                <Plus class="size-4" />
+              </template>
+            </AppButton>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            Add field
+          </TooltipContent>
+        </Tooltip>
       </template>
       <template v-else>
         <button
@@ -31,16 +37,25 @@
           @click="(event) => toggleSort(headerMeta(header)?.field, event)"
         >
           <span class="flex min-w-0 items-center gap-1.5">
-            <component
-              :is="
-                iconMap[
-                  FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text']
-                    .icon
-                ]
-              "
-              :size="14"
-              class="shrink-0 text-(--text-muted)"
-            />
+            <Tooltip :delay-duration="300">
+              <TooltipTrigger as-child>
+                <span class="inline-flex shrink-0">
+                  <component
+                    :is="
+                      iconMap[
+                        FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text']
+                          .icon
+                      ]
+                    "
+                    :size="14"
+                    class="text-(--text-muted)"
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {{ FIELD_TYPE_META[headerMeta(header)?.field?.type ?? 'text'].displayName }}
+              </TooltipContent>
+            </Tooltip>
             <span class="truncate">{{
               headerMeta(header)?.field?.name ?? header.id
             }}</span>
@@ -95,6 +110,11 @@ import * as icons from "lucide-vue-next";
 import { ChevronDown, ChevronUp, Plus } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
 import FieldDescriptionHint from "@/components/collections/FieldDescriptionHint.vue";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FIELD_TYPE_META, type Field } from "../../../types/models";
 import type { MultiSortMeta } from "../types";
 import type { GridColumnMeta, GridRow } from "./types";
