@@ -382,7 +382,13 @@ handleIpc("openExternal", async (_, url: string) => {
     throw new AppError("VALIDATION_FAILED", "Invalid URL.");
   }
 
-  await shell.openExternal(url);
+  let targetUrl = url.trim();
+  try {
+    new URL(targetUrl);
+  } catch {
+    targetUrl = "http://" + targetUrl;
+  }
+  await shell.openExternal(targetUrl);
   return;
 });
 
