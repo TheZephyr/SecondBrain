@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-0.5" @mouseleave="hoverValue = null">
+  <div class="flex items-center gap-0" @mouseleave="hoverValue = null">
     <button
       v-for="index in safeMax"
       :key="index"
@@ -42,7 +42,7 @@ const props = withDefaults(
     icon: "star",
     color: "currentColor",
     max: 5,
-    size: 16,
+    size: 18,
     filledClass: "text-primary",
     emptyClass: "text-(--text-muted)",
   },
