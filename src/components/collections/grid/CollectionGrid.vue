@@ -389,7 +389,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.collectionId, props.orderedFields] as const,
+  () => [props.collectionId, props.orderedFields, props.items] as const,
   () => {
     void loadNumberFieldRanges();
   },

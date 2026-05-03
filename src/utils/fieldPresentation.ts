@@ -129,9 +129,19 @@ export function resolveNumberColorScaleStyle(
     return {};
   }
 
-  const preset = SCALE_PRESETS[options.colorScale.direction];
+  let minColor = "";
+  let maxColor = "";
+  if (options.colorScale.direction === "custom") {
+    minColor = options.colorScale.startColor || "#ffffff";
+    maxColor = options.colorScale.endColor || "#000000";
+  } else {
+    const preset = SCALE_PRESETS[options.colorScale.direction];
+    minColor = preset.min;
+    maxColor = preset.max;
+  }
+
   const ratio = (numericValue - range.min) / (range.max - range.min);
-  const color = interpolateColor(preset.min, preset.max, ratio);
+  const color = interpolateColor(minColor, maxColor, ratio);
 
   if (options.colorScale.style === "background") {
     return {

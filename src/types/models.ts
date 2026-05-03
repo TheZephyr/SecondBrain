@@ -71,8 +71,10 @@ export type LongTextFieldOptions = {
 };
 
 export type NumberColorScale = {
-  direction: "ascending" | "descending";
+  direction: "ascending" | "descending" | "custom";
   style: "text" | "background";
+  startColor?: string;
+  endColor?: string;
 };
 
 export type NumberFieldOptions = {
