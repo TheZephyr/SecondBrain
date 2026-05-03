@@ -4,7 +4,7 @@
       v-for="index in safeMax"
       :key="index"
       type="button"
-      class="flex items-center"
+      class="flex shrink-0 items-center"
       :title="String(index)"
       @mouseenter="hoverValue = index"
       @focus="hoverValue = index"

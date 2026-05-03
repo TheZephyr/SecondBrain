@@ -70,20 +70,20 @@
       </div>
     </template>
     <template v-else-if="field?.type === 'rating' && ratingMax > 0">
-      <InteractiveRatingInput
-        :modelValue="ratingValue"
-        :icon="ratingIcon"
-        :color="ratingColor"
-        :valueColors="ratingValueColors"
-        :max="ratingMax"
-        :filledClass="ratingFilledClass"
-        @update:modelValue="commitRatingValue"
-      />
+      <div class="flex items-center overflow-hidden">
+        <InteractiveRatingInput
+          :modelValue="ratingValue"
+          :icon="ratingIcon"
+          :color="ratingColor"
+          :valueColors="ratingValueColors"
+          :max="ratingMax"
+          :filledClass="ratingFilledClass"
+          @update:modelValue="commitRatingValue"
+        />
+      </div>
     </template>
     <template
-      v-else-if="
-        field?.type === 'number' && numberShowAsChip && displayText
-      "
+      v-else-if="field?.type === 'number' && numberShowAsChip && displayText"
     >
       <span
         class="inline-flex h-5 items-center rounded-full border px-2 py-3 text-base leading-none"
