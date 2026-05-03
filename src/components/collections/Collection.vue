@@ -7,7 +7,8 @@
         :orderedFields="sourceOrderedFields" :items="items" @save-fields="saveFieldDrafts" />
       <CollectionChildFieldsPanel v-else-if="activeCollectionPanel === 'fields' && activeView"
         :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" :viewType="activeView.type"
-        :groupingFieldId="groupingFieldId" :groupingFields="groupingFields" @save-view-fields="saveChildViewFields" />
+        :groupingFieldId="groupingFieldId" :groupingFields="groupingFields" :cardTitleFieldId="cardTitleFieldId"
+        @save-view-fields="saveChildViewFields" />
       <template v-else>
         <CollectionGrid :collectionId="collection.id" v-if="activeView?.type === 'grid'" :viewId="activeView.id"
           :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
@@ -23,7 +24,7 @@
           :viewId="activeView.id" :items="items" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
           :itemsSearch="itemsSearch" :itemsSort="itemsSort" :orderedFields="viewOrderedFields"
           :loadItems="loadCollectionItems" :groupingFieldId="groupingFieldId" :childViewConfig="childViewConfig"
-          :saveViewConfig="store.saveViewConfig" @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData"
+          :cardTitleField="cardTitleField" :saveViewConfig="store.saveViewConfig" @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData"
           @update-item="onInlineUpdateItem" />
         <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :viewId="activeView.id" :items="items"
           :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
@@ -193,6 +194,32 @@ const groupingFieldId = computed(() => {
   }
 
   return normalizeGroupingFieldId(childViewConfig.value?.calendarDateFieldId);
+});
+
+const cardTitleFieldId = computed(() => {
+  if (!activeView.value || activeView.value.type !== "kanban") {
+    return null;
+  }
+
+  return normalizeGroupingFieldId(childViewConfig.value?.cardTitleFieldId);
+});
+
+const cardTitleField = computed(() => {
+  if (!activeView.value || activeView.value.type !== "kanban") {
+    return null;
+  }
+
+  const configuredId = cardTitleFieldId.value;
+  if (configuredId !== null) {
+    const configured = sourceOrderedFields.value.find(
+      (field) => field.id === configuredId,
+    );
+    if (configured) {
+      return configured;
+    }
+  }
+
+  return viewOrderedFields.value[0] ?? sourceOrderedFields.value[0] ?? null;
 });
 
 const groupingFields = computed(() => {
@@ -564,6 +591,7 @@ async function saveFieldDrafts(payload: {
 async function saveChildViewFields(payload: {
   selectedFieldIds: number[];
   groupingFieldId: number | null;
+  cardTitleFieldId: number | null;
 }) {
   const viewId = activeView.value?.id;
   if (!viewId || activeView.value?.is_default === 1) {
@@ -576,6 +604,10 @@ async function saveChildViewFields(payload: {
       : sourceOrderedFields.value.map((field) => field.id);
 
   const config = mergeViewConfig(childViewConfig.value, {
+    cardTitleFieldId:
+      activeView.value?.type === "kanban"
+        ? (normalizeGroupingFieldId(payload.cardTitleFieldId) ?? undefined)
+        : undefined,
     selectedFieldIds: nextSelectedIds,
     groupingFieldId: normalizeGroupingFieldId(payload.groupingFieldId) ?? undefined,
     calendarDateFieldId: undefined,

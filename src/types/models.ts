@@ -207,6 +207,7 @@ export type ItemSortSpec = {
 export type ViewConfig = {
   columnWidths: Record<number, number>;
   sort: ItemSortSpec[];
+  cardTitleFieldId?: number;
   calendarDateField?: string;
   calendarDateFieldId?: number;
   groupingFieldId?: number;
@@ -428,6 +429,7 @@ export type FullArchiveGridViewConfig = {
 };
 
 export type FullArchiveKanbanViewConfig = {
+  cardTitleField: string | null;
   groupingField: string | null;
   columnOrder: string[];
   selectedFields: string[];
@@ -525,6 +527,7 @@ export type FullArchiveDroppedViewReferenceWarning = {
     | "columnWidth"
     | "sort"
     | "selectedField"
+    | "cardTitleField"
     | "groupingField"
     | "dateField";
   referenceValue: string;

@@ -16,6 +16,9 @@
         >
           {{ column.label }}
         </span>
+        <span class="ml-2 text-xs font-medium text-(--text-muted)">
+          {{ column.items.length }}
+        </span>
       </div>
       <AppButton text class="h-7 w-7" @click="emit('add-item', column.key)">
         <template #icon>
@@ -58,6 +61,7 @@
         <CollectionKanbanCard
           :item="item"
           :viewOrderedFields="viewOrderedFields"
+          :cardTitleField="cardTitleField"
           :numberFieldRanges="numberFieldRanges"
           @edit="emit('edit-item', $event)"
           @update-item="emit('update-item', $event)"
@@ -84,6 +88,7 @@ import CollectionKanbanCard from "./CollectionKanbanCard.vue";
 const props = defineProps<{
   column: KanbanColumn;
   viewOrderedFields: Field[];
+  cardTitleField: Field | null;
   numberFieldRanges: Record<number, NumberFieldRange>;
   isUncategorized: boolean;
   colorOptions: string[];

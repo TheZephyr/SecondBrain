@@ -8,22 +8,48 @@
       @dragstart="onDragStart"
       @dragend="onDragEnd"
     >
-      <div class="pr-6 text-sm font-semibold text-(--text-primary)">
-        {{ titleText }}
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0 flex-1 break-words text-base font-semibold leading-snug text-(--text-primary)">
+          {{ titleText }}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <AppButton text class="h-7 w-7 shrink-0 p-0">
+              <template #icon>
+                <EllipsisVertical class="size-4" />
+              </template>
+            </AppButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem @select="emit('edit', item)">Edit</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-      <div class="space-y-2">
+      <div class="mt-3 space-y-3">
         <div
           v-for="field in detailFields"
           :key="field.id"
-          class="field-row flex items-start gap-2 text-sm"
+          class="field-row min-w-0 text-sm"
         >
-          <span
-            class="inline-flex w-24 shrink-0 items-center gap-1 text-(--text-muted)"
-          >
+          <div class="mb-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-(--text-muted)">
+            <Tooltip :delay-duration="300">
+              <TooltipTrigger as-child>
+                <span class="inline-flex shrink-0">
+                  <component
+                    :is="iconMap[FIELD_TYPE_META[field.type].icon]"
+                    :size="13"
+                    class="text-(--text-muted)"
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {{ FIELD_TYPE_META[field.type].displayName }}
+              </TooltipContent>
+            </Tooltip>
             <span class="truncate">{{ field.name }}</span>
             <FieldDescriptionHint :description="field.description" />
-          </span>
-          <span class="min-w-0 flex-1 text-(--text-primary)">
+          </div>
+          <div class="min-w-0 text-(--text-primary)">
             <template v-if="field.type === 'select'">
               <span
                 v-if="getDisplayText(field)"
@@ -109,28 +135,15 @@
               </span>
               <span v-else class="text-(--text-muted)">-</span>
             </template>
-          </span>
+          </div>
         </div>
       </div>
     </AppCard>
-
-    <DropdownMenu>
-      <DropdownMenuTrigger as-child>
-        <AppButton text class="absolute right-2 top-2 h-7 w-7 p-0">
-          <template #icon>
-            <EllipsisVertical class="size-4" />
-          </template>
-        </AppButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem @select="emit('edit', item)">Edit</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, type Component } from "vue";
 import * as icons from "lucide-vue-next";
 import { EllipsisVertical } from "lucide-vue-next";
 import AppButton from "@/components/app/ui/AppButton.vue";
@@ -143,6 +156,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type {
   BooleanIcon,
   DateFieldOptions,
@@ -152,6 +170,7 @@ import type {
   NumberFieldRange,
   RatingFieldOptions,
 } from "../../../types/models";
+import { FIELD_TYPE_META } from "../../../types/models";
 import { formatDateWithFieldOptions } from "../../../utils/date";
 import {
   formatNumberWithFieldOptions,
@@ -173,6 +192,7 @@ import { getChipStyle } from "../../../utils/selectChip";
 const props = defineProps<{
   item: Item;
   viewOrderedFields: Field[];
+  cardTitleField: Field | null;
   numberFieldRanges: Record<number, NumberFieldRange>;
 }>();
 
@@ -182,7 +202,10 @@ const emit = defineEmits<{
   (e: "drag-start", id: number): void;
 }>();
 
-const titleField = computed(() => props.viewOrderedFields[0] ?? null);
+const iconMap = icons as unknown as Record<string, Component>;
+const titleField = computed(
+  () => props.cardTitleField ?? props.viewOrderedFields[0] ?? null,
+);
 const titleText = computed(() => {
   const field = titleField.value;
   if (!field) {
@@ -191,7 +214,10 @@ const titleText = computed(() => {
   return getDisplayText(field) || `#${props.item.id}`;
 });
 
-const detailFields = computed(() => props.viewOrderedFields.slice(1));
+const detailFields = computed(() => {
+  const titleFieldId = titleField.value?.id ?? null;
+  return props.viewOrderedFields.filter((field) => field.id !== titleFieldId);
+});
 
 function getDisplayText(field: Field): string {
   const value = props.item.data[field.name];

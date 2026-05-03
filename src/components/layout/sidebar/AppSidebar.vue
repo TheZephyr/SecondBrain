@@ -270,19 +270,34 @@
       </div>
       <div
         v-if="viewModalMode === 'create' && viewModalType === 'kanban'"
-        class="space-y-2"
+        class="space-y-4"
       >
-        <label class="text-base font-medium text-(--text-secondary)"
-          >Stacked by</label
-        >
-        <AppSelect
-          v-model="viewModalKanbanFieldId"
-          :options="kanbanFieldOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Choose select field"
-          class="w-full"
-        />
+        <div class="space-y-2">
+          <label class="text-base font-medium text-(--text-secondary)"
+            >Stacked by</label
+          >
+          <AppSelect
+            v-model="viewModalKanbanFieldId"
+            :options="kanbanFieldOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choose select field"
+            class="w-full"
+          />
+        </div>
+        <div class="space-y-2">
+          <label class="text-base font-medium text-(--text-secondary)"
+            >Card title</label
+          >
+          <AppSelect
+            v-model="viewModalCardTitleFieldId"
+            :options="cardTitleFieldOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choose field"
+            class="w-full"
+          />
+        </div>
       </div>
       <div
         v-if="viewModalMode === 'create' && viewModalType === 'calendar'"
@@ -398,6 +413,7 @@ const viewModalCollectionId = ref<number | null>(null);
 const viewModalViewId = ref<number | null>(null);
 const viewModalCalendarFieldId = ref<number | null>(null);
 const viewModalKanbanFieldId = ref<number | null>(null);
+const viewModalCardTitleFieldId = ref<number | null>(null);
 const draggedViewId = ref<number | null>(null);
 const dragOverViewId = ref<number | null>(null);
 
@@ -435,6 +451,19 @@ const kanbanFieldOptions = computed(() =>
     label: field.name,
     value: field.id,
   })),
+);
+
+const cardTitleFieldOptions = computed(() =>
+  fields.value
+    .filter(
+      (field) =>
+        !viewModalCollectionId.value ||
+        field.collection_id === viewModalCollectionId.value,
+    )
+    .map((field) => ({
+      label: field.name,
+      value: field.id,
+    })),
 );
 
 const viewTypeOptions = computed<ViewTypeOption[]>(() => {
@@ -603,6 +632,8 @@ function openCreateViewModal(collectionId: number, type: ViewType) {
     type === "calendar" ? (calendarFieldOptions.value[0]?.value ?? null) : null;
   viewModalKanbanFieldId.value =
     type === "kanban" ? (kanbanFieldOptions.value[0]?.value ?? null) : null;
+  viewModalCardTitleFieldId.value =
+    type === "kanban" ? (cardTitleFieldOptions.value[0]?.value ?? null) : null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -615,6 +646,7 @@ function openEditViewModal(view: View) {
   viewModalName.value = view.name;
   viewModalCalendarFieldId.value = null;
   viewModalKanbanFieldId.value = null;
+  viewModalCardTitleFieldId.value = null;
   closeDeleteConfirm();
   showViewModal.value = true;
 }
@@ -626,6 +658,7 @@ function closeViewModal() {
   viewModalCollectionId.value = null;
   viewModalCalendarFieldId.value = null;
   viewModalKanbanFieldId.value = null;
+  viewModalCardTitleFieldId.value = null;
 }
 
 async function saveViewModal() {
@@ -677,11 +710,25 @@ async function saveViewModal() {
       return;
     }
 
+    if (viewModalType.value === "kanban" && !viewModalCardTitleFieldId.value) {
+      notifications.push({
+        severity: "warn",
+        summary: "Missing card title",
+        detail: "Choose a card title field for the kanban view.",
+        life: 5000,
+      });
+      return;
+    }
+
     await createConfiguredView({
       store,
       collectionId: viewModalCollectionId.value,
       name: nameResult.data,
       type: viewModalType.value,
+      cardTitleFieldId:
+        viewModalType.value === "kanban"
+          ? viewModalCardTitleFieldId.value
+          : null,
       calendarFieldId,
       kanbanFieldId,
       selectedFieldIds: getOrderedFieldIds(

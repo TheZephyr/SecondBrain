@@ -491,6 +491,7 @@ describe("full archive export", () => {
         selectedFields: ["Title"],
       });
       expect(pipelineView?.config).toEqual({
+        cardTitleField: null,
         groupingField: null,
         columnOrder: ["Todo", "Doing"],
         selectedFields: ["Title"],
@@ -639,6 +640,7 @@ describe("full archive restore", () => {
                 isDefault: false,
                 order: 1,
                 config: {
+                  cardTitleField: "MissingTitle",
                   groupingField: "MissingGroup",
                   columnOrder: ["Todo", "Doing"],
                   selectedFields: ["Title", "MissingSelected"],
@@ -732,6 +734,10 @@ describe("full archive restore", () => {
           expect.objectContaining({
             referenceType: "selectedField",
             referenceValue: "MissingSelected",
+          }),
+          expect.objectContaining({
+            referenceType: "cardTitleField",
+            referenceValue: "MissingTitle",
           }),
           expect.objectContaining({
             referenceType: "groupingField",

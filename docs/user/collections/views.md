@@ -17,6 +17,7 @@ Kanban groups items into columns using a select field.
 
 - Requires at least one `select` field in the collection.
 - If multiple select fields exist, the child view chooses one grouping field.
+- Each board also chooses a `Card title` field used for the first, larger line on every card.
 - Cards can be dragged between columns.
 - Column order can also be rearranged.
 
@@ -45,6 +46,7 @@ The source view is the base view for the collection. Child views inherit the col
 4. Enter a `View Name`.
 5. If needed, choose:
    - `Stacked by` for kanban.
+   - `Card title` for kanban.
    - `Date field` for calendar.
 6. Click `Create View`.
 
@@ -71,7 +73,9 @@ Open the child view, then click `Fields` in the top bar.
 ### Child Kanban Views
 
 - Choose which fields appear on cards.
+- Choose the `Card title` field shown as the larger first line on each card.
 - Set the select field used for column grouping.
+- Card details show the selected visible fields below the title with the field type icon, field name, optional description hint, and value.
 - Drag cards between columns to update the item's grouping value.
 - Drag columns to persist their display order.
 

@@ -119,7 +119,7 @@ That blob holds:
 - column widths
 - multi-sort state
 - selected field IDs
-- kanban grouping field and column order
+- kanban grouping field, card title field, and column order
 - calendar date field selection
 
 `electron/db/views.ts` parses and validates that blob through `ViewConfigSchema`.

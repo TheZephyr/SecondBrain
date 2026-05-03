@@ -94,11 +94,28 @@
             class="w-full"
             @update:modelValue="
               (value) =>
-                (draftGroupingFieldId = normalizeGroupingFieldId(value))
+              (draftGroupingFieldId = normalizeGroupingFieldId(value))
             "
           />
         </div>
-        <div v-else class="text-(--text-muted)">
+        <div v-if="viewType === 'kanban'" class="mt-6 space-y-3">
+          <div class="text-base font-semibold uppercase text-(--text-muted)">
+            Card title
+          </div>
+          <AppSelect
+            :modelValue="draftCardTitleFieldId"
+            :options="cardTitleOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choose field"
+            class="w-full"
+            @update:modelValue="
+              (value) =>
+                (draftCardTitleFieldId = normalizeGroupingFieldId(value))
+            "
+          />
+        </div>
+        <div v-if="!showGroupingSection" class="text-(--text-muted)">
           Visible fields are configured from the list on the left.
         </div>
       </div>
@@ -126,12 +143,17 @@ const props = defineProps<{
   viewType: ViewType;
   groupingFieldId: number | null;
   groupingFields: Field[];
+  cardTitleFieldId: number | null;
 }>();
 
 const emit = defineEmits<{
   (
     e: "save-view-fields",
-    value: { selectedFieldIds: number[]; groupingFieldId: number | null },
+    value: {
+      selectedFieldIds: number[];
+      groupingFieldId: number | null;
+      cardTitleFieldId: number | null;
+    },
   ): void;
 }>();
 
@@ -139,6 +161,7 @@ const iconMap = icons as unknown as Record<string, Component>;
 const searchQuery = ref("");
 const draftSelectedFieldIds = ref<number[]>([]);
 const draftGroupingFieldId = ref<number | null>(null);
+const draftCardTitleFieldId = ref<number | null>(null);
 const draggedId = ref<number | null>(null);
 const baselineSignature = ref("");
 
@@ -151,6 +174,12 @@ const showGroupingSection = computed(
 );
 const groupingOptions = computed(() =>
   props.groupingFields.map((field) => ({
+    label: field.name,
+    value: field.id,
+  })),
+);
+const cardTitleOptions = computed(() =>
+  props.orderedFields.map((field) => ({
     label: field.name,
     value: field.id,
   })),
@@ -178,12 +207,17 @@ function currentSignature() {
   return JSON.stringify({
     selectedFieldIds: draftSelectedFieldIds.value,
     groupingFieldId: draftGroupingFieldId.value,
+    cardTitleFieldId: draftCardTitleFieldId.value,
   });
 }
 
 function resetDrafts() {
   draftSelectedFieldIds.value = [...props.selectedFieldIds];
   draftGroupingFieldId.value = props.groupingFieldId;
+  draftCardTitleFieldId.value =
+    props.viewType === "kanban"
+      ? (props.cardTitleFieldId ?? props.orderedFields[0]?.id ?? null)
+      : null;
   baselineSignature.value = currentSignature();
 }
 
@@ -252,6 +286,7 @@ function saveDrafts() {
   emit("save-view-fields", {
     selectedFieldIds: [...draftSelectedFieldIds.value],
     groupingFieldId: draftGroupingFieldId.value,
+    cardTitleFieldId: draftCardTitleFieldId.value,
   });
 }
 
@@ -260,6 +295,7 @@ watch(
     [
       props.selectedFieldIds,
       props.groupingFieldId,
+      props.cardTitleFieldId,
       props.orderedFields,
     ] as const,
   () => {

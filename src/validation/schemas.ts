@@ -90,6 +90,7 @@ export const viewConfigColumnKeySchema = z
 export const ViewConfigSchema = z.object({
   columnWidths: z.record(viewConfigColumnKeySchema, z.number().int().min(60)),
   sort: z.array(ItemSortSpecSchema),
+  cardTitleFieldId: positiveIntSchema.optional(),
   calendarDateField: z.string().trim().min(1).max(64).optional(),
   calendarDateFieldId: positiveIntSchema.optional(),
   groupingFieldId: positiveIntSchema.optional(),
@@ -498,6 +499,7 @@ export const FullArchiveGridViewConfigSchema = z
 
 export const FullArchiveKanbanViewConfigSchema = z
   .object({
+    cardTitleField: z.string().trim().min(1).nullable().optional(),
     groupingField: z.string().trim().min(1).nullable(),
     columnOrder: z.array(z.string().trim().min(1)),
     selectedFields: z.array(z.string().trim().min(1)),

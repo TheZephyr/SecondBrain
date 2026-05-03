@@ -62,6 +62,7 @@ It can include:
 - `calendarDateFieldId`
 - `groupingFieldId`
 - `kanbanColumnOrder`
+- `cardTitleFieldId`
 - `selectedFieldIds`
 
 Backend code normalizes and validates this before storage.

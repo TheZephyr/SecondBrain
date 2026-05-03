@@ -155,7 +155,7 @@ export function mergeViewConfig(
 export function normalizeViewConfig(
   config: ViewConfig | null | undefined,
 ): NormalizedViewConfig {
-  return {
+  const normalized: NormalizedViewConfig = {
     columnWidths: normalizeColumnWidths(config?.columnWidths),
     sort: normalizeSortSpecs(config?.sort),
     calendarDateField: normalizeCalendarDateField(config?.calendarDateField),
@@ -164,6 +164,11 @@ export function normalizeViewConfig(
     kanbanColumnOrder: normalizeKanbanColumnOrder(config?.kanbanColumnOrder),
     selectedFieldIds: normalizeSelectedFieldIds(config?.selectedFieldIds),
   };
+  const cardTitleFieldId = normalizePositiveInt(config?.cardTitleFieldId);
+  if (cardTitleFieldId !== undefined) {
+    normalized.cardTitleFieldId = cardTitleFieldId;
+  }
+  return normalized;
 }
 
 export function areViewConfigFieldSelectionsEqual(

@@ -241,11 +241,16 @@ export const useCollectionsStore = defineStore("collections", () => {
         removedFieldId && baseConfig.groupingFieldId === removedFieldId
           ? undefined
           : baseConfig.groupingFieldId;
+      const cardTitleFieldId =
+        removedFieldId && baseConfig.cardTitleFieldId === removedFieldId
+          ? undefined
+          : baseConfig.cardTitleFieldId;
       const kanbanColumnOrder =
         groupingFieldId === undefined ? undefined : baseConfig.kanbanColumnOrder;
 
       if (
         areViewConfigFieldSelectionsEqual(nextSelected, baseSelected) &&
+        cardTitleFieldId === baseConfig.cardTitleFieldId &&
         groupingFieldId === baseConfig.groupingFieldId &&
         kanbanColumnOrder === baseConfig.kanbanColumnOrder
       ) {
@@ -255,6 +260,7 @@ export const useCollectionsStore = defineStore("collections", () => {
       await saveViewConfig(
         view.id,
         mergeViewConfig(baseConfig, {
+          cardTitleFieldId,
           groupingFieldId,
           kanbanColumnOrder,
           selectedFieldIds: nextSelected,

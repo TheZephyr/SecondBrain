@@ -20,6 +20,7 @@ type CreateConfiguredViewInput = {
   collectionId: number;
   name: string;
   type: ViewType;
+  cardTitleFieldId?: number | null;
   calendarFieldId?: number | null;
   kanbanFieldId?: number | null;
   selectedFieldIds: number[];
@@ -30,6 +31,7 @@ export async function createConfiguredView({
   collectionId,
   name,
   type,
+  cardTitleFieldId,
   calendarFieldId,
   kanbanFieldId,
   selectedFieldIds,
@@ -48,6 +50,7 @@ export async function createConfiguredView({
   await store.saveViewConfig(
     created.id,
     buildDefaultViewConfig({
+      cardTitleFieldId: cardTitleFieldId ?? undefined,
       calendarDateFieldId: calendarFieldId ?? undefined,
       groupingFieldId: kanbanFieldId ?? undefined,
       selectedFieldIds,

@@ -83,7 +83,7 @@ When a child view is active, the `Fields` tab switches to view-specific controls
 
 - `Visible Fields`: choose which source fields appear in that child view.
 - Drag selected fields to reorder them within the child view.
-- `Kanban`: choose the select field used to stack items into columns.
+- `Kanban`: choose the select field used to stack items into columns and the `Card title` field shown as the larger first line on each card.
 - `Calendar`: choose the date field used to place items on the calendar.
 - Save or discard view-specific field changes with `Save changes` and `Reset`.
 

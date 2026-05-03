@@ -432,6 +432,10 @@ function buildArchiveViewConfig(
 
   if (viewType === "kanban") {
     return {
+      cardTitleField:
+        typeof config?.cardTitleFieldId === "number"
+          ? (fieldNameById.get(config.cardTitleFieldId) ?? null)
+          : null,
       groupingField:
         typeof config?.groupingFieldId === "number"
           ? (fieldNameById.get(config.groupingFieldId) ?? null)
@@ -756,6 +760,19 @@ function buildStoredViewConfig(
     const groupingFieldId = validated.data.groupingField
       ? fieldIdByName.get(validated.data.groupingField)
       : undefined;
+    const cardTitleFieldId = validated.data.cardTitleField
+      ? fieldIdByName.get(validated.data.cardTitleField)
+      : undefined;
+    if (validated.data.cardTitleField && !cardTitleFieldId) {
+      pushDroppedReference(droppedViewReferences, {
+        collectionName,
+        viewName: view.name,
+        viewType: view.type,
+        referenceType: "cardTitleField",
+        referenceValue: validated.data.cardTitleField,
+        reason: "Field not found during restore.",
+      });
+    }
     if (validated.data.groupingField && !groupingFieldId) {
       pushDroppedReference(droppedViewReferences, {
         collectionName,
@@ -779,6 +796,7 @@ function buildStoredViewConfig(
     return {
       columnWidths: {},
       sort: [],
+      cardTitleFieldId,
       groupingFieldId,
       kanbanColumnOrder: [...validated.data.columnOrder],
       selectedFieldIds:

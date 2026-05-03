@@ -33,7 +33,7 @@ export function parseStoredViewConfig(
     ]),
   ) as Record<number, number>;
 
-  return {
+  const result: ViewConfig = {
     columnWidths,
     sort: validated.data.sort.map((entry) => ({
       field: entry.field,
@@ -46,6 +46,10 @@ export function parseStoredViewConfig(
     kanbanColumnOrder: validated.data.kanbanColumnOrder,
     selectedFieldIds: validated.data.selectedFieldIds,
   };
+  if (validated.data.cardTitleFieldId !== undefined) {
+    result.cardTitleFieldId = validated.data.cardTitleFieldId;
+  }
+  return result;
 }
 
 function assertNotSourceView(
@@ -251,6 +255,9 @@ export function updateViewConfig(
     kanbanColumnOrder: input.config.kanbanColumnOrder,
     selectedFieldIds: input.config.selectedFieldIds,
   };
+  if (input.config.cardTitleFieldId !== undefined) {
+    payload.cardTitleFieldId = input.config.cardTitleFieldId;
+  }
   const info = database
     .prepare("UPDATE views SET config = ? WHERE id = ?")
     .run(JSON.stringify(payload), input.viewId);

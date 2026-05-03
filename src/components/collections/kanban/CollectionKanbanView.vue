@@ -51,6 +51,7 @@
         :key="String(column.key)"
         :column="column"
         :viewOrderedFields="orderedFields"
+        :cardTitleField="cardTitleField"
         :numberFieldRanges="numberFieldRanges"
         :isUncategorized="column.key === null"
         :colorOptions="groupingOptions"
@@ -89,6 +90,7 @@ const props = defineProps<{
   itemsSearch: string;
   itemsSort: ItemSortSpec[];
   orderedFields: Field[];
+  cardTitleField: Field | null;
   loadItems: (options?: LoadItemsOptions) => Promise<void>;
   groupingFieldId: number | null;
   childViewConfig: ViewConfig | null;

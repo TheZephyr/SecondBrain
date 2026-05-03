@@ -209,6 +209,7 @@ describe("full archive export", () => {
       isDefault: false,
       order: 1,
       config: {
+        cardTitleField: null,
         groupingField: "Status",
         columnOrder: ["To Read", "Done"],
         selectedFields: ["Title", "Status"],
