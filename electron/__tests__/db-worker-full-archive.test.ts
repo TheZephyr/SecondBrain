@@ -189,6 +189,7 @@ describe("full archive export", () => {
     expect(books?.fields[0]).toEqual({
       name: "Title",
       type: "text",
+      description: null,
       orderIndex: 0,
       options: {
         defaultValue: "Untitled",
@@ -208,6 +209,7 @@ describe("full archive export", () => {
       isDefault: false,
       order: 1,
       config: {
+        cardTitleField: null,
         groupingField: "Status",
         columnOrder: ["To Read", "Done"],
         selectedFields: ["Title", "Status"],

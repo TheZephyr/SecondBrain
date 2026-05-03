@@ -144,6 +144,18 @@ function normalizeArchiveFieldOptions(
             ? numberOptions.defaultValue
             : null,
         uniqueCheck: Boolean(numberOptions.uniqueCheck),
+        showAsChip: Boolean(numberOptions.showAsChip),
+        showThousandsSeparator: Boolean(numberOptions.showThousandsSeparator),
+        colorScale:
+          numberOptions.colorScale &&
+          typeof numberOptions.colorScale === "object" &&
+          typeof numberOptions.colorScale.direction === "string" &&
+          typeof numberOptions.colorScale.style === "string"
+            ? {
+                direction: numberOptions.colorScale.direction,
+                style: numberOptions.colorScale.style,
+              }
+            : null,
       };
     }
     case "date": {
@@ -162,11 +174,17 @@ function normalizeArchiveFieldOptions(
           dateOptions.highlight &&
           typeof dateOptions.highlight === "object" &&
           typeof dateOptions.highlight.type === "string" &&
-          typeof dateOptions.highlight.date === "string" &&
           typeof dateOptions.highlight.color === "string"
             ? {
                 type: dateOptions.highlight.type,
-                date: dateOptions.highlight.date,
+                date:
+                  typeof dateOptions.highlight.date === "string"
+                    ? dateOptions.highlight.date
+                    : null,
+                target:
+                  dateOptions.highlight.target === "current"
+                    ? "current"
+                    : "date",
                 color: dateOptions.highlight.color,
               }
             : null,
@@ -185,6 +203,10 @@ function normalizeArchiveFieldOptions(
             ? selectOptions.defaultValue
             : null,
         uniqueCheck: Boolean(selectOptions.uniqueCheck),
+        optionColors:
+          selectOptions.optionColors && typeof selectOptions.optionColors === "object"
+            ? selectOptions.optionColors
+            : {},
       };
     }
     case "multiselect": {
@@ -201,6 +223,11 @@ function normalizeArchiveFieldOptions(
             )
           : null,
         uniqueCheck: Boolean(multiselectOptions.uniqueCheck),
+        optionColors:
+          multiselectOptions.optionColors &&
+          typeof multiselectOptions.optionColors === "object"
+            ? multiselectOptions.optionColors
+            : {},
       };
     }
     case "boolean": {
@@ -247,6 +274,11 @@ function normalizeArchiveFieldOptions(
             ? ratingOptions.defaultValue
             : null,
         uniqueCheck: Boolean(ratingOptions.uniqueCheck),
+        optionColors:
+          ratingOptions.optionColors &&
+          typeof ratingOptions.optionColors === "object"
+            ? ratingOptions.optionColors
+            : {},
       };
     }
   }
@@ -381,6 +413,7 @@ function buildArchiveViewConfig(
             ? {
                 field: fieldName,
                 order: entry.order,
+                emptyPlacement: entry.emptyPlacement === "first" ? "first" : "last",
               }
             : null;
         })
@@ -390,6 +423,7 @@ function buildArchiveViewConfig(
           ): entry is {
             field: string;
             order: 1 | -1;
+            emptyPlacement: "first" | "last";
           } => entry !== null,
         ),
       selectedFields,
@@ -398,6 +432,10 @@ function buildArchiveViewConfig(
 
   if (viewType === "kanban") {
     return {
+      cardTitleField:
+        typeof config?.cardTitleFieldId === "number"
+          ? (fieldNameById.get(config.cardTitleFieldId) ?? null)
+          : null,
       groupingField:
         typeof config?.groupingFieldId === "number"
           ? (fieldNameById.get(config.groupingFieldId) ?? null)
@@ -506,6 +544,7 @@ export function exportFullArchive(
       const archiveFields: FullArchiveField[] = fields.map((field) => ({
         name: field.name,
         type: field.type,
+        description: field.description ?? null,
         orderIndex: field.order_index,
         options: isSupportedFieldType(field.type)
           ? normalizeArchiveFieldOptions(field.type, field.options)
@@ -682,6 +721,7 @@ function buildStoredViewConfig(
         return {
           field: `data.${entry.field}`,
           order: entry.order,
+          emptyPlacement: entry.emptyPlacement,
         };
       })
       .filter(
@@ -690,6 +730,7 @@ function buildStoredViewConfig(
         ): entry is {
           field: string;
           order: 1 | -1;
+          emptyPlacement: "first" | "last";
         } => entry !== null,
       );
 
@@ -719,6 +760,19 @@ function buildStoredViewConfig(
     const groupingFieldId = validated.data.groupingField
       ? fieldIdByName.get(validated.data.groupingField)
       : undefined;
+    const cardTitleFieldId = validated.data.cardTitleField
+      ? fieldIdByName.get(validated.data.cardTitleField)
+      : undefined;
+    if (validated.data.cardTitleField && !cardTitleFieldId) {
+      pushDroppedReference(droppedViewReferences, {
+        collectionName,
+        viewName: view.name,
+        viewType: view.type,
+        referenceType: "cardTitleField",
+        referenceValue: validated.data.cardTitleField,
+        reason: "Field not found during restore.",
+      });
+    }
     if (validated.data.groupingField && !groupingFieldId) {
       pushDroppedReference(droppedViewReferences, {
         collectionName,
@@ -742,6 +796,7 @@ function buildStoredViewConfig(
     return {
       columnWidths: {},
       sort: [],
+      cardTitleFieldId,
       groupingFieldId,
       kanbanColumnOrder: [...validated.data.columnOrder],
       selectedFieldIds:
@@ -851,7 +906,7 @@ export function restoreFullArchive(
       const collectionId = Number(collectionInfo.lastInsertRowid);
 
       const insertField = database.prepare(
-        "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO fields (collection_id, name, type, description, options, order_index) VALUES (?, ?, ?, ?, ?, ?)",
       );
       const fieldIdByName = new Map<string, number>();
 
@@ -888,6 +943,7 @@ export function restoreFullArchive(
           collectionId,
           field.name,
           field.type,
+          field.description ?? null,
           field.options ? JSON.stringify(field.options) : null,
           field.orderIndex,
         );

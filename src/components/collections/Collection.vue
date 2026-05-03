@@ -1,92 +1,114 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <div class="flex min-h-0 flex-1 flex-col">
+  <div class="flex h-full min-h-0 min-w-0 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <CollectionSettingsPanel v-if="collectionSettingsOpen" :collection="collection" :fields="fields"
         :itemsTotal="itemsTotal" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
       <CollectionFieldsPanel v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
-        :orderedFields="sourceOrderedFields" :items="items" @add-field="addField" @update-field="updateField"
-        @delete-field="confirmDeleteField" @reorder-fields="onFieldsReorder" />
+        :orderedFields="sourceOrderedFields" :items="items" @save-fields="saveFieldDrafts" />
       <CollectionChildFieldsPanel v-else-if="activeCollectionPanel === 'fields' && activeView"
         :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" :viewType="activeView.type"
-        :groupingFieldId="groupingFieldId" :groupingFields="groupingFields"
-        @toggle-field="onToggleSelectedField" @reorder-selected="onReorderSelectedFields"
-        @update:groupingFieldId="onUpdateGroupingFieldId" />
+        :groupingFieldId="groupingFieldId" :groupingFields="groupingFields" :cardTitleFieldId="cardTitleFieldId"
+        @save-view-fields="saveChildViewFields" />
       <template v-else>
-        <CollectionGrid v-if="activeView?.type === 'grid'" :viewId="activeView.id" :items="items"
-          :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+        <CollectionGrid :collectionId="collection.id" v-if="activeView?.type === 'grid'" :viewId="activeView.id"
+          :items="items" :itemsTotal="itemsTotal" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
           :orderedFields="viewOrderedFields" :searchQuery="searchQuery" :debouncedSearchQuery="debouncedSearchQuery"
-          :multiSortMeta="multiSortMeta" :loadNextPage="loadNextPage" @update:searchQuery="searchQuery = $event"
+          :multiSortMeta="multiSortMeta" :loadNextPage="loadNextPage"
+          v-model:selectedRowIds="selectedRowIds"
+          @update:searchQuery="searchQuery = $event"
           @update:multiSortMeta="multiSortMeta = $event" @sort="onItemsSort" @edit-item="openEditItemDialog"
           @delete-item="confirmDeleteItem" @update-item="onInlineUpdateItem" @insert-item-at="onInsertItemAt"
           @duplicate-item="onDuplicateItem" @move-item="onMoveItem"
           @manage-fields="store.setActiveCollectionPanel('fields')" @open-add-item="openAddItemDialog" />
-        <CollectionKanbanView v-else-if="activeView?.type === 'kanban'" :viewId="activeView.id" :items="items"
-          :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
-          :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
-          :groupingFieldId="groupingFieldId" :childViewConfig="childViewConfig" :saveViewConfig="store.saveViewConfig"
-          @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData" />
-        <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :viewId="activeView.id" :items="items"
-          :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
-          :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
+        <CollectionKanbanView :collectionId="collection.id" v-else-if="activeView?.type === 'kanban'"
+          :viewId="activeView.id" :items="items" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :itemsSearch="itemsSearch" :itemsSort="itemsSort" :orderedFields="viewOrderedFields"
+          :loadItems="loadCollectionItems" :groupingFieldId="groupingFieldId" :childViewConfig="childViewConfig"
+          :cardTitleField="cardTitleField" :saveViewConfig="store.saveViewConfig" @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData"
+          @update-item="onInlineUpdateItem" />
+        <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :collectionId="collection.id"
+          :viewId="activeView.id" :items="items" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :itemsSearch="itemsSearch" :itemsSort="itemsSort" :orderedFields="viewOrderedFields"
+          :cardTitleField="cardTitleField" :loadItems="loadCollectionItems"
           :groupingFieldId="groupingFieldId" @edit-item="openEditItemDialog" />
       </template>
     </div>
 
-    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="viewOrderedFields"
-      :editingItem="editingItem" :items="items" :initialData="initialItemData"
-      @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
+    <div v-if="!collectionSettingsOpen && activeCollectionPanel !== 'fields' && sourceOrderedFields.length > 0"
+      class="fixed bottom-16 right-6 z-40 flex items-center gap-3">
+      <AppButton v-if="selectedRowIds.size > 0" severity="danger" class="h-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 hover:scale-110 
+        hover:shadow-[0_20px_40px_rgba(239,68,68,0.2)] active:scale-95" @click="deleteSelectedItems">
+        <template #icon>
+          <Trash2 :size="16" />
+        </template>
+        Delete item
+      </AppButton>
+      <AppButton class="h-8 w-24 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 hover:scale-110 
+        hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95" @click="quickAddItem">
+        <template #icon>
+          <Plus />
+        </template>
+        Add item
+      </AppButton>
+    </div>
 
-    <ConfirmDialog />
+    <CollectionItemEditorDialog :visible="showAddItemForm" :orderedFields="viewOrderedFields" :editingItem="editingItem"
+      :items="items" :initialData="initialItemData" @update:visible="onItemDialogVisibilityChange" @save="saveItem" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useConfirm } from 'primevue/useconfirm'
-import ConfirmDialog from 'primevue/confirmdialog'
-import { useStore } from '../../store'
-import { useNotificationsStore } from '../../stores/notifications'
-import {
-  collectionNameSchema,
-  fieldNameSchema
-} from '../../validation/schemas'
-import { useSafeFields } from '../../composables/collection/useSafeFields'
+import { computed, ref, watch } from "vue";
+import { storeToRefs } from "pinia";
+import { useAppConfirm } from "@/components/app/ui/confirm-service";
+import { useStore } from "../../store";
+import { useNotificationsStore } from "../../stores/notifications";
+import { useSafeFields } from "../../composables/collection/useSafeFields";
 import {
   useCollectionItemsQuery,
-  type LoadItemsOptions
-} from '../../composables/collection/useCollectionItemsQuery'
+  type LoadItemsOptions,
+} from "../../composables/collection/useCollectionItemsQuery";
 import type {
   Collection,
+  DuplicateItemInput,
   Field,
   FieldOptions,
   FieldType,
+  InsertItemAtInput,
   Item,
   ItemData,
-  InsertItemAtInput,
-  DuplicateItemInput,
   MoveItemInput,
   UpdateItemInput,
-  ViewConfig
-} from '../../types/models'
-import CollectionGrid from './grid/CollectionGrid.vue'
-import CollectionKanbanView from './kanban/CollectionKanbanView.vue'
-import CollectionCalendarView from './calendar/CollectionCalendarView.vue'
-import CollectionItemEditorDialog from './CollectionItemEditorDialog.vue'
-import CollectionFieldsPanel from './settings/CollectionFieldsPanel.vue'
-import CollectionChildFieldsPanel from './settings/CollectionChildFieldsPanel.vue'
-import CollectionSettingsPanel from './settings/CollectionSettingsPanel.vue'
-import { serializeFieldOptions } from '../../utils/fieldOptions'
-import { parseMultiselectValue } from '../../utils/fieldValues'
+  ViewConfig,
+} from "../../types/models";
+import { parseMultiselectValue } from "../../utils/fieldValues";
+import { parseFieldOptions, serializeFieldOptions } from "../../utils/fieldOptions";
+import { mergeViewConfig } from "../../utils/viewConfig";
+import {
+  collectionNameSchema,
+  fieldNameSchema,
+} from "../../validation/schemas";
+import CollectionCalendarView from "./calendar/CollectionCalendarView.vue";
+import CollectionGrid from "./grid/CollectionGrid.vue";
+import CollectionItemEditorDialog from "./CollectionItemEditorDialog.vue";
+import CollectionKanbanView from "./kanban/CollectionKanbanView.vue";
 import type {
   CollectionSettingsSavePayload,
-  FieldDraftInput,
-  ItemEditorSavePayload
-} from './types'
+  ItemEditorSavePayload,
+} from "./types";
+import { Plus, Trash2 } from "lucide-vue-next";
+import AppButton from "@/components/app/ui/AppButton.vue";
+import CollectionChildFieldsPanel from "./settings/CollectionChildFieldsPanel.vue";
+import CollectionFieldsPanel from "./settings/CollectionFieldsPanel.vue";
+import CollectionSettingsPanel from "./settings/CollectionSettingsPanel.vue";
+import {
+  createDefaultItemFormData,
+  buildItemDataFromForm,
+} from "../../composables/collection/useCollectionItemForm";
 
-const store = useStore()
-const confirm = useConfirm()
-const notifications = useNotificationsStore()
+const store = useStore();
+const { confirm } = useAppConfirm();
+const notifications = useNotificationsStore();
 const {
   fields,
   items,
@@ -98,107 +120,128 @@ const {
   activeCollectionPanel,
   collectionSettingsOpen,
   currentViews,
-  activeViewId
-} = storeToRefs(store)
+  activeViewId,
+} = storeToRefs(store);
 
 const props = defineProps<{
-  collection: Collection
-}>()
+  collection: Collection;
+}>();
 
 const emit = defineEmits<{
-  (e: 'collection-deleted'): void
-}>()
+  (e: "collection-deleted"): void;
+}>();
 
-const showAddItemForm = ref(false)
-const editingItem = ref<Item | null>(null)
-const initialItemData = ref<ItemData | null>(null)
+const showAddItemForm = ref(false);
+const editingItem = ref<Item | null>(null);
+const initialItemData = ref<ItemData | null>(null);
+const selectedRowIds = ref<Set<number>>(new Set());
 
 const { safeFields, orderedFields: sourceOrderedFields } = useSafeFields({
   fields,
-  notifications
-})
+  notifications,
+});
 
-const collectionId = computed(() => props.collection.id)
+const collectionId = computed(() => props.collection.id);
+const activeView = computed(
+  () =>
+    currentViews.value.find((view) => view.id === activeViewId.value) ?? null,
+);
+const isSourceViewActive = computed(() => activeView.value?.is_default === 1);
 
-const activeView = computed(() => {
-  return currentViews.value.find(view => view.id === activeViewId.value) ?? null
-})
-
-const isSourceViewActive = computed(() => activeView.value?.is_default === 1)
-
-const childViewConfig = ref<ViewConfig | null>(null)
-let childConfigToken = 0
+const childViewConfig = ref<ViewConfig | null>(null);
+let childConfigToken = 0;
 
 function normalizeGroupingFieldId(value: unknown): number | null {
-  const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function buildViewConfig(base: ViewConfig | null, overrides: Partial<ViewConfig>): ViewConfig {
-  return {
-    columnWidths: base?.columnWidths ?? {},
-    sort: base?.sort ?? [],
-    calendarDateField: base?.calendarDateField,
-    calendarDateFieldId: base?.calendarDateFieldId,
-    groupingFieldId: base?.groupingFieldId,
-    kanbanColumnOrder: base?.kanbanColumnOrder,
-    selectedFieldIds: base?.selectedFieldIds ?? [],
-    ...overrides
-  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 const selectedFieldIds = computed(() => {
   if (!activeView.value || activeView.value.is_default === 1) {
-    return []
+    return [];
   }
 
-  const configured = childViewConfig.value?.selectedFieldIds ?? []
+  const configured = childViewConfig.value?.selectedFieldIds ?? [];
   if (configured.length > 0) {
-    return configured
+    return configured;
   }
 
-  return sourceOrderedFields.value.map(field => field.id)
-})
+  return sourceOrderedFields.value.map((field) => field.id);
+});
 
 const viewOrderedFields = computed(() => {
   if (!activeView.value || activeView.value.is_default === 1) {
-    return sourceOrderedFields.value
+    return sourceOrderedFields.value;
   }
 
-  const fieldMap = new Map(sourceOrderedFields.value.map(field => [field.id, field]))
-  const ordered = selectedFieldIds.value
-    .map(id => fieldMap.get(id))
-    .filter((field): field is Field => Boolean(field))
-
-  return ordered
-})
+  const fieldMap = new Map(
+    sourceOrderedFields.value.map((field) => [field.id, field]),
+  );
+  return selectedFieldIds.value
+    .map((id) => fieldMap.get(id))
+    .filter((field): field is Field => Boolean(field));
+});
 
 const groupingFieldId = computed(() => {
   if (!activeView.value || activeView.value.is_default === 1) {
-    return null
+    return null;
   }
 
-  const configured = normalizeGroupingFieldId(childViewConfig.value?.groupingFieldId)
+  const configured = normalizeGroupingFieldId(
+    childViewConfig.value?.groupingFieldId,
+  );
   if (configured !== null) {
-    return configured
+    return configured;
   }
 
-  return normalizeGroupingFieldId(childViewConfig.value?.calendarDateFieldId)
-})
+  return normalizeGroupingFieldId(childViewConfig.value?.calendarDateFieldId);
+});
+
+const cardTitleFieldId = computed(() => {
+  if (
+    !activeView.value ||
+    (activeView.value.type !== "kanban" && activeView.value.type !== "calendar")
+  ) {
+    return null;
+  }
+
+  return normalizeGroupingFieldId(childViewConfig.value?.cardTitleFieldId);
+});
+
+const cardTitleField = computed(() => {
+  if (
+    !activeView.value ||
+    (activeView.value.type !== "kanban" && activeView.value.type !== "calendar")
+  ) {
+    return null;
+  }
+
+  const configuredId = cardTitleFieldId.value;
+  if (configuredId !== null) {
+    const configured = sourceOrderedFields.value.find(
+      (field) => field.id === configuredId,
+    );
+    if (configured) {
+      return configured;
+    }
+  }
+
+  return viewOrderedFields.value[0] ?? sourceOrderedFields.value[0] ?? null;
+});
 
 const groupingFields = computed(() => {
-  if (!activeView.value) return []
-  if (activeView.value.type === 'kanban') {
-    return sourceOrderedFields.value.filter(field => field.type === 'select')
+  if (!activeView.value) return [];
+  if (activeView.value.type === "kanban") {
+    return sourceOrderedFields.value.filter((field) => field.type === "select");
   }
-  if (activeView.value.type === 'calendar') {
-    return sourceOrderedFields.value.filter(field => field.type === 'date')
+  if (activeView.value.type === "calendar") {
+    return sourceOrderedFields.value.filter((field) => field.type === "date");
   }
-  return []
-})
+  return [];
+});
 
 async function loadCollectionItems(options: LoadItemsOptions = {}) {
-  await store.loadItems(props.collection.id, options)
+  await store.loadItems(props.collection.id, options);
 }
 
 const {
@@ -206,7 +249,7 @@ const {
   debouncedSearchQuery,
   multiSortMeta,
   onItemsSort,
-  loadNextPage
+  loadNextPage,
 } = useCollectionItemsQuery({
   collectionId,
   viewId: activeViewId,
@@ -217,433 +260,447 @@ const {
   itemsFullyLoaded,
   loadItems: loadCollectionItems,
   loadViewConfig: store.loadViewConfig,
-  saveViewConfig: store.saveViewConfig
-})
+  saveViewConfig: store.saveViewConfig,
+});
 
 watch(
   [activeViewId, currentViews],
   async () => {
-    childViewConfig.value = null
+    selectedRowIds.value = new Set();
+    childViewConfig.value = null;
 
-    const view = currentViews.value.find(view => view.id === activeViewId.value) ?? null
+    const view =
+      currentViews.value.find((entry) => entry.id === activeViewId.value) ??
+      null;
     if (!view || view.is_default === 1) {
-      return
+      return;
     }
 
-    const token = ++childConfigToken
-    const config = await store.loadViewConfig(view.id)
+    const token = ++childConfigToken;
+    const config = await store.loadViewConfig(view.id);
     if (token !== childConfigToken) {
-      return
+      return;
     }
 
     if (config && !config.groupingFieldId && config.calendarDateFieldId) {
-      const migrated = buildViewConfig(config, {
+      const migrated = mergeViewConfig(config, {
         calendarDateFieldId: undefined,
-        groupingFieldId: config.calendarDateFieldId
-      })
-      await store.saveViewConfig(view.id, migrated)
+        groupingFieldId: config.calendarDateFieldId,
+      });
+      await store.saveViewConfig(view.id, migrated);
       if (token !== childConfigToken) {
-        return
+        return;
       }
-      childViewConfig.value = migrated
-      return
+      childViewConfig.value = migrated;
+      return;
     }
 
-    childViewConfig.value = config
+    childViewConfig.value = config;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 watch(
   () => props.collection.id,
   () => {
-    showAddItemForm.value = false
-    editingItem.value = null
-    store.setCollectionSettingsOpen(false)
-  }
-)
+    showAddItemForm.value = false;
+    editingItem.value = null;
+    store.setCollectionSettingsOpen(false);
+    selectedRowIds.value = new Set();
+  },
+);
 
 function openAddItemDialog() {
-  editingItem.value = null
-  initialItemData.value = null
-  showAddItemForm.value = true
+  editingItem.value = null;
+  initialItemData.value = null;
+  showAddItemForm.value = true;
 }
 
 function openEditItemDialog(item: Item) {
-  editingItem.value = item
-  initialItemData.value = null
-  showAddItemForm.value = true
+  editingItem.value = item;
+  initialItemData.value = null;
+  showAddItemForm.value = true;
+}
+
+async function quickAddItem() {
+  const collectionId = props.collection.id;
+  if (!collectionId || sourceOrderedFields.value.length === 0) return;
+
+  const formData = createDefaultItemFormData(sourceOrderedFields.value);
+  const data = buildItemDataFromForm(formData, sourceOrderedFields.value);
+
+  const created = await store.addItem({ collectionId, data });
+  if (created) {
+    openEditItemDialog(created);
+  }
 }
 
 function onItemDialogVisibilityChange(nextVisible: boolean) {
-  showAddItemForm.value = nextVisible
+  showAddItemForm.value = nextVisible;
   if (!nextVisible) {
-    editingItem.value = null
-    initialItemData.value = null
+    editingItem.value = null;
+    initialItemData.value = null;
   }
 }
 
 function openAddItemDialogWithData(data: ItemData) {
-  editingItem.value = null
-  initialItemData.value = data
-  showAddItemForm.value = true
+  editingItem.value = null;
+  initialItemData.value = data;
+  showAddItemForm.value = true;
 }
 
 async function onInlineUpdateItem(payload: UpdateItemInput) {
-  await store.updateItem(payload)
+  await store.updateItem(payload);
 }
 
 async function onInsertItemAt(payload: InsertItemAtInput) {
-  await store.insertItemAt(payload)
+  await store.insertItemAt(payload);
 }
 
 async function onDuplicateItem(payload: DuplicateItemInput) {
-  await store.duplicateItem(payload)
+  await store.duplicateItem(payload);
 }
 
 async function onMoveItem(payload: MoveItemInput) {
-  await store.moveItem(payload)
+  await store.moveItem(payload);
 }
 
 async function saveItem(payload: ItemEditorSavePayload) {
   if (payload.editingItemId) {
     await store.updateItem({
       id: payload.editingItemId,
-      data: payload.data
-    })
+      data: payload.data,
+    });
   } else {
     await store.addItem({
       collectionId: props.collection.id,
-      data: payload.data
-    })
+      data: payload.data,
+    });
   }
 
-  showAddItemForm.value = false
-  editingItem.value = null
-  initialItemData.value = null
-}
-
-async function addField(newField: FieldDraftInput) {
-  const nameResult = fieldNameSchema.safeParse(newField.name)
-  if (!nameResult.success) {
-    notifications.push({
-      severity: 'warn',
-      summary: 'Invalid field name',
-      detail: nameResult.error.issues[0]?.message || 'Please enter a valid field name.',
-      life: 5000
-    })
-    return
-  }
-
-  if (!validateFieldOptions(newField.type, newField.options)) {
-    return
-  }
-
-  const nextOrderIndex = fields.value.reduce(
-    (maxOrder, field) => Math.max(maxOrder, field.order_index),
-    -1
-  ) + 1
-
-  await store.addField({
-    collectionId: props.collection.id,
-    name: nameResult.data,
-    type: newField.type,
-    options: serializeFieldOptions(newField.options),
-    orderIndex: nextOrderIndex
-  })
-}
-
-async function updateField(payload: { field: Field; name: string; options: FieldOptions; removedOptions: string[] }) {
-  const nameResult = fieldNameSchema.safeParse(payload.name)
-  if (!nameResult.success) {
-    notifications.push({
-      severity: 'warn',
-      summary: 'Invalid field name',
-      detail: nameResult.error.issues[0]?.message || 'Please enter a valid field name.',
-      life: 5000
-    })
-    return
-  }
-
-  if (!validateFieldOptions(payload.field.type, payload.options)) {
-    return
-  }
-
-  await store.updateField({
-    id: payload.field.id,
-    name: nameResult.data,
-    type: payload.field.type,
-    options: serializeFieldOptions(payload.options),
-    orderIndex: payload.field.order_index
-  })
-
-  await clearRemovedOptions(payload.field, payload.removedOptions)
-}
-
-async function confirmDeleteField(field: Field) {
-  confirm.require({
-    header: 'Delete Field',
-    message: `Delete "${field.name}" field? All data in this field will be lost.`,
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Delete',
-    rejectLabel: 'Cancel',
-    accept: async () => {
-      await store.deleteField(field.id)
-    }
-  })
+  showAddItemForm.value = false;
+  editingItem.value = null;
+  initialItemData.value = null;
 }
 
 function validateFieldOptions(type: FieldType, options: FieldOptions) {
-  if (type !== 'date') return true
-  const dateOptions = options as { highlight?: { type?: string; date?: string; color?: string } | null }
-  const highlight = dateOptions.highlight
-  if (!highlight) return true
+  if (type !== "date") return true;
+  const dateOptions = options as {
+    highlight?: { type?: string; date?: string | null; target?: string; color?: string } | null;
+  };
+  const highlight = dateOptions.highlight;
+  if (!highlight) return true;
 
-  const hasType = Boolean(highlight.type)
-  const hasDate = Boolean(highlight.date)
-  const hasColor = Boolean(highlight.color)
-  const complete = hasType && hasDate && hasColor
+  const hasType = Boolean(highlight.type);
+  const hasColor = Boolean(highlight.color);
+  const requiresDate = (highlight.target ?? "date") === "date";
+  const hasDate = !requiresDate || Boolean(highlight.date);
+  const complete = hasType && hasColor && hasDate;
 
   if (!complete) {
     notifications.push({
-      severity: 'warn',
-      summary: 'Incomplete highlight rule',
-      detail: 'Highlight rules require type, date, and color before saving.',
-      life: 5000
-    })
+      severity: "warn",
+      summary: "Incomplete highlight rule",
+      detail: "Highlight rules require type and color. Custom-date highlights also require a date.",
+      life: 5000,
+    });
   }
 
-  return complete
+  return complete;
 }
 
 async function clearRemovedOptions(field: Field, removedOptions: string[]) {
-  if (!removedOptions.length) return
-  if (!['select', 'multiselect'].includes(field.type)) return
+  if (!removedOptions.length || !["select", "multiselect"].includes(field.type))
+    return;
 
-  const updates = items.value.reduce((acc, item) => {
-    const currentValue = item.data[field.name]
-    if (field.type === 'select') {
-      if (typeof currentValue === 'string' && removedOptions.includes(currentValue)) {
-        acc.push({ id: item.id, patch: { [field.name]: null } })
+  const updates = items.value.reduce(
+    (acc, item) => {
+      const currentValue = item.data[field.name];
+      if (field.type === "select") {
+        if (
+          typeof currentValue === "string" &&
+          removedOptions.includes(currentValue)
+        ) {
+          acc.push({ id: item.id, patch: { [field.name]: null } });
+        }
+        return acc;
       }
-      return acc
-    }
 
-    const parsed = parseMultiselectValue(currentValue)
-    if (parsed.length === 0) return acc
+      const parsed = parseMultiselectValue(currentValue);
+      if (parsed.length === 0) return acc;
 
-    const next = parsed.filter(value => !removedOptions.includes(value))
-    if (next.length === parsed.length) return acc
+      const next = parsed.filter((value) => !removedOptions.includes(value));
+      if (next.length === parsed.length) return acc;
 
-    acc.push({
-      id: item.id,
-      patch: { [field.name]: next.length > 0 ? JSON.stringify(next) : null }
-    })
-    return acc
-  }, [] as { id: number; patch: Record<string, string | number | null> }[])
+      acc.push({
+        id: item.id,
+        patch: { [field.name]: next.length > 0 ? JSON.stringify(next) : null },
+      });
+      return acc;
+    },
+    [] as { id: number; patch: Record<string, string | number | null> }[],
+  );
 
-  if (updates.length === 0) return
+  if (updates.length === 0) return;
 
   await store.bulkPatchItems({
     collectionId: props.collection.id,
-    updates
-  })
+    updates,
+  });
 }
 
-async function onFieldsReorder(reorderedFields: Field[]) {
-  if (!reorderedFields) return
+async function saveFieldDrafts(payload: {
+  drafts: Array<{
+    id: number | null;
+    name: string;
+    type: FieldType;
+    description: string | null;
+    options: FieldOptions;
+  }>;
+  deletedFieldIds: number[];
+}) {
+  const existingFieldById = new Map(
+    fields.value.map((field) => [field.id, field]),
+  );
+  const normalizedDrafts: Array<{
+    id: number | null;
+    name: string;
+    type: FieldType;
+    description: string | null;
+    options: FieldOptions;
+  }> = [];
 
-  const visibleFieldIds = sourceOrderedFields.value.map(field => field.id)
-  const visibleFieldIdSet = new Set(visibleFieldIds)
-  const reorderedFieldIds = reorderedFields.map(field => field.id)
-  const reorderedFieldIdSet = new Set(reorderedFieldIds)
-
-  if (
-    reorderedFieldIds.length !== visibleFieldIds.length ||
-    reorderedFieldIdSet.size !== reorderedFieldIds.length ||
-    reorderedFieldIds.some(id => !visibleFieldIdSet.has(id))
-  ) {
-    notifications.push({
-      severity: 'warn',
-      summary: 'Unable to reorder fields',
-      detail: 'Field list changed while reordering. Reopen the Fields panel and try again.',
-      life: 5000
-    })
-    return
-  }
-
-  const allFieldsInOrder = [...fields.value].sort((a, b) => {
-    if (a.order_index !== b.order_index) {
-      return a.order_index - b.order_index
+  for (const draft of payload.drafts) {
+    const nameResult = fieldNameSchema.safeParse(draft.name);
+    if (!nameResult.success) {
+      notifications.push({
+        severity: "warn",
+        summary: "Invalid field name",
+        detail:
+          nameResult.error.issues[0]?.message ||
+          "Please enter a valid field name.",
+        life: 5000,
+      });
+      return;
     }
-    return a.id - b.id
-  })
 
-  let reorderedIndex = 0
-  const completeFieldOrder = allFieldsInOrder.map(field => {
-    if (!visibleFieldIdSet.has(field.id)) {
-      return field
+    if (!validateFieldOptions(draft.type, draft.options)) {
+      return;
     }
 
-    const nextField = reorderedFields[reorderedIndex]
-    reorderedIndex += 1
-    return nextField
-  })
+    normalizedDrafts.push({
+      ...draft,
+      name: nameResult.data,
+    });
+  }
 
-  if (reorderedIndex !== reorderedFields.length) {
-    notifications.push({
-      severity: 'warn',
-      summary: 'Unable to reorder fields',
-      detail: 'Field reorder payload was incomplete. Reopen the Fields panel and try again.',
-      life: 5000
+  const removedFieldIdSet = new Set(payload.deletedFieldIds);
+  const removedOptionsByFieldId = new Map<number, string[]>();
+  for (const draft of normalizedDrafts) {
+    if (draft.id === null) {
+      continue;
+    }
+
+    const existing = existingFieldById.get(draft.id);
+    if (!existing) {
+      continue;
+    }
+
+    if (existing.type === "select" || existing.type === "multiselect") {
+      const currentChoices = (
+        parseFieldOptions(existing.type, existing.options) as { choices?: string[] }
+      ).choices ?? [];
+      const nextChoices = (draft.options as { choices?: string[] }).choices ?? [];
+      removedOptionsByFieldId.set(
+        draft.id,
+        currentChoices.filter((choice) => !nextChoices.includes(choice)),
+      );
+    }
+  }
+
+  const createdFieldIds = new Map<number, number>();
+  for (const [index, draft] of normalizedDrafts.entries()) {
+    if (draft.id !== null) {
+      continue;
+    }
+
+    const created = await store.addField({
+      collectionId: props.collection.id,
+      name: draft.name,
+      type: draft.type,
+      description: draft.description,
+      options: serializeFieldOptions(draft.options),
+      orderIndex: fields.value.length + index,
+    });
+    if (created?.id) {
+      createdFieldIds.set(index, created.id);
+    }
+  }
+
+  for (const draft of normalizedDrafts) {
+    if (draft.id === null || removedFieldIdSet.has(draft.id)) {
+      continue;
+    }
+
+    const existing = existingFieldById.get(draft.id);
+    if (!existing) {
+      continue;
+    }
+
+    await store.updateField({
+      id: existing.id,
+      name: draft.name,
+      type: existing.type,
+      description: draft.description,
+      options: serializeFieldOptions(draft.options),
+      orderIndex: existing.order_index,
+    });
+
+    await clearRemovedOptions(
+      { ...existing, name: draft.name },
+      removedOptionsByFieldId.get(existing.id) ?? [],
+    );
+  }
+
+  for (const fieldId of payload.deletedFieldIds) {
+    await store.deleteField(fieldId);
+  }
+
+  await store.loadFields(props.collection.id);
+
+  const latestFieldsByName = new Map(
+    fields.value.map((field) => [field.name, field.id]),
+  );
+  const finalFieldOrders = normalizedDrafts
+    .map((draft, index) => {
+      const resolvedId =
+        draft.id ??
+        createdFieldIds.get(index) ??
+        latestFieldsByName.get(draft.name) ??
+        null;
+      return resolvedId === null
+        ? null
+        : {
+          id: resolvedId,
+          orderIndex: index,
+        };
     })
-    return
-  }
+    .filter((entry): entry is { id: number; orderIndex: number } => Boolean(entry));
 
-  await store.reorderFields({
-    collectionId: props.collection.id,
-    fieldOrders: completeFieldOrder.map((field, index) => ({
-      id: field.id,
-      orderIndex: index
-    }))
-  })
-}
-
-async function persistChildViewConfig(
-  viewId: number,
-  nextSelectedIds: number[]
-) {
-  const existing = childViewConfig.value
-  const config = buildViewConfig(existing, {
-    selectedFieldIds: nextSelectedIds
-  })
-
-  await store.saveViewConfig(viewId, config)
-  if (activeView.value?.id === viewId) {
-    childViewConfig.value = config
+  if (finalFieldOrders.length > 0) {
+    await store.reorderFields({
+      collectionId: props.collection.id,
+      fieldOrders: finalFieldOrders,
+    });
   }
 }
 
-async function onUpdateGroupingFieldId(fieldId: number | null) {
-  const viewId = activeView.value?.id
+async function saveChildViewFields(payload: {
+  selectedFieldIds: number[];
+  groupingFieldId: number | null;
+  cardTitleFieldId: number | null;
+}) {
+  const viewId = activeView.value?.id;
   if (!viewId || activeView.value?.is_default === 1) {
-    return
+    return;
   }
 
-  const existing = childViewConfig.value
-  const normalized = normalizeGroupingFieldId(fieldId) ?? undefined
-  const config = buildViewConfig(existing, {
-    groupingFieldId: normalized,
+  const nextSelectedIds =
+    payload.selectedFieldIds.length > 0
+      ? payload.selectedFieldIds
+      : sourceOrderedFields.value.map((field) => field.id);
+
+  const config = mergeViewConfig(childViewConfig.value, {
+    cardTitleFieldId:
+      activeView.value?.type === "kanban" || activeView.value?.type === "calendar"
+        ? (normalizeGroupingFieldId(payload.cardTitleFieldId) ?? undefined)
+        : undefined,
+    selectedFieldIds: nextSelectedIds,
+    groupingFieldId: normalizeGroupingFieldId(payload.groupingFieldId) ?? undefined,
     calendarDateFieldId: undefined,
     kanbanColumnOrder:
-      activeView.value?.type === 'kanban' ? undefined : existing?.kanbanColumnOrder
-  })
+      activeView.value?.type === "kanban"
+        ? childViewConfig.value?.kanbanColumnOrder
+        : undefined,
+  });
 
-  await store.saveViewConfig(viewId, config)
+  await store.saveViewConfig(viewId, config);
   if (activeView.value?.id === viewId) {
-    childViewConfig.value = config
+    childViewConfig.value = config;
   }
-}
-
-async function onToggleSelectedField(payload: { id: number; selected: boolean }) {
-  const viewId = activeView.value?.id
-  if (!viewId || activeView.value?.is_default === 1) {
-    return
-  }
-
-  const baseIds = selectedFieldIds.value
-  let nextIds = baseIds
-
-  if (payload.selected) {
-    if (!baseIds.includes(payload.id)) {
-      nextIds = [...baseIds, payload.id]
-    }
-  } else {
-    nextIds = baseIds.filter(id => id !== payload.id)
-  }
-
-  if (nextIds === baseIds) {
-    return
-  }
-
-  if (nextIds.length === 0) {
-    nextIds = sourceOrderedFields.value.map(field => field.id)
-  }
-
-  await persistChildViewConfig(viewId, nextIds)
-}
-
-async function onReorderSelectedFields(payload: { draggedId: number; targetId: number }) {
-  const viewId = activeView.value?.id
-  if (!viewId || activeView.value?.is_default === 1) {
-    return
-  }
-
-  const baseIds = selectedFieldIds.value
-  if (!baseIds.includes(payload.draggedId) || !baseIds.includes(payload.targetId)) {
-    return
-  }
-
-  const nextIds = baseIds.filter(id => id !== payload.draggedId)
-  const targetIndex = nextIds.indexOf(payload.targetId)
-  if (targetIndex < 0) {
-    return
-  }
-  nextIds.splice(targetIndex, 0, payload.draggedId)
-
-  await persistChildViewConfig(viewId, nextIds)
 }
 
 async function confirmDeleteItem(item: Item) {
-  confirm.require({
-    header: 'Delete Item',
-    message: 'Are you sure you want to delete this row?',
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Delete',
-    rejectLabel: 'Cancel',
-    accept: async () => {
-      await store.deleteItem(item)
-    }
-  })
+  const accepted = await confirm({
+    title: "Delete Item",
+    description: "Are you sure you want to delete this row?",
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+    destructive: true,
+  });
+
+  if (accepted) {
+    await store.deleteItem(item);
+  }
+}
+
+async function deleteSelectedItems() {
+  const count = selectedRowIds.value.size;
+  if (count === 0) return;
+
+  const accepted = await confirm({
+    title: "Delete Items",
+    description: `Do you want to delete ${count} items?`,
+    confirmLabel: "Delete",
+    cancelLabel: "Cancel",
+    destructive: true,
+  });
+
+  if (accepted) {
+    await store.bulkDeleteItems({
+      collectionId: props.collection.id,
+      itemIds: Array.from(selectedRowIds.value),
+    });
+    selectedRowIds.value = new Set();
+  }
 }
 
 async function saveSettings(payload: CollectionSettingsSavePayload) {
-  const nameResult = collectionNameSchema.safeParse(payload.name)
+  const nameResult = collectionNameSchema.safeParse(payload.name);
 
   if (!nameResult.success) {
-    let detail = 'Please check your collection settings.'
-    if (!nameResult.success) {
-      detail = nameResult.error.issues[0]?.message || detail
-    }
-
+    const detail =
+      nameResult.error.issues[0]?.message ||
+      "Please check your collection settings.";
     notifications.push({
-      severity: 'warn',
-      summary: 'Invalid collection settings',
+      severity: "warn",
+      summary: "Invalid collection settings",
       detail,
-      life: 5000
-    })
-    return
+      life: 5000,
+    });
+    return;
   }
 
   await store.updateCollection({
     id: props.collection.id,
-    name: nameResult.data
-  })
+    name: nameResult.data,
+  });
 
-  store.setCollectionSettingsOpen(false)
+  store.setCollectionSettingsOpen(false);
 }
 
 async function confirmDeleteCollection() {
-  confirm.require({
-    header: 'Delete Collection',
-    message: `Delete "${props.collection.name}" and all its data? This cannot be undone.`,
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Delete Collection',
-    rejectLabel: 'Cancel',
-    accept: async () => {
-      await store.deleteCollection(props.collection.id)
-      emit('collection-deleted')
-    }
-  })
+  const accepted = await confirm({
+    title: "Delete Collection",
+    description: `Delete "${props.collection.name}" and all its data? This cannot be undone.`,
+    confirmLabel: "Delete Collection",
+    cancelLabel: "Cancel",
+    destructive: true,
+  });
+
+  if (accepted) {
+    await store.deleteCollection(props.collection.id);
+    emit("collection-deleted");
+  }
 }
 </script>

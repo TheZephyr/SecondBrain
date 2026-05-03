@@ -4,6 +4,40 @@ import { toNumber } from "./query-utils";
 type CountRow = { count: number | bigint };
 
 const FIELD_ORDER_UNIQUE_INDEX = "idx_fields_collection_order_unique";
+const DATABASE_USER_VERSION = 2;
+
+function hasColumn(
+  database: Database.Database,
+  tableName: string,
+  columnName: string,
+): boolean {
+  const columns = database
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+
+  return columns.some((column) => column.name === columnName);
+}
+
+function ensureFieldDescriptionColumn(database: Database.Database): void {
+  if (hasColumn(database, "fields", "description")) {
+    return;
+  }
+
+  database.exec(`
+    ALTER TABLE fields
+    ADD COLUMN description TEXT DEFAULT NULL
+  `);
+}
+
+function runMigrations(database: Database.Database) {
+  const userVersion = Number(database.pragma("user_version", { simple: true }));
+
+  ensureFieldDescriptionColumn(database);
+
+  if (userVersion < DATABASE_USER_VERSION) {
+    database.pragma(`user_version = ${DATABASE_USER_VERSION}`);
+  }
+}
 
 function rebuildItemFtsIndex(database: Database.Database) {
   const rebuildTransaction = database.transaction(() => {
@@ -131,6 +165,7 @@ export function initDatabaseConnection(dbPath: string): {
       collection_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       type TEXT NOT NULL,
+      description TEXT DEFAULT NULL,
       options TEXT,
       order_index INTEGER DEFAULT 0,
       FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
@@ -181,6 +216,7 @@ export function initDatabaseConnection(dbPath: string): {
 
   // FTS setup
   const ftsEnabled = tryEnableFts(db);
+  runMigrations(db);
 
   return { db, ftsEnabled };
 }

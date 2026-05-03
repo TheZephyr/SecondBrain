@@ -1,10 +1,20 @@
 <template>
-  <div class="grid items-center text-base text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)]"
-    :class="isAdding ? 'cursor-wait opacity-60' : 'cursor-pointer'" :style="{ gridTemplateColumns }" @click="onAddRow">
-    <div class="flex h-10 items-center justify-end border-b border-r border-[var(--border-color)] pr-2">
+  <div
+    class="grid items-center text-base text-(--text-muted) transition-colors hover:bg-(--bg-hover)"
+    :class="isAdding ? 'cursor-wait opacity-60' : 'cursor-pointer'"
+    :style="{ gridTemplateColumns }"
+    @click="onAddRow"
+  >
+    <div
+      class="flex h-10 items-center justify-end border-b border-r border-(--border-color) pr-2"
+    >
       <i class="pi pi-plus text-sm"></i>
     </div>
-    <div v-for="field in orderedFields" :key="field.id" class="flex h-10 items-center">
+    <div
+      v-for="field in orderedFields"
+      :key="field.id"
+      class="flex h-10 items-center"
+    >
       <div class="h-10 w-full"></div>
     </div>
     <div class="flex h-10 items-center"></div>
@@ -12,48 +22,48 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref } from 'vue'
-import type { Field } from '../../../types/models'
-import { useStore } from '../../../store'
+import { inject, ref } from "vue";
+import type { Field } from "../../../types/models";
+import { useStore } from "../../../store";
 import {
   buildItemDataFromForm,
-  createDefaultItemFormData
-} from '../../../composables/collection/useCollectionItemForm'
-import { gridEditingKey } from './types'
+  createDefaultItemFormData,
+} from "../../../composables/collection/useCollectionItemForm";
+import { gridEditingKey } from "./types";
 
 const props = defineProps<{
-  gridTemplateColumns: string
-  orderedFields: Field[]
-}>()
+  gridTemplateColumns: string;
+  orderedFields: Field[];
+}>();
 
-const store = useStore()
-const editing = inject(gridEditingKey)
-const isAdding = ref(false)
+const store = useStore();
+const editing = inject(gridEditingKey);
+const isAdding = ref(false);
 
 if (!editing) {
-  throw new Error('Grid editing context not provided')
+  throw new Error("Grid editing context not provided");
 }
 
-const editingContext = editing
+const editingContext = editing;
 
 async function onAddRow() {
-  if (isAdding.value) return
-  if (props.orderedFields.length === 0) return
-  const collectionId = store.selectedCollection?.id
-  if (!collectionId) return
+  if (isAdding.value) return;
+  if (props.orderedFields.length === 0) return;
+  const collectionId = store.selectedCollection?.id;
+  if (!collectionId) return;
 
-  isAdding.value = true
+  isAdding.value = true;
   try {
-    const formData = createDefaultItemFormData(props.orderedFields)
-    const data = buildItemDataFromForm(formData, props.orderedFields)
-    const created = await store.addItem({ collectionId, data })
-    if (!created) return
+    const formData = createDefaultItemFormData(props.orderedFields);
+    const data = buildItemDataFromForm(formData, props.orderedFields);
+    const created = await store.addItem({ collectionId, data });
+    if (!created) return;
 
-    const firstField = props.orderedFields[0]
-    if (!firstField) return
-    editingContext.startEdit(created.id, firstField.name)
+    const firstField = props.orderedFields[0];
+    if (!firstField) return;
+    editingContext.startEdit(created.id, firstField.name);
   } finally {
-    isAdding.value = false
+    isAdding.value = false;
   }
 }
 </script>

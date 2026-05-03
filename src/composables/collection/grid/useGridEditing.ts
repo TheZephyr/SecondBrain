@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
-import type { Field, Item, ItemData, ItemDataValue } from '../../../types/models'
-import { useStore } from '../../../store'
+import type { DateFieldOptions, Field, Item, ItemData, ItemDataValue } from '../../../types/models'
+import { useItemsStore } from '../../../stores/items'
 import { formatDateForStorage, parseDateInput } from '../../../utils/date'
 import { parseFieldOptions } from '../../../utils/fieldOptions'
 import {
@@ -18,10 +18,13 @@ type UseGridEditingParams = {
   selection: GridSelectionContext
 }
 
-function normalizeValue(field: Field, value: ItemDataValue | Date | null | undefined): ItemDataValue {
+function normalizeValue(
+  field: Field,
+  value: ItemDataValue | Date | string[] | null | undefined,
+): ItemDataValue {
   if (field.type === 'date') {
-    const options = parseFieldOptions(field.type, field.options) as { format?: string } | null
-    const parsed = parseDateInput(value ?? '', options?.format)
+    const options = parseFieldOptions(field.type, field.options) as DateFieldOptions | null
+    const parsed = parseDateInput(Array.isArray(value) ? '' : (value ?? ''), options?.format)
     return formatDateForStorage(parsed ?? '')
   }
 
@@ -61,19 +64,22 @@ function normalizeValue(field: Field, value: ItemDataValue | Date | null | undef
 }
 
 export function useGridEditing({ items, orderedFields, selection }: UseGridEditingParams) {
-  const store = useStore()
+  const itemsStore = useItemsStore()
   const editingCellKey = ref<GridCellKey | null>(null)
+  const activeCellElement = ref<HTMLElement | null>(null)
 
-  function startEdit(rowId: number, fieldName: string) {
+  function startEdit(rowId: number, fieldName: string, element?: HTMLElement | null) {
     selection.selectCell(rowId, fieldName)
     editingCellKey.value = buildGridCellKey(rowId, fieldName)
+    activeCellElement.value = element ?? null
   }
 
-  async function commitEdit(value: ItemDataValue | Date | null | undefined) {
+  async function commitEdit(value: ItemDataValue | Date | string[] | null | undefined) {
     const currentKey = editingCellKey.value
     if (!currentKey) return
     const parsed = parseGridCellKey(currentKey)
     editingCellKey.value = null
+    activeCellElement.value = null
     if (!parsed) return
 
     const field = orderedFields.value.find(entry => entry.name === parsed.fieldName)
@@ -89,7 +95,7 @@ export function useGridEditing({ items, orderedFields, selection }: UseGridEditi
       [field.name]: normalized
     }
 
-    await store.updateItem({
+    await itemsStore.updateItem({
       id: item.id,
       data: { ...nextData }
     })
@@ -97,10 +103,12 @@ export function useGridEditing({ items, orderedFields, selection }: UseGridEditi
 
   function cancelEdit() {
     editingCellKey.value = null
+    activeCellElement.value = null
   }
 
   return {
     editingCellKey,
+    activeCellElement,
     startEdit,
     commitEdit,
     cancelEdit

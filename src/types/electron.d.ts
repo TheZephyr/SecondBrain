@@ -26,11 +26,13 @@ import type {
   BulkMutationResult,
   ImportCollectionInput,
   CollectionItemCount,
+  GetNumberFieldRangeInput,
   FullArchiveExportInput,
   FullArchiveExportResult,
   FullArchivePreview,
   FullArchiveRestoreReport,
   PaginatedItemsResult,
+  NumberFieldRange,
   ViewConfig,
   UpdateBackupSettingsInput,
 } from "./models";
@@ -82,6 +84,9 @@ export interface IElectronAPI {
 
   // Items
   getItems: (input: GetItemsInput) => Promise<IpcResult<PaginatedItemsResult>>;
+  getNumberFieldRange: (
+    input: GetNumberFieldRangeInput,
+  ) => Promise<IpcResult<NumberFieldRange>>;
   addItem: (item: NewItemInput) => Promise<IpcResult<Item | null>>;
   insertItemAt: (input: InsertItemAtInput) => Promise<IpcResult<Item | null>>;
   duplicateItem: (input: DuplicateItemInput) => Promise<IpcResult<Item | null>>;

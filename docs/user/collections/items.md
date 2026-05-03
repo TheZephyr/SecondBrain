@@ -19,15 +19,25 @@ Each kanban column includes a `+` button.
 3. The grouping field is prefilled with that column's value.
 4. Complete the remaining fields and save.
 
+## Floating Add Button
+
+A floating `+` button is available in the bottom-right corner of the content area (when at least one field is defined).
+
+1. Click the floating `+` button.
+2. The app creates a new item and immediately opens the `Edit Item` dialog.
+3. Complete the fields and save.
+
 ## Edit Items
 
 You can edit items in two main ways.
 
 ### Inline Grid Editing
 
-- Click a grid cell to edit it directly.
-- Press `Enter` to commit and move through the row.
+- Click a grid cell to select it, then double-click to edit it.
+- Press `Enter` to commit the current value.
+- Press `Tab` to commit and move to the next cell in the row flow.
 - Date, select, multiselect, boolean, URL, and rating values use field-specific editors.
+- Successful inline edits update the visible grid immediately.
 
 ### Dialog Editing
 
@@ -40,9 +50,11 @@ You can edit items in two main ways.
 Grid data tools are view-aware.
 
 - Use the `Search...` input in the grid toolbar to filter items.
-- Sorting is applied from grid column headers.
+- Click a column header to sort by that field. Click again to switch direction, and click a third time to clear that single-field sort.
 - Shift-clicking additional column headers creates multi-sort order.
-- The `Sort` toolbar button is currently only a state indicator. Sort changes come from the column headers.
+- Use the `Sort` toolbar button to review and edit active sort options.
+- In the sort menu, drag sort rows to change priority, choose a field, choose `A -> Z` or `Z -> A`, choose whether empty values appear first or last, or remove the sort row.
+- Click `Add sort option` to add another field. New sort options put empty values last by default.
 
 Search and sort state is stored per view, not globally across the whole app.
 
@@ -55,7 +67,9 @@ If a field has `uniqueCheck` enabled:
 
 This helps catch collisions without blocking the save.
 
-## Row Actions in the Grid
+## Row Actions and Selection in the Grid
+
+### Row Actions
 
 Right-click a row in the grid to open row actions:
 
@@ -65,6 +79,13 @@ Right-click a row in the grid to open row actions:
 - `Move up`
 - `Move down`
 - `Delete row`
+
+### Selection and Bulk Actions
+
+You can select multiple items in the grid using the checkboxes on the left side of each row.
+
+- **Select All**: Click the checkbox in the grid header to select all items in the current view.
+- **Bulk Delete**: When one or more items are selected, a "Delete selected" button appears in the toolbar. Clicking this will prompt for confirmation before deleting all selected items.
 
 ## URL Fields
 

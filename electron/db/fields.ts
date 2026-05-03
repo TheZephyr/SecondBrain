@@ -36,6 +36,7 @@ export function addField(
     collectionId: number;
     name: string;
     type: string;
+    description?: string | null;
     options?: string | null;
     orderIndex?: number;
   },
@@ -44,12 +45,13 @@ export function addField(
     input.orderIndex ?? getNextFieldOrderIndex(database, input.collectionId);
   const info = database
     .prepare(
-      "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO fields (collection_id, name, type, description, options, order_index) VALUES (?, ?, ?, ?, ?, ?)",
     )
     .run(
       input.collectionId,
       input.name,
       input.type,
+      input.description ?? null,
       input.options || null,
       orderIndex,
     );
@@ -67,6 +69,7 @@ export function updateField(
     id: number;
     name: string;
     type: string;
+    description?: string | null;
     options?: string | null;
     orderIndex?: number;
   },
@@ -88,16 +91,17 @@ export function updateField(
   // Use transaction to ensure atomicity: field rename + data migration
   const updateFieldTransaction = database.transaction(() => {
     // Update the field
-    database
-      .prepare(
-        "UPDATE fields SET name = ?, type = ?, options = ?, order_index = ? WHERE id = ?",
-      )
-      .run(
-        newName,
-        input.type,
-        input.options || null,
-        input.orderIndex || 0,
-        input.id,
+      database
+        .prepare(
+          "UPDATE fields SET name = ?, type = ?, description = ?, options = ?, order_index = ? WHERE id = ?",
+        )
+        .run(
+          newName,
+          input.type,
+          input.description ?? null,
+          input.options || null,
+          input.orderIndex || 0,
+          input.id,
       );
 
     // If name changed, migrate all item data in the collection

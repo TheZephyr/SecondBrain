@@ -138,20 +138,6 @@ export function formatDateWithFieldOptions(
   }
 }
 
-export function formatDateForPrimeVue(format?: string): string {
-  switch (format) {
-    case "YYYY.MM.DD":
-      return "yy.mm.dd";
-    case "DD-MM-YYYY":
-      return "dd-mm-yy";
-    case "DD.MM.YYYY":
-      return "dd.mm.yy";
-    case "YYYY-MM-DD":
-    default:
-      return "yy-mm-dd";
-  }
-}
-
 function startOfMondayWeek(date: Date): Date {
   const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const day = normalized.getDay();

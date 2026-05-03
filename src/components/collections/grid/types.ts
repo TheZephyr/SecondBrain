@@ -24,8 +24,9 @@ export type GridSelectionContext = {
 
 export type GridEditingContext = {
   editingCellKey: Ref<GridCellKey | null>
-  startEdit: (rowId: number, fieldName: string) => void
-  commitEdit: (value: ItemDataValue | Date | null | undefined) => Promise<void> | void
+  activeCellElement: Ref<HTMLElement | null>
+  startEdit: (rowId: number, fieldName: string, element?: HTMLElement | null) => void
+  commitEdit: (value: ItemDataValue | Date | string[] | null | undefined) => Promise<void> | void
   cancelEdit: () => void
 }
 

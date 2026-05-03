@@ -17,6 +17,17 @@ export const fieldNameSchema = z
   })
   .transform((value) => normalizeFieldName(value));
 
+export const fieldDescriptionSchema = z
+  .union([z.string().max(2000), z.null(), z.undefined()])
+  .transform((value) => {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  });
+
 export const positiveIntSchema = z.number().int().positive();
 export const orderIndexSchema = z.number().int().min(0);
 export const nonNegativeIntSchema = z.number().int().min(0);
@@ -69,6 +80,7 @@ export const itemSortFieldSchema = z
 export const ItemSortSpecSchema = z.object({
   field: itemSortFieldSchema,
   order: z.union([z.literal(1), z.literal(-1)]),
+  emptyPlacement: z.enum(["first", "last"]).optional().default("last"),
 });
 
 export const viewConfigColumnKeySchema = z
@@ -78,6 +90,7 @@ export const viewConfigColumnKeySchema = z
 export const ViewConfigSchema = z.object({
   columnWidths: z.record(viewConfigColumnKeySchema, z.number().int().min(60)),
   sort: z.array(ItemSortSpecSchema),
+  cardTitleFieldId: positiveIntSchema.optional(),
   calendarDateField: z.string().trim().min(1).max(64).optional(),
   calendarDateFieldId: positiveIntSchema.optional(),
   groupingFieldId: positiveIntSchema.optional(),
@@ -173,6 +186,7 @@ export const NewFieldInputSchema = z.object({
   collectionId: positiveIntSchema,
   name: fieldNameSchema,
   type: fieldTypeSchema,
+  description: fieldDescriptionSchema.optional(),
   options: z.string().nullable(),
   orderIndex: orderIndexSchema.optional(),
 });
@@ -181,8 +195,14 @@ export const UpdateFieldInputSchema = z.object({
   id: positiveIntSchema,
   name: fieldNameSchema,
   type: fieldTypeSchema,
+  description: fieldDescriptionSchema.optional(),
   options: z.string().nullable(),
   orderIndex: orderIndexSchema.optional(),
+});
+
+export const GetNumberFieldRangeInputSchema = z.object({
+  collectionId: positiveIntSchema,
+  fieldName: fieldNameSchema,
 });
 
 export const FieldOrderUpdateSchema = z.object({
@@ -403,7 +423,7 @@ export const GetItemsInputSchema = z.object({
   limit: z.number().int().min(1).max(200).default(50),
   offset: nonNegativeIntSchema.default(0),
   search: z.string().trim().max(200).optional().default(""),
-  sort: z.array(ItemSortSpecSchema).max(3).optional().default([]),
+  sort: z.array(ItemSortSpecSchema).optional().default([]),
 });
 
 export const UpdateBackupSettingsInputSchema = z.object({
@@ -466,6 +486,7 @@ export const FullArchiveFieldSchema = z
 export const FullArchiveSortSpecSchema = z.object({
   field: z.string().trim().min(1).max(256),
   order: z.union([z.literal(1), z.literal(-1)]),
+  emptyPlacement: z.enum(["first", "last"]).optional().default("last"),
 });
 
 export const FullArchiveGridViewConfigSchema = z
@@ -478,6 +499,7 @@ export const FullArchiveGridViewConfigSchema = z
 
 export const FullArchiveKanbanViewConfigSchema = z
   .object({
+    cardTitleField: z.string().trim().min(1).nullable().optional(),
     groupingField: z.string().trim().min(1).nullable(),
     columnOrder: z.array(z.string().trim().min(1)),
     selectedFields: z.array(z.string().trim().min(1)),

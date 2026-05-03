@@ -36,7 +36,19 @@ Key groups:
 - `url`
 - `rating`
 
+`Field` now also includes an optional top-level `description` property. This is field metadata, not a type-specific option.
+
 Field option types in the same file document which settings are supported for each field kind.
+
+Notable option groups:
+
+- `longtext`: `richText`
+- `number`: `showAsChip`, `showThousandsSeparator`, `colorScale`
+- `date`: `highlight` supports `target: "date" | "current"`
+- `select` / `multiselect`: `optionColors` remains separate from `choices`
+- `rating`: icon, fallback color, per-value `optionColors`, bounds, and default value
+
+`GetNumberFieldRangeInput` and `NumberFieldRange` define the worker query contract used by renderer presentation logic for whole-collection number color scales.
 
 ## View Config
 
@@ -50,6 +62,7 @@ It can include:
 - `calendarDateFieldId`
 - `groupingFieldId`
 - `kanbanColumnOrder`
+- `cardTitleFieldId`
 - `selectedFieldIds`
 
 Backend code normalizes and validates this before storage.
@@ -72,6 +85,7 @@ When new backend behavior is added:
 It validates:
 
 - collection, view, field, and item mutations
+- number-range aggregate queries
 - item pagination and sort payloads
 - reorder payload shapes
 - bulk mutation limits

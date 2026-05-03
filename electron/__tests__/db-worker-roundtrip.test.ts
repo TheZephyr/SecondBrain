@@ -258,6 +258,7 @@ describe("JSON round-trip", () => {
         sourceOptions: {
           type: "select",
           choices: ["Open", "Closed", "Paused"],
+          optionColors: {},
         },
       },
       {
@@ -279,6 +280,9 @@ describe("JSON round-trip", () => {
         source: "schema",
         sourceOptions: {
           type: "number",
+          showAsChip: false,
+          showThousandsSeparator: false,
+          colorScale: null,
         },
       },
     ]);

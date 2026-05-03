@@ -84,8 +84,8 @@ describe("normalizeSortMeta", () => {
     ];
 
     expect(normalizeSortMeta(rawMeta, safeFields)).toEqual([
-      { field: "data.Title", order: 1 },
-      { field: "data.Author", order: -1 },
+      { field: "data.Title", order: 1, emptyPlacement: "last" },
+      { field: "data.Author", order: -1, emptyPlacement: "last" },
     ]);
   });
 
@@ -132,6 +132,16 @@ describe("areSortMetaEqual", () => {
     const b: MultiSortMeta[] = [{ field: "data.Title", order: -1 }];
     expect(areSortMetaEqual(a, b)).toBe(false);
   });
+
+  it("returns false when empty placement differs", () => {
+    const a: MultiSortMeta[] = [
+      { field: "data.Title", order: 1, emptyPlacement: "first" },
+    ];
+    const b: MultiSortMeta[] = [
+      { field: "data.Title", order: 1, emptyPlacement: "last" },
+    ];
+    expect(areSortMetaEqual(a, b)).toBe(false);
+  });
 });
 
 describe("toItemSort", () => {
@@ -141,8 +151,8 @@ describe("toItemSort", () => {
       { field: "data.Date", order: -1 },
     ];
     expect(toItemSort(meta)).toEqual([
-      { field: "data.Title", order: 1 },
-      { field: "data.Date", order: -1 },
+      { field: "data.Title", order: 1, emptyPlacement: "last" },
+      { field: "data.Date", order: -1, emptyPlacement: "last" },
     ]);
   });
 
@@ -203,11 +213,11 @@ describe("useCollectionItemsQuery", () => {
 
       expect(loadViewConfig).toHaveBeenCalledWith(18);
       expect(query.multiSortMeta.value).toEqual([
-        { field: "data.Title", order: -1 },
+        { field: "data.Title", order: -1, emptyPlacement: "last" },
       ]);
       expect(loadItems).toHaveBeenCalledWith({
         search: "",
-        sort: [{ field: "data.Title", order: -1 }],
+        sort: [{ field: "data.Title", order: -1, emptyPlacement: "last" }],
       });
       expect(saveViewConfig).not.toHaveBeenCalled();
     });
@@ -257,7 +267,7 @@ describe("useCollectionItemsQuery", () => {
       await flushAsyncHydration();
 
       expect(query.multiSortMeta.value).toEqual([
-        { field: "data.Title", order: 1 },
+        { field: "data.Title", order: 1, emptyPlacement: "last" },
       ]);
       expect(loadItems).toHaveBeenCalled();
     });
@@ -302,7 +312,7 @@ describe("useCollectionItemsQuery", () => {
 
       expect(saveViewConfig).toHaveBeenCalledWith(30, {
         columnWidths: { 4: 190 },
-        sort: [{ field: "data.Title", order: -1 }],
+        sort: [{ field: "data.Title", order: -1, emptyPlacement: "last" }],
         calendarDateField: undefined,
         calendarDateFieldId: undefined,
         groupingFieldId: undefined,
@@ -353,8 +363,8 @@ describe("useCollectionItemsQuery", () => {
       expect(saveViewConfig).toHaveBeenCalledWith(101, {
         columnWidths: {},
         sort: [
-          { field: "data.Title", order: -1 },
-          { field: "data.Unknown", order: 1 },
+          { field: "data.Title", order: -1, emptyPlacement: "last" },
+          { field: "data.Unknown", order: 1, emptyPlacement: "last" },
         ],
         calendarDateField: undefined,
         calendarDateFieldId: undefined,
@@ -366,11 +376,11 @@ describe("useCollectionItemsQuery", () => {
         expect(storage.getItem(getSortStorageKey(42))).toBeNull();
       });
       expect(query.multiSortMeta.value).toEqual([
-        { field: "data.Title", order: -1 },
+        { field: "data.Title", order: -1, emptyPlacement: "last" },
       ]);
       expect(loadItems).toHaveBeenCalledWith({
         search: "",
-        sort: [{ field: "data.Title", order: -1 }],
+        sort: [{ field: "data.Title", order: -1, emptyPlacement: "last" }],
       });
     });
   });
@@ -614,7 +624,7 @@ describe("onItemsSort", () => {
       await query.onItemsSort([{ field: "data.Title", order: 1 }]);
 
       expect(loadItems).toHaveBeenCalledWith({
-        sort: [{ field: "data.Title", order: 1 }],
+        sort: [{ field: "data.Title", order: 1, emptyPlacement: "last" }],
       });
       expect(saveViewConfig).not.toHaveBeenCalled();
     });
@@ -674,14 +684,16 @@ describe("safeFields watcher", () => {
       await flushAsyncHydration();
 
       expect(query.multiSortMeta.value).toEqual([
-        { field: "data.Title", order: 1 },
+        { field: "data.Title", order: 1, emptyPlacement: "last" },
       ]);
       expect(loadItems).toHaveBeenCalledWith({
-        sort: [{ field: "data.Title", order: 1 }],
+        sort: [{ field: "data.Title", order: 1, emptyPlacement: "last" }],
       });
       expect(saveViewConfig).toHaveBeenCalledWith(
         60,
-        expect.objectContaining({ sort: [{ field: "data.Title", order: 1 }] }),
+        expect.objectContaining({
+          sort: [{ field: "data.Title", order: 1, emptyPlacement: "last" }],
+        }),
       );
     });
   });

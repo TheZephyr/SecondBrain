@@ -112,20 +112,23 @@ describe("query-utils", () => {
       expect(
         getItemSortClause(
           [
-            { field: "data.Tags", order: 1 },
-            { field: "data.Done", order: -1 },
-            { field: "data.Rating", order: 1 },
-            { field: "data.Title", order: -1 },
+            { field: "data.Tags", order: 1, emptyPlacement: "first" },
+            { field: "data.Done", order: -1, emptyPlacement: "last" },
+            { field: "data.Rating", order: 1, emptyPlacement: "last" },
+            { field: "data.Title", order: -1, emptyPlacement: "first" },
             { field: "other.Path", order: 1 },
           ],
           fieldTypeMap,
         ),
       ).toEqual([
-        `json_extract(json_extract(i.data, '$."Tags"'), '$[0]') COLLATE NOCASE ASC`,
+        `CASE WHEN json_extract(json_extract(i.data, '$."Tags"'), '$[0]') IS NULL OR json_extract(json_extract(i.data, '$."Tags"'), '$[0]') = '' THEN 1 ELSE 0 END DESC`,
+        `CASE WHEN CASE WHEN json_extract(json_extract(i.data, '$."Tags"'), '$[0]') IS NULL OR json_extract(json_extract(i.data, '$."Tags"'), '$[0]') = '' THEN 1 ELSE 0 END = 1 THEN NULL ELSE json_extract(json_extract(i.data, '$."Tags"'), '$[0]') END COLLATE NOCASE ASC`,
+        `CASE WHEN json_type(i.data, '$."Done"') IS NULL THEN 1 ELSE 0 END ASC`,
         `CASE WHEN json_extract(i.data, '$."Done"') IN ('1', 1, true) THEN 1 ELSE 0 END DESC`,
         `CASE WHEN json_extract(i.data, '$."Rating"') IS NULL OR json_extract(i.data, '$."Rating"') = '' THEN 1 ELSE 0 END ASC`,
-        `CAST(json_extract(i.data, '$."Rating"') AS REAL) ASC`,
-        `json_extract(i.data, '$."Title"') COLLATE NOCASE DESC`,
+        `CAST(CASE WHEN CASE WHEN json_extract(i.data, '$."Rating"') IS NULL OR json_extract(i.data, '$."Rating"') = '' THEN 1 ELSE 0 END = 1 THEN NULL ELSE json_extract(i.data, '$."Rating"') END AS REAL) ASC`,
+        `CASE WHEN json_extract(i.data, '$."Title"') IS NULL OR json_extract(i.data, '$."Title"') = '' THEN 1 ELSE 0 END DESC`,
+        `CASE WHEN CASE WHEN json_extract(i.data, '$."Title"') IS NULL OR json_extract(i.data, '$."Title"') = '' THEN 1 ELSE 0 END = 1 THEN NULL ELSE json_extract(i.data, '$."Title"') END COLLATE NOCASE DESC`,
       ]);
     });
 

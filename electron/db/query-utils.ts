@@ -57,12 +57,26 @@ export function getItemSortClause(
     }
 
     const direction = spec.order === -1 ? "DESC" : "ASC";
+    const emptyDirection = spec.emptyPlacement === "first" ? "DESC" : "ASC";
     const jsonPath = `$."${fieldName.replace(/"/g, '""')}"`;
     const fieldType = fieldTypeMap.get(fieldName);
+    const valueExpression =
+      fieldType === "multiselect"
+        ? `json_extract(json_extract(i.data, '${jsonPath}'), '$[0]')`
+        : `json_extract(i.data, '${jsonPath}')`;
+    const emptyExpression =
+      fieldType === "boolean"
+        ? `CASE WHEN json_type(i.data, '${jsonPath}') IS NULL THEN 1 ELSE 0 END`
+        : fieldType === "multiselect"
+          ? `CASE WHEN ${valueExpression} IS NULL OR ${valueExpression} = '' THEN 1 ELSE 0 END`
+          : `CASE WHEN ${valueExpression} IS NULL OR ${valueExpression} = '' THEN 1 ELSE 0 END`;
+    const sortValueExpression = `CASE WHEN ${emptyExpression} = 1 THEN NULL ELSE ${valueExpression} END`;
+
+    clauses.push(`${emptyExpression} ${emptyDirection}`);
 
     if (fieldType === "multiselect") {
       clauses.push(
-        `json_extract(json_extract(i.data, '${jsonPath}'), '$[0]') COLLATE NOCASE ${direction}`,
+        `${sortValueExpression} COLLATE NOCASE ${direction}`,
       );
       continue;
     }
@@ -74,18 +88,15 @@ export function getItemSortClause(
       continue;
     }
 
-    if (fieldType === "rating") {
+    if (fieldType === "number" || fieldType === "rating") {
       clauses.push(
-        `CASE WHEN json_extract(i.data, '${jsonPath}') IS NULL OR json_extract(i.data, '${jsonPath}') = '' THEN 1 ELSE 0 END ASC`,
-      );
-      clauses.push(
-        `CAST(json_extract(i.data, '${jsonPath}') AS REAL) ${direction}`,
+        `CAST(${sortValueExpression} AS REAL) ${direction}`,
       );
       continue;
     }
 
     clauses.push(
-      `json_extract(i.data, '${jsonPath}') COLLATE NOCASE ${direction}`,
+      `${sortValueExpression} COLLATE NOCASE ${direction}`,
     );
   }
 

@@ -17,18 +17,3 @@ This page tracks product gaps that are still unfinished in the current codebase.
 - Confirmation and result feedback wired to the existing backend endpoints.
 
 This is mainly a renderer and interaction gap, not a database capability gap.
-
-## Sort Management UI
-
-**Current state**
-
-- Grid multi-sort works from column headers.
-- Sort state persists per view through view config.
-- The toolbar `Sort` button only reflects whether a sort is active.
-
-**What is still missing**
-
-- A clickable sort-management surface.
-- UI for reviewing, reordering, or removing active sort levels without using column headers.
-
-This is a product-surface gap. The persistence and query layers already support multi-sort.

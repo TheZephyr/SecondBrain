@@ -5,6 +5,9 @@ Second Brain has two different data-mobility layers: collection-level transfer a
 ## Source-of-Truth Files
 
 - Collection import/export utilities: `src/utils/collectionImportExport.ts`
+- Collection import/export orchestration: `src/composables/collection/useCollectionImportExport.ts`
+- Renderer repositories for file and settings IPC: `src/repositories/systemRepository.ts`, `src/repositories/settingsRepository.ts`, `src/repositories/itemsRepository.ts`
+- Renderer settings store: `src/stores/settings.ts`
 - Full archive helpers: `src/utils/fullArchive.ts`
 - Collection settings UI: `src/components/collections/settings/CollectionSettingsPanel.vue`
 - Global settings UI: `src/components/settings/SettingsBackupSection.vue`, `src/components/settings/SettingsDataSection.vue`
@@ -60,7 +63,7 @@ A full archive is a JSON representation of the entire database.
 
 The flow is split:
 
-- renderer opens the global settings UI
+- renderer settings store coordinates backup and archive UI state
 - main process runs file dialogs and disk read/write
 - worker exports or restores the database content
 - renderer shows preview and restore report UI

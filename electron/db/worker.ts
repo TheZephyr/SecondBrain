@@ -29,6 +29,7 @@ import {
 } from "./fields";
 import {
   getItems,
+  getNumberFieldRange,
   addItem,
   insertItemAt,
   duplicateItem,
@@ -153,6 +154,9 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
     }
     case "getItems": {
       return getItems(requireDb(), operation.input, ftsEnabled);
+    }
+    case "getNumberFieldRange": {
+      return getNumberFieldRange(requireDb(), operation.input);
     }
     case "addItem": {
       return addItem(requireDb(), operation.input);

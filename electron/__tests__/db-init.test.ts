@@ -168,6 +168,60 @@ describe("db init", () => {
     expect(searchRow?.rowid).toBeGreaterThan(0);
   });
 
+  it("adds the description column even when the database user_version is already set", () => {
+    const { dbPath } = createTempDbPath();
+    const seedDb = trackDb(new Database(dbPath));
+
+    seedDb.exec(`
+      CREATE TABLE collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        icon TEXT DEFAULT 'folder',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE fields (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        collection_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        options TEXT,
+        order_index INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE views (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        collection_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'grid',
+        is_default INTEGER NOT NULL DEFAULT 0,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        config TEXT DEFAULT NULL
+      );
+
+      CREATE TABLE items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        collection_id INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        "order" INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    seedDb.pragma("user_version = 1");
+    seedDb.close();
+    openDbs.pop();
+
+    const { db } = initDatabaseConnection(dbPath);
+    trackDb(db);
+
+    const columns = db
+      .prepare("PRAGMA table_info(fields)")
+      .all() as Array<{ name: string }>;
+    expect(columns.some((column) => column.name === "description")).toBe(true);
+    expect(Number(db.pragma("user_version", { simple: true }))).toBe(2);
+  });
+
   it("falls back cleanly when FTS setup fails", () => {
     const originalExec = Database.prototype.exec;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});

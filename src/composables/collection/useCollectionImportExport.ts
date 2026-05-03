@@ -1,7 +1,9 @@
 import { ref, type Ref } from "vue";
-import { useStore } from "../../store";
+import { itemsRepository } from "../../repositories/itemsRepository";
+import { systemRepository } from "../../repositories/systemRepository";
+import { useCollectionsStore } from "../../stores/collections";
+import { useItemsStore } from "../../stores/items";
 import { useNotificationsStore } from "../../stores/notifications";
-import { handleIpc } from "../../utils/ipc";
 import type {
   Collection,
   Field,
@@ -41,7 +43,8 @@ export function useCollectionImportExport({
   collection,
   fields,
 }: UseCollectionImportExportParams) {
-  const store = useStore();
+  const collectionsStore = useCollectionsStore();
+  const itemsStore = useItemsStore();
   const notifications = useNotificationsStore();
 
   const exportFormat = ref<ExportFormat>("csv");
@@ -88,38 +91,7 @@ export function useCollectionImportExport({
   }
 
   async function fetchAllItemsForExport(collectionId: number): Promise<Item[]> {
-    // Keep this aligned with GetItemsInputSchema.limit max (currently 200).
-    const pageSize = 200;
-    let offset = 0;
-    let total = 0;
-    const allItems: Item[] = [];
-
-    do {
-      const result = await window.electronAPI.getItems({
-        collectionId,
-        limit: pageSize,
-        offset,
-        search: "",
-        sort: [],
-      });
-
-      const payload = handleIpc(result, "db:getItems", {
-        items: [] as Item[],
-        total: 0,
-        limit: pageSize,
-        offset,
-      });
-
-      allItems.push(...payload.items);
-      total = payload.total;
-      offset += payload.items.length;
-
-      if (payload.items.length === 0) {
-        break;
-      }
-    } while (offset < total);
-
-    return allItems;
+    return itemsRepository.getAllItems(collectionId);
   }
 
   async function handleExport() {
@@ -135,7 +107,7 @@ export function useCollectionImportExport({
         { name: "All Files", extensions: ["*"] },
       ];
 
-      const filePathResult = await window.electronAPI.showSaveDialog({
+      const filePath = await systemRepository.showSaveDialog({
         title: `Export ${collection.value.name}`,
         defaultPath: getDefaultFilename(
           collection.value.name,
@@ -143,14 +115,6 @@ export function useCollectionImportExport({
         ),
         filters,
       });
-
-      if (!filePathResult.ok) {
-        handleIpc(filePathResult, "export:showSaveDialog", null);
-        isExporting.value = false;
-        return;
-      }
-
-      const filePath = filePathResult.data;
       if (!filePath) {
         isExporting.value = false;
         return;
@@ -164,8 +128,7 @@ export function useCollectionImportExport({
               includeSchema: exportIncludeSchema.value,
             });
 
-      const writeResult = await window.electronAPI.writeFile(filePath, content);
-      const success = handleIpc(writeResult, "export:writeFile", false);
+      const success = await systemRepository.writeFile(filePath, content);
 
       if (success) {
         console.log("Export successful!");
@@ -193,30 +156,17 @@ export function useCollectionImportExport({
         { name: "All Files", extensions: ["*"] },
       ];
 
-      const filePathResult = await window.electronAPI.showOpenDialog({
+      const filePath = await systemRepository.showOpenDialog({
         title: "Select File to Import",
         filters,
       });
-
-      if (!filePathResult.ok) {
-        handleIpc(filePathResult, "import:showOpenDialog", null);
-        return;
-      }
-
-      const filePath = filePathResult.data;
       if (!filePath) {
         return;
       }
 
       selectedFile.value = filePath;
 
-      const contentResult = await window.electronAPI.readFile(filePath);
-      if (!contentResult.ok) {
-        handleIpc(contentResult, "import:readFile", null);
-        return;
-      }
-
-      const content = contentResult.data;
+      const content = await systemRepository.readFile(filePath);
       if (content === null) {
         console.error("Failed to read file");
         return;
@@ -582,19 +532,18 @@ export function useCollectionImportExport({
         };
       });
 
-      const importResult = await window.electronAPI.importCollection({
+      const success = await itemsRepository.importCollection({
         collectionId: collection.value.id,
         mode: importMode.value,
         newFields: newFieldsToCreate,
         items: itemsToAdd,
       });
-      const success = handleIpc(importResult, "db:importCollection", false);
       if (!success) {
         return;
       }
 
-      await store.loadFields(collection.value.id);
-      await store.loadItems(collection.value.id);
+      await collectionsStore.loadFields(collection.value.id);
+      await itemsStore.loadItems(collection.value.id);
 
       cancelImport();
       console.log(`Successfully imported ${itemsToAdd.length} items`);

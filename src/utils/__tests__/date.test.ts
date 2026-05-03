@@ -6,7 +6,6 @@ import {
   formatDateForStorage,
   formatDateForDisplay,
   formatDateWithFieldOptions,
-  formatDateForPrimeVue,
   formatMonthYear,
 } from "../date";
 
@@ -156,6 +155,14 @@ describe("formatDateForStorage", () => {
   it("returns empty string for an unparseable string", () => {
     expect(formatDateForStorage("not-a-date")).toBe("");
   });
+
+  it("round-trips native date input values without changing the calendar date", () => {
+    const inputValue = "2026-04-13";
+    const parsed = parseDateInput(inputValue, "YYYY-MM-DD");
+
+    expect(parsed).not.toBeNull();
+    expect(formatDateForStorage(parsed)).toBe(inputValue);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -221,36 +228,6 @@ describe("formatDateWithFieldOptions", () => {
       formatDateWithFieldOptions(undefined, { format: "DD.MM.YYYY" }),
     ).toBe("-");
     expect(formatDateWithFieldOptions("", {})).toBe("-");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// formatDateForPrimeVue
-// ---------------------------------------------------------------------------
-
-describe("formatDateForPrimeVue", () => {
-  it("maps YYYY-MM-DD to yy-mm-dd", () => {
-    expect(formatDateForPrimeVue("YYYY-MM-DD")).toBe("yy-mm-dd");
-  });
-
-  it("maps YYYY.MM.DD to yy.mm.dd", () => {
-    expect(formatDateForPrimeVue("YYYY.MM.DD")).toBe("yy.mm.dd");
-  });
-
-  it("maps DD-MM-YYYY to dd-mm-yy", () => {
-    expect(formatDateForPrimeVue("DD-MM-YYYY")).toBe("dd-mm-yy");
-  });
-
-  it("maps DD.MM.YYYY to dd.mm.yy", () => {
-    expect(formatDateForPrimeVue("DD.MM.YYYY")).toBe("dd.mm.yy");
-  });
-
-  it("defaults to yy-mm-dd for undefined", () => {
-    expect(formatDateForPrimeVue(undefined)).toBe("yy-mm-dd");
-  });
-
-  it("defaults to yy-mm-dd for an unrecognised format string", () => {
-    expect(formatDateForPrimeVue("MM/DD/YYYY")).toBe("yy-mm-dd");
   });
 });
 

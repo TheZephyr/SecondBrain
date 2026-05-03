@@ -13,11 +13,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           "vendor-vue": ["vue", "pinia"],
-          "vendor-primevue": [
-            "primevue",
-            "@primeuix/themes",
-            "@primevue/forms",
-          ],
           "vendor-utils": [
             "zod",
             "papaparse",

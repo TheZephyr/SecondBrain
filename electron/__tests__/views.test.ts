@@ -114,8 +114,8 @@ describe("parseStoredViewConfig", () => {
     expect(result).toEqual({
       columnWidths: { 1: 120, 9: 240 },
       sort: [
-        { field: "data.Title", order: 1 },
-        { field: "data.CreatedAt", order: -1 },
+        { field: "data.Title", order: 1, emptyPlacement: "last" },
+        { field: "data.CreatedAt", order: -1, emptyPlacement: "last" },
       ],
       calendarDateField: "Due Date",
       calendarDateFieldId: 4,
@@ -337,7 +337,11 @@ describe("getViewConfig", () => {
     });
     const config: ViewConfig = {
       columnWidths: { 3: 180 },
-      sort: [{ field: "data.Title", order: 1 }],
+      sort: [{ field: "data.Title", order: 1, emptyPlacement: "last" }],
+      calendarDateField: undefined,
+      calendarDateFieldId: undefined,
+      groupingFieldId: undefined,
+      kanbanColumnOrder: undefined,
       selectedFieldIds: [3],
     };
 
@@ -361,8 +365,8 @@ describe("updateViewConfig", () => {
     const config: ViewConfig = {
       columnWidths: { 7: 240 },
       sort: [
-        { field: "data.Title", order: 1 },
-        { field: "data.CreatedAt", order: -1 },
+        { field: "data.Title", order: 1, emptyPlacement: "last" },
+        { field: "data.CreatedAt", order: -1, emptyPlacement: "last" },
       ],
       calendarDateField: "Due",
       calendarDateFieldId: 2,

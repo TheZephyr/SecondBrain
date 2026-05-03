@@ -1,32 +1,20 @@
 <template>
-  <div class="h-screen w-full">
-    <div class="flex h-full overflow-hidden">
-      <AppSidebar />
-      <AppContent />
+  <TooltipProvider>
+    <div class="h-screen w-full bg-background text-foreground">
+      <div class="flex h-full overflow-hidden">
+        <AppSidebar />
+        <AppContent />
+      </div>
+      <AppToaster />
+      <AppConfirmDialog />
     </div>
-    <Toast position="bottom-right" />
-  </div>
+  </TooltipProvider>
 </template>
 
 <script setup lang="ts">
-import { watch } from "vue";
-import Toast from "primevue/toast";
-import { useToast } from "primevue/usetoast";
-import AppSidebar from "./components/layout/sidebar/AppSidebar.vue";
 import AppContent from "./components/layout/content/AppContent.vue";
-import { useNotificationsStore } from "./stores/notifications";
-
-const toast = useToast();
-const notifications = useNotificationsStore();
-
-watch(
-  () => notifications.queue.length,
-  () => {
-    let next = notifications.shift();
-    while (next) {
-      toast.add(next);
-      next = notifications.shift();
-    }
-  },
-);
+import AppSidebar from "./components/layout/sidebar/AppSidebar.vue";
+import AppConfirmDialog from "./components/app/ui/AppConfirmDialog.vue";
+import AppToaster from "./components/app/ui/AppToaster.vue";
+import { TooltipProvider } from "@/components/ui/tooltip";
 </script>

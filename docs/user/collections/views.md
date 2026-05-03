@@ -17,6 +17,7 @@ Kanban groups items into columns using a select field.
 
 - Requires at least one `select` field in the collection.
 - If multiple select fields exist, the child view chooses one grouping field.
+- Each board also chooses a `Card title` field used for the first, larger line on every card.
 - Cards can be dragged between columns.
 - Column order can also be rearranged.
 
@@ -27,6 +28,8 @@ Calendar places items on days using a date field.
 - Requires at least one `date` field in the collection.
 - If more than one date field exists, the child view chooses which one to use.
 - Month navigation is built into the calendar toolbar.
+- **Sidebar**: The calendar view includes a sidebar for date navigation and a scrollable preview of items for the selected day.
+- **Card Title**: Calendar entries in the month view and the sidebar preview use a `Card title` field for display, similar to the Kanban board.
 
 ## Default Source View and Child Views
 
@@ -45,6 +48,7 @@ The source view is the base view for the collection. Child views inherit the col
 4. Enter a `View Name`.
 5. If needed, choose:
    - `Stacked by` for kanban.
+   - `Card title` for kanban.
    - `Date field` for calendar.
 6. Click `Create View`.
 
@@ -71,7 +75,9 @@ Open the child view, then click `Fields` in the top bar.
 ### Child Kanban Views
 
 - Choose which fields appear on cards.
+- Choose the `Card title` field shown as the larger first line on each card.
 - Set the select field used for column grouping.
+- Card details show the selected visible fields below the title with the field type icon, field name, optional description hint, and value.
 - Drag cards between columns to update the item's grouping value.
 - Drag columns to persist their display order.
 
@@ -79,6 +85,7 @@ Open the child view, then click `Fields` in the top bar.
 
 - Choose which fields are visible for entries.
 - Set the date field used to place items on the calendar.
+- Choose the `Card title` field shown as the main label for entries in the calendar and the sidebar preview.
 
 ## Empty and Recovery States
 

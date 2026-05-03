@@ -4,11 +4,13 @@ import type {
   BulkMutationResult,
   BulkPatchItemsInput,
   GetItemsInput,
+  GetNumberFieldRangeInput,
   ImportCollectionInput,
   InsertItemAtInput,
   ItemData,
   DuplicateItemInput,
   MoveItemInput,
+  NumberFieldRange,
   ReorderItemsInput,
 } from "../../src/types/models";
 import { itemDataSchema } from "../../src/validation/schemas";
@@ -29,6 +31,11 @@ type ItemRow = {
   collection_id: number;
   data: string;
   order: number | bigint;
+};
+type NumberRangeRow = {
+  minValue: number | null;
+  maxValue: number | null;
+  count: number | bigint;
 };
 
 const SQLITE_IN_CLAUSE_CHUNK_SIZE = 400;
@@ -371,6 +378,34 @@ export function getItems(
     total: toNumber(totalRow.total),
     limit: input.limit,
     offset: input.offset,
+  };
+}
+
+export function getNumberFieldRange(
+  database: Database.Database,
+  input: GetNumberFieldRangeInput,
+): NumberFieldRange {
+  const jsonPath = `$."${input.fieldName}"`;
+  const row = database
+    .prepare(
+      `
+      SELECT
+        MIN(CAST(json_extract(data, ?) AS REAL)) AS minValue,
+        MAX(CAST(json_extract(data, ?) AS REAL)) AS maxValue,
+        COUNT(*) AS count
+      FROM items
+      WHERE collection_id = ?
+        AND json_type(data, ?) IN ('integer', 'real')
+      `,
+    )
+    .get(jsonPath, jsonPath, input.collectionId, jsonPath) as
+    | NumberRangeRow
+    | undefined;
+
+  return {
+    min: row?.minValue ?? null,
+    max: row?.maxValue ?? null,
+    count: row?.count ? toNumber(row.count) : 0,
   };
 }
 

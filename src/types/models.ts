@@ -54,7 +54,8 @@ export type DateFormat =
 
 export type DateHighlightRule = {
   type: "<" | ">";
-  date: string;
+  date?: string | null;
+  target?: "date" | "current";
   color: string;
 };
 
@@ -69,9 +70,19 @@ export type LongTextFieldOptions = {
   uniqueCheck?: boolean;
 };
 
+export type NumberColorScale = {
+  direction: "ascending" | "descending" | "custom";
+  style: "text" | "background";
+  startColor?: string;
+  endColor?: string;
+};
+
 export type NumberFieldOptions = {
   defaultValue?: number | null;
   uniqueCheck?: boolean;
+  showAsChip?: boolean;
+  showThousandsSeparator?: boolean;
+  colorScale?: NumberColorScale | null;
 };
 
 export type DateFieldOptions = {
@@ -83,18 +94,21 @@ export type DateFieldOptions = {
 
 export type SelectFieldOptions = {
   choices: string[];
+  optionColors?: Record<string, string>;
   defaultValue?: string | null;
   uniqueCheck?: boolean;
 };
 
 export type MultiselectFieldOptions = {
   choices: string[];
+  optionColors?: Record<string, string>;
   defaultValue?: string[] | null;
   uniqueCheck?: boolean;
 };
 
 export type BooleanFieldOptions = {
   icon?: BooleanIcon;
+  color?: string;
 };
 
 export type UrlFieldOptions = {
@@ -105,6 +119,7 @@ export type UrlFieldOptions = {
 export type RatingFieldOptions = {
   icon?: BooleanIcon;
   color?: string;
+  optionColors?: Record<string, string>;
   min?: number;
   max?: number;
   defaultValue?: number | null;
@@ -170,6 +185,7 @@ export type Field = {
   collection_id: number;
   name: string;
   type: FieldType;
+  description?: string | null;
   options: string | null;
   order_index: number;
 };
@@ -186,11 +202,13 @@ export type Item = {
 export type ItemSortSpec = {
   field: string;
   order: 1 | -1;
+  emptyPlacement?: "first" | "last";
 };
 
 export type ViewConfig = {
   columnWidths: Record<number, number>;
   sort: ItemSortSpec[];
+  cardTitleFieldId?: number;
   calendarDateField?: string;
   calendarDateFieldId?: number;
   groupingFieldId?: number;
@@ -219,6 +237,11 @@ export type GetItemsInput = {
   offset: number;
   search?: string;
   sort?: ItemSortSpec[];
+};
+
+export type GetNumberFieldRangeInput = {
+  collectionId: number;
+  fieldName: string;
 };
 
 export type PaginatedItemsResult = {
@@ -271,6 +294,7 @@ export type NewFieldInput = {
   collectionId: number;
   name: string;
   type: FieldType;
+  description?: string | null;
   options: string | null;
   orderIndex?: number;
 };
@@ -279,6 +303,7 @@ export type UpdateFieldInput = {
   id: number;
   name: string;
   type: FieldType;
+  description?: string | null;
   options: string | null;
   orderIndex?: number;
 };
@@ -358,12 +383,7 @@ export type CollectionView = {
   name: string;
 };
 
-export type FullArchiveItemValue =
-  | string
-  | number
-  | boolean
-  | null
-  | string[];
+export type FullArchiveItemValue = string | number | boolean | null | string[];
 
 export type FullArchiveItemData = Record<string, FullArchiveItemValue>;
 
@@ -381,13 +401,21 @@ export type FullArchiveCollectionStats = {
 export type FullArchiveSortSpec = {
   field: string;
   order: 1 | -1;
+  emptyPlacement?: "first" | "last";
 };
 
 export type FullArchiveField = {
   name: string;
   type: string;
+  description?: string | null;
   orderIndex: number;
   options: Record<string, unknown> | null;
+};
+
+export type NumberFieldRange = {
+  min: number | null;
+  max: number | null;
+  count: number;
 };
 
 export type FullArchiveGridViewConfig = {
@@ -397,6 +425,7 @@ export type FullArchiveGridViewConfig = {
 };
 
 export type FullArchiveKanbanViewConfig = {
+  cardTitleField: string | null;
   groupingField: string | null;
   columnOrder: string[];
   selectedFields: string[];
@@ -494,6 +523,7 @@ export type FullArchiveDroppedViewReferenceWarning = {
     | "columnWidth"
     | "sort"
     | "selectedField"
+    | "cardTitleField"
     | "groupingField"
     | "dateField";
   referenceValue: string;

@@ -19,7 +19,7 @@ Then use the reference pages for data contracts, import/export behavior, and con
 - IPC handlers: `electron/ipc/*.ts`
 - Worker protocol and manager: `electron/db/worker-protocol.ts`, `electron/db/worker-manager.ts`
 - SQLite schema and queries: `electron/db/*.ts`
-- Renderer app shell and store: `src/App.vue`, `src/store.ts`
+- Renderer app shell, repositories, and stores: `src/App.vue`, `src/store.ts`, `src/repositories/*.ts`, `src/stores/*.ts`
 - Shared model and IPC types: `src/types/models.ts`, `src/types/electron.d.ts`, `src/types/ipc.ts`
 - Runtime validation: `src/validation/schemas.ts`
 
