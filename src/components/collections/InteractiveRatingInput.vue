@@ -16,7 +16,10 @@
         :size="size"
         :fill="index <= activeValue ? colorValue : 'transparent'"
         :stroke-width="index <= activeValue ? 0 : 1.5"
-        :class="index <= activeValue ? filledClass : emptyClass"
+        :class="[
+          index <= activeValue ? filledClass : emptyClass,
+          isHoverPreview && index <= activeValue ? 'opacity-75' : '',
+        ]"
       />
     </button>
   </div>
@@ -67,6 +70,7 @@ const iconMap: Record<BooleanIcon, typeof icons.Square> = {
 
 const safeMax = computed(() => Math.max(1, Number(props.max) || 5));
 const activeValue = computed(() => hoverValue.value ?? props.modelValue ?? 0);
+const isHoverPreview = computed(() => hoverValue.value !== null);
 const iconComponent = computed(() => iconMap[props.icon ?? "star"]);
 const colorValue = computed(() => {
   const key = String(activeValue.value);
