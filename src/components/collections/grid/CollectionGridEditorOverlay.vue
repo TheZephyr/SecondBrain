@@ -4,7 +4,10 @@
       v-if="isEditing && activeField"
       ref="overlayRef"
       :style="[overlayStyle, overlaySurfaceStyle]"
-      class="z-50 rounded-md border border-(--border-subtle) shadow-lg"
+      class="z-50 ring-1 ring-inset ring-(--accent-primary)"
+      :class="{
+        'flex items-center': isTextLikeField || activeField?.type === 'number',
+      }"
       tabindex="0"
       @keydown="onKeydown"
       @focusout="onOverlayFocusOut"
@@ -15,7 +18,7 @@
         ref="inputRef"
         v-model="textModel"
         type="text"
-        class="w-full bg-transparent px-3 py-2 text-base outline-none"
+        class="h-full w-full bg-transparent px-2 text-base outline-none"
         @blur="onInputBlur"
       />
       <input
@@ -23,7 +26,7 @@
         ref="inputRef"
         v-model="numberModel"
         type="number"
-        class="w-full bg-transparent px-3 py-2 text-base text-right outline-none"
+        class="h-full w-full bg-transparent px-2 text-base text-right outline-none"
         @blur="onInputBlur"
       />
       <ul
