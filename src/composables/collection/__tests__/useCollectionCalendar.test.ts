@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, ref, type EffectScope } from 'vue'
 import type { Field, Item, ItemSortSpec } from '../../../types/models'
 import { useCollectionCalendar } from '../calendar/useCollectionCalendar'
@@ -68,7 +68,8 @@ describe('useCollectionCalendar', () => {
             itemsSearch,
             itemsSort,
             loadItems,
-            groupingFieldId
+            groupingFieldId,
+            cardTitleField: ref(null)
           })
         )
 
@@ -110,7 +111,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 
@@ -151,7 +153,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 
@@ -201,7 +204,8 @@ describe('useCollectionCalendar', () => {
             itemsSearch,
             itemsSort,
             loadItems,
-            groupingFieldId
+            groupingFieldId,
+            cardTitleField: ref(null)
           })
         )
 
@@ -248,7 +252,8 @@ describe('useCollectionCalendar', () => {
             itemsSearch,
             itemsSort,
             loadItems,
-            groupingFieldId
+            groupingFieldId,
+            cardTitleField: ref(null)
           })
         )
 
@@ -321,7 +326,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 
@@ -379,7 +385,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 
@@ -435,7 +442,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 
@@ -479,7 +487,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 
@@ -531,7 +540,8 @@ describe('useCollectionCalendar', () => {
           itemsSearch,
           itemsSort,
           loadItems,
-          groupingFieldId
+          groupingFieldId,
+          cardTitleField: ref(null)
         })
       )
 

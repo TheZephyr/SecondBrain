@@ -1,4 +1,4 @@
-﻿import {
+import {
   computed,
   onScopeDispose,
   ref,
@@ -39,6 +39,7 @@ type UseCollectionCalendarParams = {
   itemsSort: Ref<ItemSortSpec[]>
   loadItems: (options?: LoadItemsOptions) => Promise<void>
   groupingFieldId: Ref<number | null>
+  cardTitleField: Ref<Field | null>
 }
 
 function normalizeFieldId(value: unknown): number | null {
@@ -75,7 +76,8 @@ export function useCollectionCalendar({
   itemsSearch,
   itemsSort,
   loadItems,
-  groupingFieldId
+  groupingFieldId,
+  cardTitleField
 }: UseCollectionCalendarParams) {
   const today = new Date()
   const displayedMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -142,7 +144,7 @@ export function useCollectionCalendar({
     }
 
     const groups: Record<string, CalendarDayItem[]> = {}
-    const resolvedTitleField = titleField.value
+    const resolvedTitleField = cardTitleField.value ?? titleField.value
 
     for (const item of items.value) {
       const parsedDate = parseDateValue(item.data[selectedField.name] ?? null)
@@ -153,8 +155,8 @@ export function useCollectionCalendar({
       const dateKey = formatDateKey(parsedDate)
       const labelValue = resolvedTitleField ? item.data[resolvedTitleField.name] : null
       const label =
-        typeof labelValue === 'string' && labelValue.trim().length > 0
-          ? labelValue.trim()
+        labelValue !== null && labelValue !== undefined && String(labelValue).trim().length > 0
+          ? String(labelValue).trim()
           : `#${item.id}`
 
       if (!groups[dateKey]) {
@@ -168,6 +170,27 @@ export function useCollectionCalendar({
     }
 
     return groups
+  })
+
+  const sidebarItems = computed(() => {
+    const selectedField = selectedDateField.value
+    if (!selectedField) {
+      return []
+    }
+
+    const year = displayedMonth.value.getFullYear()
+    const month = displayedMonth.value.getMonth()
+
+    return items.value
+      .filter(item => {
+        const parsedDate = parseDateValue(item.data[selectedField.name] ?? null)
+        return parsedDate && parsedDate.getFullYear() === year && parsedDate.getMonth() === month
+      })
+      .sort((a, b) => {
+        const dateA = parseDateValue(a.data[selectedField.name] ?? null)?.getTime() ?? 0
+        const dateB = parseDateValue(b.data[selectedField.name] ?? null)?.getTime() ?? 0
+        return dateA - dateB
+      })
   })
 
   const monthCells = computed<CalendarMonthCell[]>(() => {
@@ -189,6 +212,22 @@ export function useCollectionCalendar({
     displayedMonth.value = new Date(
       displayedMonth.value.getFullYear(),
       displayedMonth.value.getMonth() + 1,
+      1
+    )
+  }
+
+  function setMonth(month: number) {
+    displayedMonth.value = new Date(
+      displayedMonth.value.getFullYear(),
+      month,
+      1
+    )
+  }
+
+  function setYear(year: number) {
+    displayedMonth.value = new Date(
+      year,
+      displayedMonth.value.getMonth(),
       1
     )
   }
@@ -286,9 +325,13 @@ export function useCollectionCalendar({
     selectedDateField,
     selectedDateFieldId,
     monthLabel,
+    displayedMonth,
     monthCells,
+    sidebarItems,
     isEnsuringAllItems,
     goToPreviousMonth,
-    goToNextMonth
+    goToNextMonth,
+    setMonth,
+    setYear
   }
 }

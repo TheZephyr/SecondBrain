@@ -98,7 +98,7 @@
             "
           />
         </div>
-        <div v-if="viewType === 'kanban'" class="mt-6 space-y-3">
+        <div v-if="viewType === 'kanban' || viewType === 'calendar'" class="mt-6 space-y-3">
           <div class="text-base font-semibold uppercase text-(--text-muted)">
             Card title
           </div>
@@ -215,8 +215,8 @@ function resetDrafts() {
   draftSelectedFieldIds.value = [...props.selectedFieldIds];
   draftGroupingFieldId.value = props.groupingFieldId;
   draftCardTitleFieldId.value =
-    props.viewType === "kanban"
-      ? (props.cardTitleFieldId ?? props.orderedFields[0]?.id ?? null)
+    props.viewType === "kanban" || props.viewType === "calendar"
+      ? props.cardTitleFieldId ?? props.orderedFields[0]?.id ?? null
       : null;
   baselineSignature.value = currentSignature();
 }

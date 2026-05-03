@@ -26,9 +26,10 @@
           :loadItems="loadCollectionItems" :groupingFieldId="groupingFieldId" :childViewConfig="childViewConfig"
           :cardTitleField="cardTitleField" :saveViewConfig="store.saveViewConfig" @edit-item="openEditItemDialog" @add-item="openAddItemDialogWithData"
           @update-item="onInlineUpdateItem" />
-        <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :viewId="activeView.id" :items="items"
-          :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded" :itemsSearch="itemsSearch"
-          :itemsSort="itemsSort" :orderedFields="viewOrderedFields" :loadItems="loadCollectionItems"
+        <CollectionCalendarView v-else-if="activeView?.type === 'calendar'" :collectionId="collection.id"
+          :viewId="activeView.id" :items="items" :itemsLoading="itemsLoading" :itemsFullyLoaded="itemsFullyLoaded"
+          :itemsSearch="itemsSearch" :itemsSort="itemsSort" :orderedFields="viewOrderedFields"
+          :cardTitleField="cardTitleField" :loadItems="loadCollectionItems"
           :groupingFieldId="groupingFieldId" @edit-item="openEditItemDialog" />
       </template>
     </div>
@@ -197,7 +198,10 @@ const groupingFieldId = computed(() => {
 });
 
 const cardTitleFieldId = computed(() => {
-  if (!activeView.value || activeView.value.type !== "kanban") {
+  if (
+    !activeView.value ||
+    (activeView.value.type !== "kanban" && activeView.value.type !== "calendar")
+  ) {
     return null;
   }
 
@@ -205,7 +209,10 @@ const cardTitleFieldId = computed(() => {
 });
 
 const cardTitleField = computed(() => {
-  if (!activeView.value || activeView.value.type !== "kanban") {
+  if (
+    !activeView.value ||
+    (activeView.value.type !== "kanban" && activeView.value.type !== "calendar")
+  ) {
     return null;
   }
 
@@ -605,7 +612,7 @@ async function saveChildViewFields(payload: {
 
   const config = mergeViewConfig(childViewConfig.value, {
     cardTitleFieldId:
-      activeView.value?.type === "kanban"
+      activeView.value?.type === "kanban" || activeView.value?.type === "calendar"
         ? (normalizeGroupingFieldId(payload.cardTitleFieldId) ?? undefined)
         : undefined,
     selectedFieldIds: nextSelectedIds,
