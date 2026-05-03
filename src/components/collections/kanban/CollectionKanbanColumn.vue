@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex h-full min-h-0 w-60 shrink-0 flex-col rounded-lg border border-(--border-color) bg-(--bg-secondary)"
+    class="flex h-full min-h-0 w-72 shrink-0 flex-col rounded-lg border border-(--border-color) bg-(--bg-secondary)"
   >
     <div
       class="flex items-center gap-2 px-3 py-2"
@@ -9,6 +9,17 @@
       @drop="onHeaderDrop"
       @dragleave="onHeaderDragLeave"
     >
+      <span
+        v-if="!isUncategorized"
+        class="flex size-4 items-center justify-center text-(--text-muted) pt-0.75"
+        title="Drag to reorder"
+        draggable="true"
+        @dragstart="onHeaderDragStart"
+        @dragend="onHeaderDragEnd"
+        @mousedown.stop
+      >
+        <GripVertical :size="14" />
+      </span>
       <div class="flex-1">
         <span
           class="inline-flex h-5 items-center rounded-full px-2 py-0.5 text-xs leading-none"
@@ -25,17 +36,6 @@
           <Plus class="size-4" />
         </template>
       </AppButton>
-      <span
-        v-if="!isUncategorized"
-        class="flex size-6 items-center justify-center text-(--text-muted)"
-        title="Drag to reorder"
-        draggable="true"
-        @dragstart="onHeaderDragStart"
-        @dragend="onHeaderDragEnd"
-        @mousedown.stop
-      >
-        <GripVertical :size="14" />
-      </span>
     </div>
 
     <div
