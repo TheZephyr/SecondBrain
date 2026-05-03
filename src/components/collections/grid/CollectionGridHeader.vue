@@ -184,7 +184,7 @@ function toggleSort(field: Field | undefined, event: MouseEvent) {
 
   if (!isShift) {
     if (index === -1) {
-      emit("sort", [{ field: fieldKey, order: 1 }]);
+      emit("sort", [{ field: fieldKey, order: 1, emptyPlacement: "last" }]);
       return;
     }
     const nextOrder = current[index]?.order === 1 ? -1 : null;
@@ -192,19 +192,32 @@ function toggleSort(field: Field | undefined, event: MouseEvent) {
       emit("sort", []);
       return;
     }
-    emit("sort", [{ field: fieldKey, order: nextOrder }]);
+    emit("sort", [
+      {
+        field: fieldKey,
+        order: nextOrder,
+        emptyPlacement: current[index]?.emptyPlacement ?? "last",
+      },
+    ]);
     return;
   }
 
   if (index === -1) {
-    emit("sort", [...current, { field: fieldKey, order: 1 }]);
+    emit("sort", [
+      ...current,
+      { field: fieldKey, order: 1, emptyPlacement: "last" },
+    ]);
     return;
   }
 
   const currentOrder = current[index]?.order;
   if (currentOrder === 1) {
     const next = [...current];
-    next[index] = { field: fieldKey, order: -1 };
+    next[index] = {
+      field: fieldKey,
+      order: -1,
+      emptyPlacement: current[index]?.emptyPlacement ?? "last",
+    };
     emit("sort", next);
     return;
   }

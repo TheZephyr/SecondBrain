@@ -216,7 +216,9 @@ describe("validation schemas", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.search).toBe("hello world");
-      expect(result.data.sort).toEqual([{ field: "data.Title", order: -1 }]);
+      expect(result.data.sort).toEqual([
+        { field: "data.Title", order: -1, emptyPlacement: "last" },
+      ]);
     }
   });
 
@@ -509,6 +511,19 @@ describe("ItemSortSpecSchema", () => {
     ).toBe(true);
   });
 
+  it("accepts and defaults empty placement", () => {
+    expect(
+      ItemSortSpecSchema.parse({ field: "data.Title", order: 1 }),
+    ).toEqual({ field: "data.Title", order: 1, emptyPlacement: "last" });
+    expect(
+      ItemSortSpecSchema.parse({
+        field: "data.Title",
+        order: 1,
+        emptyPlacement: "first",
+      }),
+    ).toEqual({ field: "data.Title", order: 1, emptyPlacement: "first" });
+  });
+
   it("rejects order 0", () => {
     expect(
       ItemSortSpecSchema.safeParse({ field: "data.Title", order: 0 }).success,
@@ -789,7 +804,7 @@ describe("GetItemsInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects more than 3 sort entries", () => {
+  it("accepts more than 3 sort entries", () => {
     const result = GetItemsInputSchema.safeParse({
       collectionId: 1,
       sort: [
@@ -799,7 +814,7 @@ describe("GetItemsInputSchema", () => {
         { field: "data.Genre", order: 1 },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("accepts exactly 3 sort entries", () => {

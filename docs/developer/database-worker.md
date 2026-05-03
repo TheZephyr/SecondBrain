@@ -79,6 +79,13 @@ Item queries are intentionally backend-driven.
 
 This avoids loading the full collection into the renderer just to search or sort.
 
+Sort entries use `{ field, order, emptyPlacement }`.
+
+- `field` must target a collection data path such as `data.Title`.
+- `order` is `1` for ascending and `-1` for descending.
+- `emptyPlacement` is `first` or `last`; missing legacy values normalize to `last`.
+- The Worker applies empty placement per sort entry before the field value sort, then falls back to item order and ID for stable pagination.
+
 ## FTS With Fallback
 
 The worker attempts to enable SQLite FTS5 for item search.

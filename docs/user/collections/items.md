@@ -50,9 +50,11 @@ You can edit items in two main ways.
 Grid data tools are view-aware.
 
 - Use the `Search...` input in the grid toolbar to filter items.
-- Sorting is applied from grid column headers.
+- Click a column header to sort by that field. Click again to switch direction, and click a third time to clear that single-field sort.
 - Shift-clicking additional column headers creates multi-sort order.
-- The `Sort` toolbar button is currently only a state indicator. Sort changes come from the column headers.
+- Use the `Sort` toolbar button to review and edit active sort options.
+- In the sort menu, drag sort rows to change priority, choose a field, choose `A -> Z` or `Z -> A`, choose whether empty values appear first or last, or remove the sort row.
+- Click `Add sort option` to add another field. New sort options put empty values last by default.
 
 Search and sort state is stored per view, not globally across the whole app.
 

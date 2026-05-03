@@ -413,6 +413,7 @@ function buildArchiveViewConfig(
             ? {
                 field: fieldName,
                 order: entry.order,
+                emptyPlacement: entry.emptyPlacement === "first" ? "first" : "last",
               }
             : null;
         })
@@ -422,6 +423,7 @@ function buildArchiveViewConfig(
           ): entry is {
             field: string;
             order: 1 | -1;
+            emptyPlacement: "first" | "last";
           } => entry !== null,
         ),
       selectedFields,
@@ -715,6 +717,7 @@ function buildStoredViewConfig(
         return {
           field: `data.${entry.field}`,
           order: entry.order,
+          emptyPlacement: entry.emptyPlacement,
         };
       })
       .filter(
@@ -723,6 +726,7 @@ function buildStoredViewConfig(
         ): entry is {
           field: string;
           order: 1 | -1;
+          emptyPlacement: "first" | "last";
         } => entry !== null,
       );
 

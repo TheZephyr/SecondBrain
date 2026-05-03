@@ -374,8 +374,8 @@ describe("saveViewConfig", () => {
 
     const sent = mockApi.updateViewConfig.mock.calls[0][0];
     expect(sent.config.sort).toEqual([
-      { field: "data.Title", order: 1 },
-      { field: "data.Date", order: -1 },
+      { field: "data.Title", order: 1, emptyPlacement: "last" },
+      { field: "data.Date", order: -1, emptyPlacement: "last" },
     ]);
   });
 

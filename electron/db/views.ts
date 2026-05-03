@@ -38,6 +38,7 @@ export function parseStoredViewConfig(
     sort: validated.data.sort.map((entry) => ({
       field: entry.field,
       order: entry.order,
+      emptyPlacement: entry.emptyPlacement,
     })),
     calendarDateField: validated.data.calendarDateField,
     calendarDateFieldId: validated.data.calendarDateFieldId,
@@ -242,6 +243,7 @@ export function updateViewConfig(
     sort: input.config.sort.map((entry) => ({
       field: entry.field,
       order: entry.order,
+      emptyPlacement: entry.emptyPlacement === "first" ? "first" : "last",
     })),
     calendarDateField: input.config.calendarDateField,
     calendarDateFieldId: input.config.calendarDateFieldId,

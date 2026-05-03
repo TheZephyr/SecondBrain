@@ -61,7 +61,8 @@ function parsePersistedSort(sort: ItemSortSpec[] | undefined): RawSortMeta[] {
   if (!Array.isArray(sort)) return []
   return sort.map(entry => ({
     field: entry.field,
-    order: entry.order
+    order: entry.order,
+    emptyPlacement: entry.emptyPlacement
   }))
 }
 
@@ -70,7 +71,8 @@ function sanitizeRawSort(meta: RawSortMeta[]): ItemSortSpec[] {
     .filter(item => typeof item.field === 'string' && (item.order === 1 || item.order === -1))
     .map(item => ({
       field: item.field as string,
-      order: item.order as 1 | -1
+      order: item.order as 1 | -1,
+      emptyPlacement: item.emptyPlacement === 'first' ? 'first' : 'last'
     }))
 }
 
@@ -88,17 +90,27 @@ export function normalizeSortMeta(meta: RawSortMeta[], safeFields: Field[]): Mul
     })
     .map(item => ({
       field: item.field as string,
-      order: item.order as 1 | -1
+      order: item.order as 1 | -1,
+      emptyPlacement: item.emptyPlacement === 'first' ? 'first' : 'last'
     }))
 }
 
 export function areSortMetaEqual(a: MultiSortMeta[], b: MultiSortMeta[]): boolean {
   if (a.length !== b.length) return false
-  return a.every((entry, index) => entry.field === b[index]?.field && entry.order === b[index]?.order)
+  return a.every(
+    (entry, index) =>
+      entry.field === b[index]?.field &&
+      entry.order === b[index]?.order &&
+      (entry.emptyPlacement ?? 'last') === (b[index]?.emptyPlacement ?? 'last')
+  )
 }
 
 export function toItemSort(meta: MultiSortMeta[]): ItemSortSpec[] {
-  return meta.map(entry => ({ field: entry.field, order: entry.order }))
+  return meta.map(entry => ({
+    field: entry.field,
+    order: entry.order,
+    emptyPlacement: entry.emptyPlacement ?? 'last'
+  }))
 }
 
 export function useCollectionItemsQuery({
@@ -140,7 +152,8 @@ export function useCollectionItemsQuery({
     const nextConfig: ViewConfig = mergeViewConfig(existing, {
       sort: toItemSort(nextSortMeta).map(entry => ({
         field: entry.field,
-        order: entry.order
+        order: entry.order,
+        emptyPlacement: entry.emptyPlacement
       }))
     })
     await saveViewConfig(targetViewId, nextConfig)

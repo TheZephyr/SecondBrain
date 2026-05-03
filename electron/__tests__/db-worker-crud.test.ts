@@ -240,7 +240,11 @@ function getItems(
     limit?: number;
     offset?: number;
     search?: string;
-    sort?: { field: string; order: 1 | -1 }[];
+    sort?: {
+      field: string;
+      order: 1 | -1;
+      emptyPlacement?: "first" | "last";
+    }[];
   } = {},
 ): GetItemsResult {
   return handleOperation({
@@ -431,8 +435,8 @@ describe("view CRUD", () => {
         2: 220,
       },
       sort: [
-        { field: "data.Title", order: 1 },
-        { field: "data.CreatedAt", order: -1 },
+        { field: "data.Title", order: 1, emptyPlacement: "last" },
+        { field: "data.CreatedAt", order: -1, emptyPlacement: "last" },
       ],
       calendarDateField: "Due Date",
       calendarDateFieldId: 2,
@@ -1472,5 +1476,48 @@ describe("getItems sorting", () => {
 
     const ratings = result.items.map((i) => JSON.parse(i.data).Rating);
     expect(ratings).toEqual([1, 5, 10]);
+  });
+
+  it("places empty scalar values last by default", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    addField({
+      collectionId: col.id,
+      name: "Name",
+      type: "text",
+      options: null,
+    });
+    addItem({ collectionId: col.id, data: { Name: "" } });
+    addItem({ collectionId: col.id, data: { Name: "Beta" } });
+    addItem({ collectionId: col.id, data: { Name: null } });
+    addItem({ collectionId: col.id, data: { Name: "Alpha" } });
+
+    const result = getItems(col.id, {
+      sort: [{ field: "data.Name", order: 1 }],
+    });
+
+    const names = result.items.map((i) => JSON.parse(i.data).Name);
+    expect(names).toEqual(["Alpha", "Beta", "", null]);
+  });
+
+  it("places empty scalar values first when requested", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    addField({
+      collectionId: col.id,
+      name: "Name",
+      type: "text",
+      options: null,
+    });
+    addItem({ collectionId: col.id, data: { Name: "Beta" } });
+    addItem({ collectionId: col.id, data: { Name: null } });
+    addItem({ collectionId: col.id, data: { Name: "Alpha" } });
+
+    const result = getItems(col.id, {
+      sort: [{ field: "data.Name", order: -1, emptyPlacement: "first" }],
+    });
+
+    const names = result.items.map((i) => JSON.parse(i.data).Name);
+    expect(names).toEqual([null, "Beta", "Alpha"]);
   });
 });

@@ -76,6 +76,7 @@ export function normalizeSortSpecs(sort: ItemSortSpec[] | undefined): ItemSortSp
     .map((entry) => ({
       field: String(entry.field),
       order: entry.order === -1 ? -1 : 1,
+      emptyPlacement: entry.emptyPlacement === "first" ? "first" : "last",
     }));
 }
 
@@ -186,4 +187,3 @@ export function getOrderedFieldIds(fields: Field[]): number[] {
     })
     .map((field) => field.id);
 }
-

@@ -719,7 +719,7 @@ describe("view config", () => {
       viewId: 4,
       config: {
         columnWidths: { 7: 60 },
-        sort: [{ field: "data.Title", order: -1 }],
+        sort: [{ field: "data.Title", order: -1, emptyPlacement: "last" }],
         calendarDateField: "Due Date",
         calendarDateFieldId: undefined,
         groupingFieldId: undefined,

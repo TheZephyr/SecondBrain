@@ -6,6 +6,8 @@
     <CollectionGridToolbar
       v-model:searchQuery="searchModel"
       :multiSortMeta="multiSortMeta"
+      :orderedFields="orderedFields"
+      @sort="onSort"
     />
 
     <div

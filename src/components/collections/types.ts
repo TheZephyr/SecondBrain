@@ -1,8 +1,18 @@
 import type { FieldOptions, FieldType, ItemData } from '../../types/models'
 
-export type RawSortMeta = { field?: string; order?: 1 | -1 | 0 | null }
+export type SortEmptyPlacement = "first" | "last"
 
-export type MultiSortMeta = { field: string; order: 1 | -1 }
+export type RawSortMeta = {
+  field?: string;
+  order?: 1 | -1 | 0 | null;
+  emptyPlacement?: SortEmptyPlacement | null;
+}
+
+export type MultiSortMeta = {
+  field: string;
+  order: 1 | -1;
+  emptyPlacement?: SortEmptyPlacement;
+}
 
 export type FieldDraftInput = {
   name: string

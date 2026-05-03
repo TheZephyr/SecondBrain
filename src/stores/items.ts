@@ -32,7 +32,10 @@ function areItemSortSpecsEqual(a: ItemSortSpec[], b: ItemSortSpec[]): boolean {
 
   return a.every(
     (entry, index) =>
-      entry.field === b[index]?.field && entry.order === b[index]?.order,
+      entry.field === b[index]?.field &&
+      entry.order === b[index]?.order &&
+      (entry.emptyPlacement ?? "last") ===
+        (b[index]?.emptyPlacement ?? "last"),
   );
 }
 
@@ -138,6 +141,7 @@ export const useItemsStore = defineStore("items", () => {
       const requestSort: ItemSortSpec[] = itemsSort.value.map((entry) => ({
         field: String(entry.field),
         order: entry.order === -1 ? -1 : 1,
+        emptyPlacement: entry.emptyPlacement === "first" ? "first" : "last",
       }));
       const requestSearch = String(itemsSearch.value ?? "");
 

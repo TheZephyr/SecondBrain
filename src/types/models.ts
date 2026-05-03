@@ -199,6 +199,7 @@ export type Item = {
 export type ItemSortSpec = {
   field: string;
   order: 1 | -1;
+  emptyPlacement?: "first" | "last";
 };
 
 export type ViewConfig = {
@@ -401,6 +402,7 @@ export type FullArchiveCollectionStats = {
 export type FullArchiveSortSpec = {
   field: string;
   order: 1 | -1;
+  emptyPlacement?: "first" | "last";
 };
 
 export type FullArchiveField = {

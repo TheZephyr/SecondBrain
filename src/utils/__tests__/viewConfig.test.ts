@@ -30,7 +30,7 @@ describe("viewConfig helpers", () => {
       }),
     ).toEqual({
       columnWidths: { 1: 60, 2: 120 },
-      sort: [{ field: "data.Title", order: -1 }],
+      sort: [{ field: "data.Title", order: -1, emptyPlacement: "last" }],
       calendarDateField: "Due",
       calendarDateFieldId: undefined,
       groupingFieldId: undefined,
@@ -74,4 +74,3 @@ describe("viewConfig helpers", () => {
     ).toEqual(["Done", "Todo", "Doing"]);
   });
 });
-

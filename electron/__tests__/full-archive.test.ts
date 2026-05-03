@@ -487,7 +487,7 @@ describe("full archive export", () => {
         columnWidths: {
           Title: 240,
         },
-        sort: [{ field: "Title", order: 1 }],
+        sort: [{ field: "Title", order: 1, emptyPlacement: "last" }],
         selectedFields: ["Title"],
       });
       expect(pipelineView?.config).toEqual({
