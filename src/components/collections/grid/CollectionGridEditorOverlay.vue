@@ -7,6 +7,7 @@
       class="z-50 ring-1 ring-inset ring-(--accent-primary)"
       :class="{
         'flex items-center': isTextLikeField || activeField?.type === 'number',
+        'overflow-hidden rounded-[2px]': activeField?.type === 'select' || activeField?.type === 'multiselect',
       }"
       tabindex="0"
       @keydown="onKeydown"
@@ -29,63 +30,90 @@
         class="h-full w-full bg-transparent px-2 text-base text-right outline-none"
         @blur="onInputBlur"
       />
-      <ul
+      <!-- Select dropdown -->
+      <div
         v-else-if="activeField.type === 'select'"
-        class="max-h-60 overflow-auto py-1"
+        class="flex max-h-60 flex-col overflow-hidden bg-(--bg-tertiary)"
       >
-        <li
-          v-if="selectOptions.length === 0"
-          class="px-3 py-2 text-base text-(--text-muted)"
-        >
-          No options
-        </li>
-        <li v-for="option in selectOptions" v-else :key="option">
-          <button
-            type="button"
-            class="flex w-full items-center px-3 py-2 text-left text-base hover:bg-(--surface-2)"
-            :class="
-              option === selectModel ? 'bg-(--surface-2) font-medium' : ''
-            "
-            @click="commitSelect(option)"
+        <ul class="overflow-auto py-1">
+          <li
+            v-if="selectOptions.length === 0"
+            class="px-3 py-2 text-base text-(--text-muted)"
           >
-            <span class="truncate">{{ option }}</span>
-          </button>
-        </li>
-      </ul>
-      <ul
-        v-else-if="activeField.type === 'multiselect'"
-        class="max-h-60 overflow-auto py-1"
-      >
-        <li
-          v-if="selectOptions.length === 0"
-          class="px-3 py-2 text-base text-(--text-muted)"
-        >
-          No options
-        </li>
-        <li v-for="option in selectOptions" v-else :key="option">
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 px-3 py-2 text-left text-base hover:bg-(--surface-2)"
-            :class="
-              isMultiSelected(option) ? 'bg-(--surface-2) font-medium' : ''
-            "
-            @click="toggleMulti(option)"
-          >
-            <span
-              class="flex h-4 w-4 items-center justify-center rounded border border-(--border-subtle)"
-              :class="
-                isMultiSelected(option)
-                  ? 'bg-(--accent-primary) text-white'
-                  : 'text-transparent'
-              "
-              aria-hidden="true"
+            No options
+          </li>
+          <li v-for="option in selectOptions" v-else :key="option">
+            <button
+              type="button"
+              class="group flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base transition-colors hover:bg-(--bg-secondary)"
+              :class="option === selectModel ? 'bg-(--bg-secondary)' : ''"
+              @click="commitSelect(option)"
             >
-              x
-            </span>
-            <span class="truncate">{{ option }}</span>
-          </button>
-        </li>
-      </ul>
+              <span
+                class="inline-flex h-5 items-center rounded-full px-2 pt-3 pb-3.5 text-base leading-none"
+                :style="getOptionChipStyle(option)"
+              >
+                {{ option }}
+              </span>
+              <Check
+                v-if="option === selectModel"
+                :size="14"
+                class="ml-auto shrink-0 text-(--accent-primary)"
+              />
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Multiselect dropdown -->
+      <div
+        v-else-if="activeField.type === 'multiselect'"
+        class="flex max-h-72 flex-col overflow-hidden bg-(--bg-tertiary)"
+      >
+        <!-- Selected chips strip -->
+        <div
+          v-if="multiselectModel.length > 0"
+          class="flex flex-wrap gap-1 border-b border-(--border-color) px-2.5 py-2"
+        >
+          <span
+            v-for="selected in multiselectModel"
+            :key="selected"
+            class="inline-flex h-5 items-center rounded-full px-2 pt-3 pb-3.5 text-base leading-none"
+            :style="getOptionChipStyle(selected)"
+          >
+            {{ selected }}
+          </span>
+        </div>
+        <!-- Options list -->
+        <ul class="overflow-auto py-1">
+          <li
+            v-if="selectOptions.length === 0"
+            class="px-3 py-2 text-base text-(--text-muted)"
+          >
+            No options
+          </li>
+          <li v-for="option in selectOptions" v-else :key="option">
+            <button
+              type="button"
+              class="group flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base transition-colors hover:bg-(--bg-secondary)"
+              :class="isMultiSelected(option) ? 'bg-(--bg-secondary)' : ''"
+              @click="toggleMulti(option)"
+            >
+              <span
+                class="inline-flex h-5 items-center rounded-full px-2 pt-3 pb-3.5 text-base leading-none"
+                :style="getOptionChipStyle(option)"
+              >
+                {{ option }}
+              </span>
+              <Check
+                v-if="isMultiSelected(option)"
+                :size="14"
+                class="ml-auto shrink-0 text-(--accent-primary)"
+              />
+            </button>
+          </li>
+        </ul>
+      </div>
       <ul
         v-else-if="activeField.type === 'rating'"
         class="max-h-60 overflow-auto py-1"
@@ -157,7 +185,10 @@ import {
   parseMultiselectValue,
   parseRatingValue,
 } from "../../../utils/fieldValues";
+import { Check } from "lucide-vue-next";
 import * as icons from "lucide-vue-next";
+import { getChipStyle } from "../../../utils/selectChip";
+import { getSelectChoiceColor } from "../../../utils/fieldOptions";
 
 type EditValue = ItemDataValue | Date | string[] | null;
 type GridCellTarget = { rowId: number; fieldName: string };
@@ -516,6 +547,17 @@ function onOverlayFocusOut(event: FocusEvent) {
 
 function isMultiSelected(option: string) {
   return multiselectModel.value.includes(option);
+}
+
+function getOptionChipStyle(option: string): Record<string, string> {
+  const field = activeField.value;
+  return getChipStyle(
+    option,
+    selectOptions.value,
+    field
+      ? { [option]: getSelectChoiceColor(field, option) ?? "" }
+      : undefined,
+  );
 }
 
 function toggleMulti(option: string) {
