@@ -24,7 +24,7 @@ When you expand a collection in the sidebar, you see its views.
 When creating a child view:
 
 - `Kanban` asks for a `Stacked by` select field and a `Card title` field.
-- `Calendar` asks for a `Date field`.
+- `Calendar` asks for a `Date field` and a `Card title` field.
 - `Grid` does not require an extra field choice.
 
 ## Top Bar Inside a Collection

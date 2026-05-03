@@ -28,6 +28,8 @@ Calendar places items on days using a date field.
 - Requires at least one `date` field in the collection.
 - If more than one date field exists, the child view chooses which one to use.
 - Month navigation is built into the calendar toolbar.
+- **Sidebar**: The calendar view includes a sidebar for date navigation and a scrollable preview of items for the selected day.
+- **Card Title**: Calendar entries in the month view and the sidebar preview use a `Card title` field for display, similar to the Kanban board.
 
 ## Default Source View and Child Views
 
@@ -83,6 +85,7 @@ Open the child view, then click `Fields` in the top bar.
 
 - Choose which fields are visible for entries.
 - Set the date field used to place items on the calendar.
+- Choose the `Card title` field shown as the main label for entries in the calendar and the sidebar preview.
 
 ## Empty and Recovery States
 

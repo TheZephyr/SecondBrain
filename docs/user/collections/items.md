@@ -67,7 +67,9 @@ If a field has `uniqueCheck` enabled:
 
 This helps catch collisions without blocking the save.
 
-## Row Actions in the Grid
+## Row Actions and Selection in the Grid
+
+### Row Actions
 
 Right-click a row in the grid to open row actions:
 
@@ -77,6 +79,13 @@ Right-click a row in the grid to open row actions:
 - `Move up`
 - `Move down`
 - `Delete row`
+
+### Selection and Bulk Actions
+
+You can select multiple items in the grid using the checkboxes on the left side of each row.
+
+- **Select All**: Click the checkbox in the grid header to select all items in the current view.
+- **Bulk Delete**: When one or more items are selected, a "Delete selected" button appears in the toolbar. Clicking this will prompt for confirmation before deleting all selected items.
 
 ## URL Fields
 
