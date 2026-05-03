@@ -64,6 +64,8 @@
               :numberFieldRanges="numberFieldRanges"
               :duplicateMap="duplicateMap"
               :loadNextPage="loadNextPage"
+              :selectedRowIds="selectedRowIds"
+              @update:selectedRowIds="$emit('update:selectedRowIds', $event)"
               @edit-item="emitEditItem"
               @row-contextmenu="onRowContextMenu"
             />
@@ -170,6 +172,7 @@ const props = defineProps<{
   debouncedSearchQuery: string;
   multiSortMeta: MultiSortMeta[];
   loadNextPage: () => Promise<void>;
+  selectedRowIds: Set<number>;
 }>();
 
 const numberFieldRanges = ref<Record<number, NumberFieldRange>>({});
@@ -187,6 +190,7 @@ const emit = defineEmits<{
   (e: "insert-item-at", value: InsertItemAtInput): void;
   (e: "duplicate-item", value: DuplicateItemInput): void;
   (e: "move-item", value: MoveItemInput): void;
+  (e: "update:selectedRowIds", value: Set<number>): void;
 }>();
 
 const searchModel = computed({

@@ -97,10 +97,10 @@ const props = defineProps<{
   numberFieldRanges: Record<number, NumberFieldRange>;
   duplicateMap: Map<string, Set<string>>;
   loadNextPage: () => Promise<void>;
+  selectedRowIds: Set<number>;
 }>();
 
 const rowIds = computed(() => props.rows.map((row) => row.original.id));
-const selectedRowIds = ref<Set<number>>(new Set());
 const scrollElementRef = ref<HTMLElement | null>(null);
 let scrollRafId: number | null = null;
 
@@ -121,11 +121,11 @@ function rowAt(index: number): Row<Item> {
 }
 
 function isRowSelected(rowId: number) {
-  return selectedRowIds.value.has(rowId);
+  return props.selectedRowIds.has(rowId);
 }
 
 function onToggleRowSelection(payload: { rowId: number; selected: boolean }) {
-  const nextSelectedRowIds = new Set(selectedRowIds.value);
+  const nextSelectedRowIds = new Set(props.selectedRowIds);
 
   if (payload.selected) {
     nextSelectedRowIds.add(payload.rowId);
@@ -133,7 +133,7 @@ function onToggleRowSelection(payload: { rowId: number; selected: boolean }) {
     nextSelectedRowIds.delete(payload.rowId);
   }
 
-  selectedRowIds.value = nextSelectedRowIds;
+  emit("update:selectedRowIds", nextSelectedRowIds);
 }
 
 function checkLoadMoreThreshold() {
@@ -171,8 +171,9 @@ onBeforeUnmount(() => {
   }
 });
 
-defineEmits<{
+const emit = defineEmits<{
   "edit-item": [value: Item];
   "row-contextmenu": [value: RowContextMenuPayload];
+  "update:selectedRowIds": [value: Set<number>];
 }>();
 </script>
