@@ -11,7 +11,7 @@
     >
       <div class="flex-1">
         <span
-          class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
+          class="inline-flex h-5 items-center rounded-full px-2 py-0.5 text-xs leading-none"
           :style="chipStyle"
         >
           {{ column.label }}

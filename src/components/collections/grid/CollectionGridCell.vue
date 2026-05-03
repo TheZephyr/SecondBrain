@@ -1,7 +1,7 @@
 <template>
   <div
     ref="cellRef"
-    class="cell flex h-10 w-full items-center px-3 text-base text-(--text-primary)"
+    class="cell flex h-10 w-full items-center px-2 text-base text-(--text-primary)"
     :class="isSelected ? 'ring-1 ring-inset ring-(--accent-primary)' : ''"
     data-grid-cell
     :data-row-id="rowId"
@@ -9,9 +9,9 @@
     @click="onSelect"
     @dblclick="onDoubleClick"
   >
-    <template v-if="field?.type === 'select' && displayText !== '-'">
+    <template v-if="field?.type === 'select' && displayText">
       <span
-        class="inline-flex h-5 items-center rounded-full border px-2 py-3 text-base leading-none"
+        class="inline-flex h-5 items-center rounded-full px-2 pt-3 pb-3.5 text-base leading-none"
         :style="chipStyle"
       >
         {{ displayText }}
@@ -24,7 +24,7 @@
         <span
           v-for="option in multiselectDisplay"
           :key="option"
-          class="inline-flex h-5 items-center rounded-full border px-2 py-3 text-base leading-none"
+          class="inline-flex h-5 items-center rounded-full px-2 pt-3 pb-3.5 text-base leading-none"
           :style="getMultiChipStyle(option)"
         >
           {{ option }}
@@ -46,7 +46,7 @@
         />
       </button>
     </template>
-    <template v-else-if="field?.type === 'url' && displayText !== '-'">
+    <template v-else-if="field?.type === 'url' && displayText">
       <div class="flex w-full min-w-0 items-center gap-1 overflow-hidden">
         <button
           type="button"
@@ -82,7 +82,7 @@
     </template>
     <template
       v-else-if="
-        field?.type === 'number' && numberShowAsChip && displayText !== '-'
+        field?.type === 'number' && numberShowAsChip && displayText
       "
     >
       <span
@@ -217,8 +217,8 @@ const numberShowAsChip = computed(() =>
 const displayText = computed(() => {
   const field = props.field;
   const value = props.value;
-  if (!field) return "-";
-  if (value === null || value === undefined || value === "") return "-";
+  if (!field) return "";
+  if (value === null || value === undefined || value === "") return "";
   if (field.type === "date") {
     return formatDateWithFieldOptions(value, dateOptions.value);
   }

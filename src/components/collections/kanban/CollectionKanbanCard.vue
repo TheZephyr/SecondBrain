@@ -27,7 +27,7 @@
             <template v-if="field.type === 'select'">
               <span
                 v-if="getDisplayText(field)"
-                class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
+                class="inline-flex h-5 items-center rounded-full px-1.5 py-1 text-xs leading-none"
                 :style="
                   getChipStyle(
                     String(getDisplayText(field)),
@@ -48,7 +48,7 @@
                 <span
                   v-for="option in getMultiValues(field)"
                   :key="option"
-                  class="inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs leading-none"
+                  class="inline-flex h-5 items-center rounded-full px-1.5 py-1 text-xs leading-none"
                   :style="
                     getChipStyle(
                       option,
