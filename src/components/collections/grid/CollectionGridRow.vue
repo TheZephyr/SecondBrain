@@ -9,7 +9,7 @@
     <div
       v-for="(cell, cellIndex) in cells"
       :key="cell.id"
-      class="flex h-10 items-center border-r border-(--border-color)"
+      class="flex h-9 items-center border-r border-(--border-color)"
       :class="cellIndex === cells.length - 1 ? 'border-r-0' : ''"
     >
       <template v-if="cellMeta(cell)?.type === 'rowNumber'">

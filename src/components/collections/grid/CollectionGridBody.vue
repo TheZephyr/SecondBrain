@@ -108,7 +108,7 @@ const virtualizer = useVirtualizer<HTMLElement, HTMLElement>(
   computed(() => ({
     count: props.rows.length,
     getScrollElement: () => scrollElementRef.value,
-    estimateSize: () => 40,
+    estimateSize: () => 33, // remember when changing row height
     overscan: 10,
   })),
 );
