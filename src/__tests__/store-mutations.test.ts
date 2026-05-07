@@ -5,6 +5,8 @@ import type { IpcResult } from "../types/ipc";
 import type {
   Collection,
   Field,
+  FieldConversionPreview,
+  FieldConversionResult,
   Item,
   ItemData,
   PaginatedItemsResult,
@@ -37,6 +39,8 @@ function makeElectronAPIMock() {
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
+    previewFieldConversion: vi.fn(),
+    convertFieldType: vi.fn(),
     reorderFields: vi.fn(),
     deleteField: vi.fn(),
     getItems: vi.fn(),
@@ -487,6 +491,89 @@ describe("updateField", () => {
     });
 
     expect(mockApi.getFields).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("field type conversion", () => {
+  const preview: FieldConversionPreview = {
+    fieldId: 1,
+    fieldName: "Rating",
+    collectionId: 1,
+    sourceType: "text",
+    targetType: "rating",
+    risk: "lossy",
+    affectedCount: 2,
+    convertedCount: 1,
+    clearedCount: 1,
+    skippedEmptyCount: 0,
+    generatedChoices: [],
+    targetOptions: JSON.stringify({ min: 0, max: 5 }),
+    samples: [
+      { itemId: 1, before: "4", after: "4", willClear: false },
+      { itemId: 2, before: "9", after: "Empty", willClear: true },
+    ],
+  };
+
+  it("previews a field conversion", async () => {
+    const store = useStore();
+    mockApi.previewFieldConversion.mockResolvedValue(ok(preview));
+
+    const result = await store.previewFieldConversion({
+      fieldId: 1,
+      targetType: "rating",
+      targetOptions: preview.targetOptions,
+    });
+
+    expect(result).toEqual(preview);
+    expect(mockApi.previewFieldConversion).toHaveBeenCalledWith({
+      fieldId: 1,
+      targetType: "rating",
+      targetOptions: preview.targetOptions,
+    });
+  });
+
+  it("converts a field type and reloads fields and items", async () => {
+    const store = useStore();
+    store.selectedCollection = { id: 1, name: "Col" };
+    const result: FieldConversionResult = {
+      ...preview,
+      backup: {
+        fileName: "secondbrain_2026-05-04_12-00-00_pre_restore.db",
+        filePath: "C:\\backups\\secondbrain_2026-05-04_12-00-00_pre_restore.db",
+        label: "pre_restore",
+        createdAt: "2026-05-04T12:00:00.000Z",
+        sizeBytes: 10,
+      },
+    };
+    mockApi.convertFieldType.mockResolvedValue(ok(result));
+    mockApi.getFields.mockResolvedValue(ok([makeField(1, 1, { type: "rating" })]));
+    mockApi.getItems.mockResolvedValue(ok(emptyPaginatedResult()));
+
+    await store.loadItems(1);
+    const converted = await store.convertFieldType({
+      fieldId: 1,
+      targetType: "rating",
+      targetOptions: preview.targetOptions,
+    });
+
+    expect(converted).toEqual(result);
+    expect(mockApi.getFields).toHaveBeenCalledWith(1);
+    expect(mockApi.getItems).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not reload after failed conversion", async () => {
+    const store = useStore();
+    store.selectedCollection = { id: 1, name: "Col" };
+    mockApi.convertFieldType.mockResolvedValue(ok(null));
+
+    await store.convertFieldType({
+      fieldId: 1,
+      targetType: "rating",
+      targetOptions: preview.targetOptions,
+    });
+
+    expect(mockApi.getFields).not.toHaveBeenCalled();
+    expect(mockApi.getItems).not.toHaveBeenCalled();
   });
 });
 

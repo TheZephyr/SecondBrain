@@ -41,6 +41,7 @@ The same file also enables important SQLite pragmas:
 Operations include:
 
 - CRUD for collections, views, fields, and items
+- field type conversion preview and atomic conversion
 - field-range aggregation for number presentation
 - paginated item queries with search and sort
 - reorder and bulk mutation operations
@@ -101,6 +102,7 @@ The worker is the only place that should execute multi-step persistent mutations
 Important transactional flows:
 
 - `reorderFields`
+- `convertFieldType`
 - `reorderViews`
 - `reorderItems`
 - `bulkDeleteItems`
@@ -109,6 +111,14 @@ Important transactional flows:
 - full archive restore
 
 If any part of those operations is invalid, the whole mutation should fail and roll back.
+
+Field type conversion runs entirely in the worker. Preview and apply share the
+same conversion logic so the modal reflects the write path. Conversion preserves
+missing values, treats null/empty values as empty, writes multiselect values as
+the existing JSON-encoded string representation, and stores parsed dates as
+`YYYY-MM-DD`. Conversions that cannot produce a valid target value write `null`.
+The main process creates a `pre_restore` backup before invoking the conversion
+worker operation.
 
 ## View Config Storage
 

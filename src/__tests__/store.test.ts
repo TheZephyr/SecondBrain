@@ -37,6 +37,8 @@ function makeElectronAPIMock() {
     getFields: vi.fn(),
     addField: vi.fn(),
     updateField: vi.fn(),
+    previewFieldConversion: vi.fn(),
+    convertFieldType: vi.fn(),
     reorderFields: vi.fn(),
     deleteField: vi.fn(),
     getItems: vi.fn(),

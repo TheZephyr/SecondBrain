@@ -5,6 +5,7 @@ import type {
   BulkPatchItemsInput,
   Collection,
   CollectionPanelType,
+  ConvertFieldTypeInput,
   DuplicateItemInput,
   InsertItemAtInput,
   Item,
@@ -14,6 +15,7 @@ import type {
   NewFieldInput,
   NewItemInput,
   NewViewInput,
+  PreviewFieldConversionInput,
   ReorderFieldsInput,
   ReorderItemsInput,
   ReorderViewsInput,
@@ -152,6 +154,18 @@ export const useStore = defineStore("main", () => {
     return collectionsStore.updateField(field);
   }
 
+  async function previewFieldConversion(input: PreviewFieldConversionInput) {
+    return collectionsStore.previewFieldConversion(input);
+  }
+
+  async function convertFieldType(input: ConvertFieldTypeInput) {
+    const result = await collectionsStore.convertFieldType(input);
+    if (result) {
+      await itemsStore.loadItems(result.collectionId);
+    }
+    return result;
+  }
+
   async function reorderFields(input: ReorderFieldsInput) {
     return collectionsStore.reorderFields(input);
   }
@@ -242,6 +256,8 @@ export const useStore = defineStore("main", () => {
     loadFields,
     addField,
     updateField,
+    previewFieldConversion,
+    convertFieldType,
     reorderFields,
     deleteField,
     reorderViews,

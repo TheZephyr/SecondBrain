@@ -8,6 +8,7 @@ import {
   viewConfigColumnKeySchema,
   BulkDeleteItemsInputSchema,
   BulkPatchItemsInputSchema,
+  FieldConversionInputSchema,
   GetItemsInputSchema,
   ImportCollectionInputSchema,
   NewFieldInputSchema,
@@ -134,6 +135,26 @@ describe("validation schemas", () => {
       });
       expect(result.success).toBe(true);
     }
+  });
+
+  it("accepts valid field conversion input", () => {
+    const result = FieldConversionInputSchema.safeParse({
+      fieldId: 1,
+      targetType: "rating",
+      targetOptions: JSON.stringify({ min: 0, max: 5 }),
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid field conversion input", () => {
+    const result = FieldConversionInputSchema.safeParse({
+      fieldId: 0,
+      targetType: "textarea",
+      targetOptions: {},
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("rejects import payloads with mismatched field collectionId", () => {

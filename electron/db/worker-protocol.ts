@@ -19,7 +19,9 @@ import type {
   ReorderItemsInput,
   BulkDeleteItemsInput,
   BulkPatchItemsInput,
+  ConvertFieldTypeInput,
   FullArchiveFile,
+  PreviewFieldConversionInput,
 } from "../../src/types/models";
 
 export type DbWorkerOperation =
@@ -39,6 +41,8 @@ export type DbWorkerOperation =
   | { type: "getFields"; collectionId: number }
   | { type: "addField"; input: NewFieldInput }
   | { type: "updateField"; input: UpdateFieldInput }
+  | { type: "previewFieldConversion"; input: PreviewFieldConversionInput }
+  | { type: "convertFieldType"; input: ConvertFieldTypeInput }
   | { type: "reorderFields"; input: ReorderFieldsInput }
   | { type: "deleteField"; id: number }
   | { type: "getItems"; input: GetItemsInput }

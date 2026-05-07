@@ -3,6 +3,8 @@ import type {
   ItemData,
   GetItemsInput,
   GetNumberFieldRangeInput,
+  ConvertFieldTypeInput,
+  FieldConversionPreview,
   NewCollectionInput,
   NewViewInput,
   UpdateViewInput,
@@ -11,6 +13,7 @@ import type {
   UpdateCollectionInput,
   NewFieldInput,
   UpdateFieldInput,
+  PreviewFieldConversionInput,
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
@@ -32,6 +35,7 @@ import {
   UpdateCollectionInputSchema,
   NewFieldInputSchema,
   UpdateFieldInputSchema,
+  FieldConversionInputSchema,
   ReorderFieldsInputSchema,
   NewItemInputSchema,
   UpdateItemInputSchema,
@@ -54,6 +58,7 @@ import {
 } from "../db/worker-manager";
 import fs from "fs";
 import { parseOrThrow, handleIpc } from "./utils";
+import { copyDatabaseToBackup } from "./backup";
 
 function parsePositiveInt(data: unknown, context: string): number {
   const parsed = positiveIntSchema.safeParse(data);
@@ -165,6 +170,35 @@ handleIpc("db:addField", async (_, field: NewFieldInput) => {
 handleIpc("db:updateField", async (_, field: UpdateFieldInput) => {
   const input = parseOrThrow(UpdateFieldInputSchema, field, "db:updateField");
   return invokeDbWorker({ type: "updateField", input });
+});
+
+handleIpc(
+  "db:previewFieldConversion",
+  async (_, payload: PreviewFieldConversionInput) => {
+    const input = parseOrThrow(
+      FieldConversionInputSchema,
+      payload,
+      "db:previewFieldConversion",
+    );
+    return invokeDbWorker(
+      { type: "previewFieldConversion", input },
+      { timeoutMs: DB_BULK_TIMEOUT_MS },
+    );
+  },
+);
+
+handleIpc("db:convertFieldType", async (_, payload: ConvertFieldTypeInput) => {
+  const input = parseOrThrow(
+    FieldConversionInputSchema,
+    payload,
+    "db:convertFieldType",
+  );
+  const backup = await copyDatabaseToBackup("pre_restore");
+  const preview = await invokeDbWorker<FieldConversionPreview>(
+    { type: "convertFieldType", input },
+    { timeoutMs: DB_IMPORT_TIMEOUT_MS },
+  );
+  return { ...preview, backup };
 });
 
 handleIpc("db:reorderFields", async (_, payload: ReorderFieldsInput) => {

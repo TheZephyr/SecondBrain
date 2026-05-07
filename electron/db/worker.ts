@@ -28,6 +28,10 @@ import {
   deleteField,
 } from "./fields";
 import {
+  convertFieldType,
+  previewFieldConversion,
+} from "./field-conversion";
+import {
   getItems,
   getNumberFieldRange,
   addItem,
@@ -145,6 +149,12 @@ export function handleOperation(operation: DbWorkerOperation): unknown {
     }
     case "updateField": {
       return updateField(requireDb(), operation.input);
+    }
+    case "previewFieldConversion": {
+      return previewFieldConversion(requireDb(), operation.input);
+    }
+    case "convertFieldType": {
+      return convertFieldType(requireDb(), operation.input);
     }
     case "reorderFields": {
       return reorderFields(requireDb(), operation.input);

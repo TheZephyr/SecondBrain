@@ -4,9 +4,13 @@ import { collectionsRepository } from "../repositories/collectionsRepository";
 import { viewsRepository } from "../repositories/viewsRepository";
 import type {
   Collection,
+  ConvertFieldTypeInput,
   Field,
+  FieldConversionPreview,
+  FieldConversionResult,
   NewCollectionInput,
   NewFieldInput,
+  PreviewFieldConversionInput,
   NewViewInput,
   ReorderFieldsInput,
   ReorderViewsInput,
@@ -308,6 +312,35 @@ export const useCollectionsStore = defineStore("collections", () => {
     return success;
   }
 
+  async function previewFieldConversion(
+    input: PreviewFieldConversionInput,
+  ): Promise<FieldConversionPreview | null> {
+    return collectionsRepository.previewFieldConversion({
+      fieldId: input.fieldId,
+      targetType: input.targetType,
+      targetOptions: input.targetOptions,
+    });
+  }
+
+  async function convertFieldType(
+    input: ConvertFieldTypeInput,
+  ): Promise<FieldConversionResult | null> {
+    const collection = selectedCollection.value;
+    if (!collection) {
+      return null;
+    }
+
+    const result = await collectionsRepository.convertFieldType({
+      fieldId: input.fieldId,
+      targetType: input.targetType,
+      targetOptions: input.targetOptions,
+    });
+    if (result) {
+      await loadFields(collection.id);
+    }
+    return result;
+  }
+
   async function reorderFields(input: ReorderFieldsInput): Promise<boolean> {
     const payload: ReorderFieldsInput = {
       collectionId: input.collectionId,
@@ -375,6 +408,8 @@ export const useCollectionsStore = defineStore("collections", () => {
     saveViewConfig,
     addField,
     updateField,
+    previewFieldConversion,
+    convertFieldType,
     reorderFields,
     deleteField,
   };

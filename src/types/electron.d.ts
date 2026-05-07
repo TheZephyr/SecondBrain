@@ -4,6 +4,8 @@ import type {
   BackupSettings,
   View,
   Field,
+  FieldConversionPreview,
+  FieldConversionResult,
   Item,
   GetItemsInput,
   NewCollectionInput,
@@ -13,7 +15,9 @@ import type {
   ReorderViewsInput,
   UpdateCollectionInput,
   NewFieldInput,
+  PreviewFieldConversionInput,
   UpdateFieldInput,
+  ConvertFieldTypeInput,
   ReorderFieldsInput,
   NewItemInput,
   UpdateItemInput,
@@ -79,6 +83,12 @@ export interface IElectronAPI {
     field: NewFieldInput,
   ) => Promise<IpcResult<(NewFieldInput & { id: number }) | null>>;
   updateField: (field: UpdateFieldInput) => Promise<IpcResult<boolean>>;
+  previewFieldConversion: (
+    input: PreviewFieldConversionInput,
+  ) => Promise<IpcResult<FieldConversionPreview>>;
+  convertFieldType: (
+    input: ConvertFieldTypeInput,
+  ) => Promise<IpcResult<FieldConversionResult>>;
   reorderFields: (input: ReorderFieldsInput) => Promise<IpcResult<boolean>>;
   deleteField: (id: number) => Promise<IpcResult<boolean>>;
 

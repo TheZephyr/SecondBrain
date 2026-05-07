@@ -50,6 +50,9 @@ const electronAPI: IElectronAPI = {
   getFields: (collectionId: number) => invoke("db:getFields", collectionId),
   addField: (field) => invoke("db:addField", field),
   updateField: (field) => invoke("db:updateField", field),
+  previewFieldConversion: (input) =>
+    invoke("db:previewFieldConversion", input),
+  convertFieldType: (input) => invoke("db:convertFieldType", input),
   reorderFields: (input) => invoke("db:reorderFields", input),
   deleteField: (id: number) => invoke("db:deleteField", id),
 

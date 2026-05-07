@@ -200,6 +200,12 @@ export const UpdateFieldInputSchema = z.object({
   orderIndex: orderIndexSchema.optional(),
 });
 
+export const FieldConversionInputSchema = z.object({
+  fieldId: positiveIntSchema,
+  targetType: fieldTypeSchema,
+  targetOptions: z.string().nullable(),
+});
+
 export const GetNumberFieldRangeInputSchema = z.object({
   collectionId: positiveIntSchema,
   fieldName: fieldNameSchema,

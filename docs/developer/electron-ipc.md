@@ -36,6 +36,7 @@ The bridge includes grouped methods for:
 - collections
 - views and view config
 - fields
+- field type conversion preview and apply
 - items, bulk mutations, and numeric field range lookup
 - collection import/export file helpers
 - backups
@@ -67,6 +68,7 @@ Typical examples:
 - item pagination payloads
 - view config payloads
 - field reorder payloads
+- field conversion payloads
 - bulk mutation payloads
 - backup settings
 - archive export input
@@ -79,6 +81,9 @@ Timeouts vary by workload:
 
 - standard requests use the default request timeout
 - bulk mutations use `DB_BULK_TIMEOUT_MS`
+- field conversion preview uses the bulk timeout
+- field conversion apply creates a `pre_restore` backup first, then uses the
+  import timeout for the worker transaction
 - imports use `DB_IMPORT_TIMEOUT_MS`
 - archive restore uses a longer timeout path
 
@@ -93,6 +98,7 @@ Examples that stay in main:
 - save/open dialogs
 - raw file read/write for collection export/import and archive disk access
 - backup file copy, delete, and folder open
+- pre-conversion backup creation before `db:convertFieldType`
 - `shell.openExternal()` for URL fields
 
 ## Design Constraints

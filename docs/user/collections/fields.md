@@ -60,6 +60,29 @@ The new field becomes part of the collection schema and is available in all view
 
 If you remove select or multiselect choices that are already used by items, the app warns you and clears those values from affected items after confirmation.
 
+## Change a Field Type
+
+Existing fields include a `Field type` dropdown below the field name. Type
+changes are applied immediately from a preview dialog, not through `Save
+changes`.
+
+1. Save or reset any pending field edits first.
+2. Choose the new type from `Field type`.
+3. Review the conversion preview, including the first non-empty values, affected
+   counts, values that will be cleared, and any choices that will be added.
+4. Click the conversion button to create a `pre_restore` backup and apply the
+   change.
+
+The preview labels each conversion:
+
+- `Safe`: values can be kept or represented in the new type.
+- `Lossy`: some values may become empty, or only part of the value may be kept.
+- `Wipe`: existing non-empty values for that field will be cleared.
+
+If conversion fails, the database transaction rolls back. If backup creation
+fails, conversion does not start. Multiselect values continue to use the app's
+existing multi-choice storage, and converted dates are stored as `YYYY-MM-DD`.
+
 ## Reorder Fields
 
 Fields can be reordered from the source-view `Fields` screen.

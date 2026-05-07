@@ -4,7 +4,10 @@
       <CollectionSettingsPanel v-if="collectionSettingsOpen" :collection="collection" :fields="fields"
         :itemsTotal="itemsTotal" @save-settings="saveSettings" @delete-collection="confirmDeleteCollection" />
       <CollectionFieldsPanel v-else-if="activeCollectionPanel === 'fields' && isSourceViewActive"
-        :orderedFields="sourceOrderedFields" :items="items" @save-fields="saveFieldDrafts" />
+        :orderedFields="sourceOrderedFields" :items="items"
+        :previewFieldConversion="store.previewFieldConversion"
+        :convertFieldType="store.convertFieldType"
+        @save-fields="saveFieldDrafts" />
       <CollectionChildFieldsPanel v-else-if="activeCollectionPanel === 'fields' && activeView"
         :orderedFields="sourceOrderedFields" :selectedFieldIds="selectedFieldIds" :viewType="activeView.type"
         :groupingFieldId="groupingFieldId" :groupingFields="groupingFields" :cardTitleFieldId="cardTitleFieldId"

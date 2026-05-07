@@ -2,9 +2,13 @@ import type {
   Collection,
   CollectionItemCount,
   Field,
+  FieldConversionPreview,
+  FieldConversionResult,
   NewCollectionInput,
   NewFieldInput,
+  PreviewFieldConversionInput,
   ReorderFieldsInput,
+  ConvertFieldTypeInput,
   UpdateCollectionInput,
   UpdateFieldInput,
 } from "../types/models";
@@ -55,6 +59,20 @@ export const collectionsRepository = {
     return handleIpc(result, "db:updateField", false);
   },
 
+  async previewFieldConversion(
+    input: PreviewFieldConversionInput,
+  ): Promise<FieldConversionPreview | null> {
+    const result = await window.electronAPI.previewFieldConversion(input);
+    return handleIpc(result, "db:previewFieldConversion", null);
+  },
+
+  async convertFieldType(
+    input: ConvertFieldTypeInput,
+  ): Promise<FieldConversionResult | null> {
+    const result = await window.electronAPI.convertFieldType(input);
+    return handleIpc(result, "db:convertFieldType", null);
+  },
+
   async reorderFields(input: ReorderFieldsInput): Promise<boolean> {
     const result = await window.electronAPI.reorderFields(input);
     return handleIpc(result, "db:reorderFields", false);
@@ -65,4 +83,3 @@ export const collectionsRepository = {
     return handleIpc(result, "db:deleteField", false);
   },
 };
-

@@ -156,6 +156,43 @@ export type BackupEntry = {
   sizeBytes: number;
 };
 
+export type FieldConversionRisk = "safe" | "lossy" | "wipe";
+
+export type FieldConversionPreviewRow = {
+  itemId: number;
+  before: string;
+  after: string;
+  willClear: boolean;
+};
+
+export type PreviewFieldConversionInput = {
+  fieldId: number;
+  targetType: FieldType;
+  targetOptions: string | null;
+};
+
+export type ConvertFieldTypeInput = PreviewFieldConversionInput;
+
+export type FieldConversionPreview = {
+  fieldId: number;
+  fieldName: string;
+  collectionId: number;
+  sourceType: FieldType;
+  targetType: FieldType;
+  risk: FieldConversionRisk;
+  affectedCount: number;
+  convertedCount: number;
+  clearedCount: number;
+  skippedEmptyCount: number;
+  generatedChoices: string[];
+  targetOptions: string | null;
+  samples: FieldConversionPreviewRow[];
+};
+
+export type FieldConversionResult = FieldConversionPreview & {
+  backup: BackupEntry;
+};
+
 export type BackupSettings = {
   automaticBackupsEnabled: boolean;
   automaticBackupsLimit: number;

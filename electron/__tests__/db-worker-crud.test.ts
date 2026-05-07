@@ -11,6 +11,7 @@ import {
   moveItem as moveItemInDb,
   reorderItems as reorderItemsInDb,
 } from "../db/items";
+import { convertFieldType as convertFieldTypeInDb } from "../db/field-conversion";
 import type {
   Collection,
   View,
@@ -20,6 +21,8 @@ import type {
   NewFieldInput,
   NewItemInput,
   ItemData,
+  FieldConversionPreview,
+  ConvertFieldTypeInput,
   UpdateCollectionInput,
   UpdateFieldInput,
   UpdateItemInput,
@@ -216,6 +219,19 @@ function getFields(collectionId: number): Field[] {
 
 function updateField(input: UpdateFieldInput): boolean {
   return handleOperation({ type: "updateField", input }) as boolean;
+}
+
+function previewFieldConversion(
+  input: ConvertFieldTypeInput,
+): FieldConversionPreview {
+  return handleOperation({
+    type: "previewFieldConversion",
+    input,
+  }) as FieldConversionPreview;
+}
+
+function convertFieldType(input: ConvertFieldTypeInput): FieldConversionPreview {
+  return handleOperation({ type: "convertFieldType", input }) as FieldConversionPreview;
 }
 
 function deleteField(id: number): boolean {
@@ -844,6 +860,154 @@ describe("field CRUD", () => {
     const second = JSON.parse(result.items[1].data) as Record<string, unknown>;
     expect(first.Name).toBe("Dune");
     expect(second.Name).toBeUndefined();
+  });
+});
+
+describe("field type conversion", () => {
+  it("previews strict text to rating conversion with clears and samples", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Ratings" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Score",
+      type: "text",
+      options: null,
+    });
+    addItem({ collectionId: col.id, data: { Score: "4" } });
+    addItem({ collectionId: col.id, data: { Score: "9" } });
+    addItem({ collectionId: col.id, data: { Score: "bad" } });
+    addItem({ collectionId: col.id, data: { Score: "" } });
+
+    const preview = previewFieldConversion({
+      fieldId: field.id,
+      targetType: "rating",
+      targetOptions: JSON.stringify({ min: 0, max: 5 }),
+    });
+
+    expect(preview.risk).toBe("lossy");
+    expect(preview.affectedCount).toBe(3);
+    expect(preview.convertedCount).toBe(1);
+    expect(preview.clearedCount).toBe(2);
+    expect(preview.skippedEmptyCount).toBe(1);
+    expect(preview.samples).toEqual([
+      { itemId: expect.any(Number), before: "4", after: "4", willClear: false },
+      { itemId: expect.any(Number), before: "9", after: "Empty", willClear: true },
+      {
+        itemId: expect.any(Number),
+        before: "bad",
+        after: "Empty",
+        willClear: true,
+      },
+    ]);
+  });
+
+  it("converts text to multiselect using serialized array values and generated choices", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Tags" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Tag",
+      type: "text",
+      options: null,
+    });
+    addItem({ collectionId: col.id, data: { Tag: "Work" } });
+    addItem({ collectionId: col.id, data: { Tag: "Home" } });
+
+    const result = convertFieldType({
+      fieldId: field.id,
+      targetType: "multiselect",
+      targetOptions: JSON.stringify({ choices: [], optionColors: {} }),
+    });
+
+    expect(result.risk).toBe("safe");
+    expect(result.generatedChoices).toEqual(["Work", "Home"]);
+
+    const [updatedField] = getFields(col.id);
+    expect(updatedField.type).toBe("multiselect");
+    expect(JSON.parse(updatedField.options ?? "{}")).toMatchObject({
+      choices: ["Work", "Home"],
+    });
+
+    const items = getItems(col.id).items.map((item) => JSON.parse(item.data));
+    expect(items).toEqual([{ Tag: JSON.stringify(["Work"]) }, { Tag: JSON.stringify(["Home"]) }]);
+  });
+
+  it("uses strict date parsing and stores YYYY-MM-DD", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Dates" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Due",
+      type: "text",
+      options: null,
+    });
+    addItem({ collectionId: col.id, data: { Due: "04.05.2026" } });
+    addItem({ collectionId: col.id, data: { Due: "2026-02-31" } });
+
+    const result = convertFieldType({
+      fieldId: field.id,
+      targetType: "date",
+      targetOptions: JSON.stringify({ format: "YYYY-MM-DD" }),
+    });
+
+    expect(result.convertedCount).toBe(1);
+    expect(result.clearedCount).toBe(1);
+    const items = getItems(col.id).items.map((item) => JSON.parse(item.data));
+    expect(items).toEqual([{ Due: "2026-05-04" }, { Due: null }]);
+  });
+
+  it("carries select choices and preserves colors when converting to multiselect", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Choices" });
+    const field = addField({
+      collectionId: col.id,
+      name: "Status",
+      type: "select",
+      options: JSON.stringify({
+        choices: ["Todo", "Done"],
+        optionColors: { Todo: "#111111" },
+      }),
+    });
+    addItem({ collectionId: col.id, data: { Status: "Todo" } });
+
+    convertFieldType({
+      fieldId: field.id,
+      targetType: "multiselect",
+      targetOptions: JSON.stringify({ choices: [], optionColors: {} }),
+    });
+
+    const [updatedField] = getFields(col.id);
+    expect(JSON.parse(updatedField.options ?? "{}")).toMatchObject({
+      choices: ["Todo", "Done"],
+      optionColors: { Todo: "#111111" },
+    });
+  });
+
+  it("rolls back field metadata when conversion hits malformed item JSON", () => {
+    const { db } = setupDirectDb();
+    const collectionId = createCollectionRow(db, "Rollback");
+    const fieldInfo = db
+      .prepare(
+        "INSERT INTO fields (collection_id, name, type, options, order_index) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(collectionId, "Score", "text", null, 0);
+    const fieldId = Number(fieldInfo.lastInsertRowid);
+    disableItemFtsTriggers(db);
+    insertRawItemRow(db, collectionId, JSON.stringify({ Score: "4" }), 0);
+    insertRawItemRow(db, collectionId, "{bad json", 1);
+
+    expect(() =>
+      convertFieldTypeInDb(db, {
+        fieldId,
+        targetType: "number",
+        targetOptions: JSON.stringify({}),
+      }),
+    ).toThrow(/invalid JSON/);
+
+    const field = db.prepare("SELECT type FROM fields WHERE id = ?").get(fieldId) as {
+      type: string;
+    };
+    expect(field.type).toBe("text");
   });
 });
 
