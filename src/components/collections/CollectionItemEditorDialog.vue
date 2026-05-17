@@ -24,6 +24,8 @@
           <AppInput
             v-if="field.type === 'text'"
             :id="getFieldInputId(field)"
+            data-testid="item-field-input"
+            :data-field-name="field.name"
             :modelValue="getTextValue(field.name) ?? ''"
             type="text"
             class="w-full"
@@ -33,6 +35,8 @@
           <AppTextarea
             v-else-if="field.type === 'longtext'"
             :id="getFieldInputId(field)"
+            data-testid="item-field-input"
+            :data-field-name="field.name"
             :modelValue="getTextValue(field.name) ?? ''"
             :rows="3"
             class="w-full"
@@ -42,6 +46,8 @@
           <AppNumberField
             v-else-if="field.type === 'number'"
             :inputId="getFieldInputId(field)"
+            data-testid="item-field-input"
+            :data-field-name="field.name"
             :modelValue="getNumberValue(field.name)"
             inputClass="w-full"
             class="w-full"
@@ -51,6 +57,8 @@
           <input
             v-else-if="field.type === 'date'"
             :id="getFieldInputId(field)"
+            data-testid="item-field-input"
+            :data-field-name="field.name"
             :value="getDateInputValue(field.name)"
             type="date"
             class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
@@ -65,6 +73,8 @@
 
           <AppSelect
             v-else-if="field.type === 'select'"
+            data-testid="item-field-input"
+            :data-field-name="field.name"
             :modelValue="getSelectValue(field.name)"
             :options="getSelectChoices(field)"
             class="w-full"
@@ -150,6 +160,8 @@
           <div v-else-if="field.type === 'url'" class="relative w-full">
             <AppInput
               :id="getFieldInputId(field)"
+              data-testid="item-field-input"
+              :data-field-name="field.name"
               :modelValue="getTextValue(field.name) ?? ''"
               type="text"
               class="w-full pr-8"
@@ -183,7 +195,7 @@
       <AppButton severity="secondary" text @click="cancelDialog"
         >Cancel</AppButton
       >
-      <AppButton @click="saveDialog">{{
+      <AppButton data-testid="save-item-button" @click="saveDialog">{{
         editingItem ? "Update" : "Add"
       }}</AppButton>
     </template>

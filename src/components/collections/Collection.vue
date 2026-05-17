@@ -40,14 +40,14 @@
     <div v-if="!collectionSettingsOpen && activeCollectionPanel !== 'fields' && sourceOrderedFields.length > 0"
       class="fixed bottom-16 right-6 z-40 flex items-center gap-3">
       <AppButton v-if="selectedRowIds.size > 0" severity="danger" class="h-8 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 hover:scale-110 
-        hover:shadow-[0_20px_40px_rgba(239,68,68,0.2)] active:scale-95" @click="deleteSelectedItems">
+        hover:shadow-[0_20px_40px_rgba(239,68,68,0.2)] active:scale-95" data-testid="bulk-delete-items-button" @click="deleteSelectedItems">
         <template #icon>
           <Trash2 :size="16" />
         </template>
         Delete item
       </AppButton>
       <AppButton class="h-8 w-24 shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 hover:scale-110 
-        hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95" @click="quickAddItem">
+        hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95" data-testid="quick-add-item-button" @click="quickAddItem">
         <template #icon>
           <Plus />
         </template>

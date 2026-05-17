@@ -4,7 +4,7 @@
     :disabled="disabled"
     @update:model-value="onUpdate"
   >
-    <SelectTrigger :id="inputId" :class="triggerClass">
+    <SelectTrigger :id="inputId" v-bind="$attrs" :class="triggerClass">
       <slot
         name="value"
         :option="selectedOption?.raw ?? null"
@@ -44,6 +44,10 @@ import { cn } from "@/lib/utils";
 type PrimitiveValue = string | number | null;
 type SelectOption = Record<string, unknown> | PrimitiveValue;
 const EMPTY_STRING_OPTION_KEY_PREFIX = "__app_select_empty__";
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 const props = defineProps<{
   modelValue?: string | number | null;

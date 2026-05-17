@@ -16,6 +16,7 @@
 
     <nav class="flex-1 space-y-2 overflow-y-auto px-2 py-3">
       <AppButton
+        data-testid="sidebar-dashboard"
         text
         class="w-full justify-start gap-3 rounded-md px-3 py-2 text-base"
         :class="
@@ -44,6 +45,7 @@
         class="space-y-1"
       >
         <AppButton
+          :data-testid="`sidebar-collection-${collection.id}`"
           text
           class="w-full justify-start rounded-md px-3 py-2 text-base text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-primary)"
           @click="handleCollectionClick(collection)"
@@ -66,6 +68,7 @@
           <template v-if="selectedCollection?.id === collection.id">
             <div v-if="sourceView" class="relative">
               <AppButton
+                :data-testid="`sidebar-view-${sourceView.id}`"
                 text
                 class="group w-full justify-start rounded-md px-3 py-2 pl-10 text-base"
                 :class="
@@ -92,6 +95,7 @@
               @drop="(event) => onViewDrop(collection.id, view.id, event)"
             >
               <AppButton
+                :data-testid="`sidebar-view-${view.id}`"
                 text
                 class="group w-full justify-start rounded-md px-3 py-2 text-base"
                 :class="[
@@ -123,6 +127,7 @@
                     class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
                   >
                     <span
+                      :data-testid="`rename-view-${view.id}`"
                       class="flex size-5 items-center justify-center rounded text-(--accent-primary) hover:bg-(--bg-hover)"
                       title="Rename view"
                       @mousedown.stop
@@ -131,6 +136,7 @@
                       <Pencil class="size-4" />
                     </span>
                     <span
+                      :data-testid="`delete-view-${view.id}`"
                       class="flex size-5 items-center justify-center rounded text-(--danger) hover:bg-(--bg-hover)"
                       title="Delete view"
                       @mousedown.stop
@@ -159,6 +165,7 @@
                   </button>
                   <button
                     type="button"
+                    :data-testid="`confirm-delete-view-${view.id}`"
                     class="rounded bg-(--accent-primary) px-2 py-1 text-black hover:opacity-90"
                     @click.stop="confirmDeleteView(view)"
                   >
@@ -170,6 +177,7 @@
 
             <div :ref="setViewPickerContainer" class="relative">
               <AppButton
+                data-testid="add-view-button"
                 text
                 class="w-full justify-start rounded-md px-3 py-2 text-base text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary)"
                 :aria-expanded="isViewPickerOpen"
@@ -196,6 +204,7 @@
       </div>
 
       <AppButton
+        data-testid="new-collection-button"
         outlined
         class="w-full justify-start gap-3 rounded-md border-(--border-color) border-dashed px-3 py-2 text-base text-(--text-muted)"
         @click="showNewCollectionModal = true"
@@ -209,6 +218,7 @@
 
     <div class="border-t border-(--border-color) px-2 py-2">
       <AppButton
+        data-testid="sidebar-settings"
         text
         class="w-full justify-start gap-3 rounded-md px-3 py-2 text-base"
         :class="
@@ -237,6 +247,7 @@
       <div class="space-y-2">
         <AppInput
           v-model="newCollection.name"
+          data-testid="new-collection-name-input"
           placeholder="Name"
           type="text"
           autofocus
@@ -248,7 +259,7 @@
       <AppButton severity="secondary" text @click="cancelNewCollection"
         >Cancel</AppButton
       >
-      <AppButton @click="createCollection">Create Collection</AppButton>
+      <AppButton data-testid="create-collection-submit" @click="createCollection">Create Collection</AppButton>
     </template>
   </AppDialog>
 
@@ -263,6 +274,7 @@
       <div class="space-y-2">
         <AppInput
           v-model="viewModalName"
+          data-testid="view-name-input"
           placeholder="Name"
           type="text"
           autofocus
@@ -321,7 +333,7 @@
       <AppButton severity="secondary" text @click="closeViewModal"
         >Cancel</AppButton
       >
-      <AppButton @click="saveViewModal">
+      <AppButton data-testid="save-view-submit" @click="saveViewModal">
         {{ viewModalMode === "edit" ? "Save" : "Create View" }}
       </AppButton>
     </template>

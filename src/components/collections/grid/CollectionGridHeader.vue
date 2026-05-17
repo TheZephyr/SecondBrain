@@ -33,6 +33,8 @@
       <template v-else>
         <button
           type="button"
+          data-testid="grid-header-cell"
+          :data-field-name="headerMeta(header)?.field?.name"
           class="flex h-full w-full items-center justify-between gap-2 px-3 text-left text-base font-semibold text-(--text-secondary) hover:text-(--text-primary)"
           @click="(event) => toggleSort(headerMeta(header)?.field, event)"
         >

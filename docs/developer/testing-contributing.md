@@ -6,6 +6,7 @@ This page summarizes the verification standard for code and documentation change
 
 - Renderer tests: `src/__tests__`, `src/composables/**/__tests__`, `src/utils/**/__tests__`, `src/validation/**/__tests__`
 - Electron and DB tests: `electron/__tests__`
+- Electron E2E tests: `e2e`
 - Verification scripts: `package.json`
 
 ## Test Layers
@@ -34,6 +35,32 @@ Use the Electron-side tests for:
 
 Database tests use in-memory SQLite rather than the real user database.
 
+### Electron E2E
+
+Use Playwright Electron tests for critical end-to-end workflows that need the renderer, preload bridge, main-process IPC, DB worker, SQLite, and filesystem behavior to work together.
+
+The E2E suite runs through:
+
+- collection, field, and item CRUD
+- grid search, sort, inline edit, duplicate, bulk delete, and restart persistence
+- collection CSV/JSON import and export
+- full archive export and restore
+- child view creation, rename, deletion, configuration, and restart persistence
+
+E2E tests launch the built Electron app with `SECOND_BRAIN_E2E=1`. In that mode only:
+
+- `SECOND_BRAIN_E2E_USER_DATA` overrides Electron `userData`, so tests use an isolated temporary database.
+- `SECOND_BRAIN_E2E_DIALOG_RESULTS` provides deterministic save/open dialog results as FIFO queues, for example:
+
+```json
+{
+  "save": ["C:/tmp/export.csv", "C:/tmp/archive.json"],
+  "open": ["C:/tmp/import.csv", "C:/tmp/archive.json"]
+}
+```
+
+Production launches do not use these hooks.
+
 ## Required Verification
 
 Before finishing a task, run:
@@ -47,9 +74,27 @@ That script currently includes:
 - test suite
 - Electron build validation
 
+For changes that touch collection UI, item/field/view workflows, import/export, archive restore, IPC contracts, or DB behavior visible through the UI, also run:
+
+`npm run test:e2e`
+
+For larger changes where you want the full confidence pass in one command, run:
+
+`npm run verify:full`
+
+Use `npm run test:e2e:headed` to debug the Electron UI while the Playwright suite runs. E2E temp profiles are removed after each test unless `SECOND_BRAIN_E2E_KEEP_ARTIFACTS=1` is set.
+
 If docs navigation changed, also run:
 
 `npm run docs:build`
+
+## Everything Works Checklist
+
+Before saying "everything works":
+
+- `npm run verify` passes.
+- `npm run test:e2e` or `npm run verify:full` passes when the change affects UI/DB workflows covered by E2E.
+- Manual testing is limited to native OS dialog appearance, installer/package behavior, subjective layout polish, and new workflows not yet covered by E2E.
 
 ## Contribution Rules
 

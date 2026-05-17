@@ -101,6 +101,7 @@
       </AppButton>
       <AppButton
         severity="danger"
+        data-testid="full-archive-restore-confirm-button"
         :loading="restoring"
         @click="$emit('confirm')"
       >

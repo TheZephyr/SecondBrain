@@ -17,6 +17,7 @@
       <input
         v-if="isTextLikeField"
         ref="inputRef"
+        data-testid="grid-editor-input"
         v-model="textModel"
         type="text"
         class="h-full w-full bg-transparent px-2 text-base outline-none"
@@ -25,6 +26,7 @@
       <input
         v-else-if="activeField.type === 'number'"
         ref="inputRef"
+        data-testid="grid-editor-input"
         v-model="numberModel"
         type="number"
         class="h-full w-full bg-transparent px-2 text-base text-right outline-none"

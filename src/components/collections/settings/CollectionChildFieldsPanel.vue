@@ -15,7 +15,7 @@
           @click="resetDrafts"
           >Reset</AppButton
         >
-        <AppButton :disabled="!isDirty" @click="saveDrafts"
+        <AppButton data-testid="save-view-fields-button" :disabled="!isDirty" @click="saveDrafts"
           >Save changes</AppButton
         >
       </div>
@@ -31,6 +31,8 @@
           <div
             v-for="field in filteredFields"
             :key="field.id"
+            data-testid="view-field-row"
+            :data-field-name="field.name"
             class="flex items-center gap-3 border-b border-(--border-color) px-4 py-3 last:border-b-0"
           >
             <AppCheckbox

@@ -21,6 +21,7 @@ import { invokeDbWorker } from "../db/worker-manager";
 import { copyDatabaseToBackup } from "./backup";
 import type { BrowserWindow } from "electron";
 import { parseOrThrow, handleIpc } from "./utils";
+import { consumeE2eDialogResult } from "../lib/e2e";
 
 // Archive-specific helper functions (moved from main.ts)
 async function readArchiveFromFilePath(filePath: string) {
@@ -53,16 +54,21 @@ async function exportFullArchiveToDisk(
     throw new AppError("UNKNOWN", "Main window not available.");
   }
 
-  const result = await dialog.showSaveDialog(mainWindow, {
-    title: "Export Full Archive",
-    defaultPath: buildFullArchiveFileName(),
-    filters: [
-      { name: "JSON Files", extensions: ["json"] },
-      { name: "All Files", extensions: ["*"] },
-    ],
-  });
+  const e2eResult = consumeE2eDialogResult("save");
+  const filePath = e2eResult.handled
+    ? e2eResult.filePath
+    : (
+        await dialog.showSaveDialog(mainWindow, {
+          title: "Export Full Archive",
+          defaultPath: buildFullArchiveFileName(),
+          filters: [
+            { name: "JSON Files", extensions: ["json"] },
+            { name: "All Files", extensions: ["*"] },
+          ],
+        })
+      ).filePath;
 
-  if (result.canceled || !result.filePath) {
+  if (!filePath) {
     return null;
   }
 
@@ -76,7 +82,7 @@ async function exportFullArchiveToDisk(
 
   try {
     await fs.promises.writeFile(
-      result.filePath,
+      filePath,
       `${JSON.stringify(archive, null, 2)}\n`,
       "utf-8",
     );
@@ -89,7 +95,7 @@ async function exportFullArchiveToDisk(
   }
 
   return {
-    filePath: result.filePath,
+    filePath,
     stats: archive.stats,
   };
 }
@@ -99,20 +105,24 @@ async function previewFullArchiveRestore(): Promise<FullArchivePreview | null> {
     throw new AppError("UNKNOWN", "Main window not available.");
   }
 
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Select Full Archive",
-    filters: [
-      { name: "JSON Files", extensions: ["json"] },
-      { name: "All Files", extensions: ["*"] },
-    ],
-    properties: ["openFile"],
-  });
+  const e2eResult = consumeE2eDialogResult("open");
+  const filePath = e2eResult.handled
+    ? e2eResult.filePath
+    : (
+        await dialog.showOpenDialog(mainWindow, {
+          title: "Select Full Archive",
+          filters: [
+            { name: "JSON Files", extensions: ["json"] },
+            { name: "All Files", extensions: ["*"] },
+          ],
+          properties: ["openFile"],
+        })
+      ).filePaths[0];
 
-  if (result.canceled || result.filePaths.length === 0) {
+  if (!filePath) {
     return null;
   }
 
-  const filePath = result.filePaths[0];
   const archive = await readArchiveFromFilePath(filePath);
   const currentDbSummary = await invokeDbWorker<FullArchiveDatabaseSummary>({
     type: "getArchiveDatabaseSummary",

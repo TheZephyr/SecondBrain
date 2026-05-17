@@ -15,6 +15,7 @@
       <Popover v-model:open="sortPopoverOpen">
         <PopoverTrigger as-child>
           <AppButton
+            data-testid="sort-menu-button"
             text
             class="h-7 gap-1.5 rounded-md px-2 text-base"
             :class="sortButtonClass"
@@ -121,6 +122,7 @@
             <Popover v-model:open="fieldPickerOpen">
               <PopoverTrigger as-child>
                 <Button
+                  data-testid="add-sort-option-button"
                   type="button"
                   class="h-8 w-full justify-start rounded-md bg-transparent px-2 text-base text-(--accent-primary) hover:bg-(--bg-hover)"
                   :disabled="unusedFields.length === 0"
@@ -170,6 +172,7 @@
       />
       <AppInput
         v-model="searchModel"
+        data-testid="grid-search-input"
         class="h-7 w-40 pl-8 pr-8 text-base md:w-52"
         type="text"
         placeholder="Search..."

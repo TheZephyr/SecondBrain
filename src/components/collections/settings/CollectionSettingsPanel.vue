@@ -18,6 +18,7 @@
               >
               <AppInput
                 v-model="collectionName"
+                data-testid="collection-name-input"
                 type="text"
                 placeholder="Collection name"
               />
@@ -41,6 +42,7 @@
               >
               <AppSelect
                 v-model="exportFormat"
+                data-testid="collection-export-format-select"
                 :options="exportFormatOptions"
                 optionLabel="label"
                 optionValue="value"
@@ -60,6 +62,7 @@
                 </div>
               </div>
               <AppSwitch
+                data-testid="collection-export-include-schema-switch"
                 :modelValue="exportIncludeSchema"
                 @update:modelValue="
                   (value) => (exportIncludeSchema = Boolean(value))
@@ -80,6 +83,7 @@
               </p>
             </div>
             <AppButton
+              data-testid="collection-export-button"
               class="w-full justify-center gap-2"
               :disabled="isExporting"
               @click="handleExport"
@@ -113,6 +117,7 @@
                 >
                 <AppSelect
                   v-model="importFormat"
+                  data-testid="collection-import-format-select"
                   :options="exportFormatOptions"
                   optionLabel="label"
                   optionValue="value"
@@ -154,6 +159,7 @@
               </div>
 
               <AppButton
+                data-testid="collection-import-select-file-button"
                 class="w-full justify-center gap-2"
                 @click="handleSelectFile"
               >
@@ -348,6 +354,7 @@
                   >Cancel</AppButton
                 >
                 <AppButton
+                  data-testid="collection-import-confirm-button"
                   class="gap-2"
                   :disabled="isImporting"
                   @click="handleImport"
@@ -378,6 +385,7 @@
             </p>
             <AppButton
               severity="danger"
+              data-testid="delete-collection-button"
               class="min-w-45 gap-2"
               @click="$emit('delete-collection')"
             >
@@ -398,7 +406,7 @@
         @click="store.setCollectionSettingsOpen(false)"
         >Cancel</AppButton
       >
-      <AppButton @click="saveSettings">Save Changes</AppButton>
+      <AppButton data-testid="save-collection-settings-button" @click="saveSettings">Save Changes</AppButton>
     </div>
   </div>
 </template>

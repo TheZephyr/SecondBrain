@@ -1,5 +1,8 @@
 <template>
   <div
+    data-testid="grid-row"
+    :data-row-id="row.original.id"
+    :data-row-index="rowIndex"
     class="group grid items-center border-b border-(--border-color) text-base text-(--text-primary) transition-colors hover:bg-(--bg-hover)"
     :class="isSelected ? 'bg-(--bg-hover)' : ''"
     :style="{ gridTemplateColumns }"
@@ -27,6 +30,7 @@
             "
           >
             <input
+              data-testid="grid-row-select"
               type="checkbox"
               class="h-3.5 w-3.5 cursor-pointer rounded border border-(--border-color) accent-(--accent-primary)"
               :checked="isSelected"
@@ -34,6 +38,7 @@
               @change="(event) => emitRowSelectionToggle(event)"
             />
             <AppButton
+              data-testid="grid-row-expand"
               text
               class="h-6 w-6 p-0 text-(--text-muted) hover:bg-(--bg-hover) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary)"
               title="Expand"

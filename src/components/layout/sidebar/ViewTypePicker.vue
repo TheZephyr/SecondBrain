@@ -20,6 +20,7 @@
           v-for="viewType in viewTypes"
           :key="viewType.type"
           type="button"
+          :data-testid="`view-type-${viewType.type}`"
           class="group flex h-10 w-full items-center gap-3 px-3 text-base text-(--text-secondary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-primary)"
           :class="
             viewType.disabled

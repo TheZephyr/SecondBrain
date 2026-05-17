@@ -26,6 +26,7 @@
       class="rounded-md border border-(--border-color) bg-(--bg-primary) p-1"
     >
       <AppButton
+        data-testid="collection-data-tab"
         text
         class="h-6 px-2 text-base font-semibold"
         :class="
@@ -39,6 +40,7 @@
         Data
       </AppButton>
       <AppButton
+        data-testid="collection-fields-tab"
         text
         class="h-6 px-2 text-base font-semibold"
         :class="
@@ -54,6 +56,7 @@
     </div>
 
     <AppButton
+      data-testid="collection-settings-button"
       text
       class="h-8 gap-2 px-3 text-base font-semibold justify-self-end"
       :class="collectionSettingsOpen ? activeButtonClass : inactiveButtonClass"

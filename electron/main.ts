@@ -23,8 +23,17 @@ import {
   setAppIsQuitting,
 } from "./db/worker-manager";
 import { registerDbIpcHandlers } from "./ipc/db";
+import {
+  consumeE2eDialogResult,
+  getE2eUserDataPath,
+  isE2eMode,
+} from "./lib/e2e";
 
 const isDev = process.env.NODE_ENV === "development";
+const e2eUserDataPath = getE2eUserDataPath();
+if (e2eUserDataPath) {
+  app.setPath("userData", e2eUserDataPath);
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -60,7 +69,9 @@ function createWindow() {
     mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.once("did-finish-load", () => {
       setTimeout(() => {
-        mainWindow?.webContents.openDevTools();
+        if (!isE2eMode()) {
+          mainWindow?.webContents.openDevTools();
+        }
       }, 500);
     });
   } else {
@@ -106,6 +117,11 @@ app.whenReady().then(async () => {
   handleIpc(
     "export:showSaveDialog",
     async (_event, options: SaveDialogOptions) => {
+      const e2eResult = consumeE2eDialogResult("save");
+      if (e2eResult.handled) {
+        return e2eResult.filePath;
+      }
+
       if (!mainWindow)
         throw new AppError("UNKNOWN", "Main window not available.");
       const result = await dialog.showSaveDialog(mainWindow, options);
@@ -116,6 +132,11 @@ app.whenReady().then(async () => {
   handleIpc(
     "import:showOpenDialog",
     async (_event, options: OpenDialogOptions) => {
+      const e2eResult = consumeE2eDialogResult("open");
+      if (e2eResult.handled) {
+        return e2eResult.filePath;
+      }
+
       if (!mainWindow)
         throw new AppError("UNKNOWN", "Main window not available.");
       const result = await dialog.showOpenDialog(mainWindow, options);

@@ -33,6 +33,7 @@
               />
             </div>
             <AppButton
+              data-testid="full-archive-export-button"
               label="Export Full Archive"
               :loading="exportingArchive"
               @click="exportArchive"
@@ -54,6 +55,7 @@
               will be replaced after a mandatory pre-restore backup is created.
             </p>
             <AppButton
+              data-testid="full-archive-restore-select-button"
               label="Select Archive File"
               severity="danger"
               outlined

@@ -34,7 +34,8 @@ Thumbs.db
 docs/.vitepress/dist
 docs/.vitepress/cache
 
-# Test coverage
+# Test artifacts
+test-results/
 coverage/
 
 # Agent files and directories

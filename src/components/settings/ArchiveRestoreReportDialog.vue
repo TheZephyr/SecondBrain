@@ -156,7 +156,7 @@
     </div>
 
     <template #footer>
-      <AppButton @click="$emit('update:visible', false)">Close</AppButton>
+      <AppButton data-testid="archive-report-close-button" @click="$emit('update:visible', false)">Close</AppButton>
     </template>
   </AppDialog>
 </template>

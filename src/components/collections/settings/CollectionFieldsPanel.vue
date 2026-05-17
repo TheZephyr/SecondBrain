@@ -8,7 +8,7 @@
         class="w-full md:max-w-sm"
       />
       <div class="flex items-center gap-2">
-        <AppButton class="gap-2" @click="createFieldDraft">
+        <AppButton data-testid="new-field-button" class="gap-2" @click="createFieldDraft">
           <template #icon>
             <Plus class="size-4" />
           </template>
@@ -21,7 +21,7 @@
           @click="resetDrafts"
           >Reset</AppButton
         >
-        <AppButton :disabled="!isDirty" @click="saveDrafts"
+        <AppButton data-testid="save-fields-button" :disabled="!isDirty" @click="saveDrafts"
           >Save changes</AppButton
         >
       </div>
@@ -38,6 +38,9 @@
             v-for="draft in filteredDrafts"
             :key="draft.draftId"
             type="button"
+            data-testid="field-draft-row"
+            :data-field-name="draft.name"
+            :data-field-type="draft.type"
             class="flex w-full items-center gap-3 border-b border-(--border-color) px-4 py-3 text-left last:border-b-0"
             :class="
               selectedDraftId === draft.draftId
@@ -91,6 +94,7 @@
           <div class="space-y-4">
             <AppInput
               :modelValue="selectedDraft.name"
+              data-testid="field-name-input"
               type="text"
               placeholder="Field name"
               class="w-full"
@@ -105,6 +109,7 @@
               </div>
               <AppSelect
                 :modelValue="selectedDraft.type"
+                data-testid="field-type-select"
                 :options="fieldTypeOptions"
                 optionLabel="label"
                 optionValue="value"
@@ -145,6 +150,7 @@
             <div class="flex justify-end">
               <AppButton
                 text
+                data-testid="delete-field-button"
                 class="text-(--danger) hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
                 @click="deleteSelectedDraft"
               >
