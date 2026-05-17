@@ -13,12 +13,10 @@ export default defineConfig({
       output: {
         manualChunks: {
           "vendor-vue": ["vue", "pinia"],
-          "vendor-utils": [
-            "zod",
-            "papaparse",
-            "@vueuse/core",
-            "lucide-vue-next",
-          ],
+          "vendor-ui": ["reka-ui", "@vueuse/core"],
+          "vendor-table": ["@tanstack/vue-table", "@tanstack/vue-virtual"],
+          "vendor-utils": ["zod", "papaparse"],
+          "vendor-icons": ["lucide-vue-next"],
         },
       },
     },
