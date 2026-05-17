@@ -35,6 +35,7 @@ Collection import supports:
 
 - `append` mode
 - `replace` mode
+- empty-file rejection through the renderer notification store
 - preview of matched fields
 - preview of new fields
 - per-field type override before import

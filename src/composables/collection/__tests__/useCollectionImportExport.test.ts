@@ -847,12 +847,17 @@ describe("useCollectionImportExport", () => {
       await composable!.handleSelectFile();
       expect(errorSpy).toHaveBeenCalledWith("Failed to read file");
 
-      const alertMock = vi.fn();
-      vi.stubGlobal("alert", alertMock);
+      const notificationsStore = useNotificationsStore();
+      const pushSpy = vi.spyOn(notificationsStore, "push");
       mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\test.csv"));
       mockApi.readFile.mockResolvedValueOnce(ok("   \n  "));
       await composable!.handleSelectFile();
-      expect(alertMock).toHaveBeenCalledWith("The selected file is empty.");
+      expect(pushSpy).toHaveBeenCalledWith({
+        severity: "warn",
+        summary: "Empty import file",
+        detail: "The selected file is empty.",
+        life: 5000,
+      });
 
       const importExportUtils = await import("../../../utils/collectionImportExport");
       const parseSpy = vi.spyOn(importExportUtils, "parseImportContent").mockImplementationOnce(() => {
@@ -907,4 +912,3 @@ describe("useCollectionImportExport", () => {
     errorSpy.mockRestore();
   });
 });
-

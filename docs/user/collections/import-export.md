@@ -28,6 +28,8 @@ Second Brain exports collection data as CSV or JSON.
 
 Imports support CSV and JSON.
 
+If the selected file is empty, Second Brain shows an in-app warning and does not build an import preview.
+
 ### Import Modes
 
 - `Append`: keep existing items and add imported ones.

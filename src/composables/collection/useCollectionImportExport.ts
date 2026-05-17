@@ -173,7 +173,12 @@ export function useCollectionImportExport({
       }
 
       if (!content.trim()) {
-        alert("The selected file is empty.");
+        notifications.push({
+          severity: "warn",
+          summary: "Empty import file",
+          detail: "The selected file is empty.",
+          life: 5000,
+        });
         selectedFile.value = null;
         return;
       }
