@@ -560,4 +560,93 @@ describe('useCollectionCalendar', () => {
       expect(calendar.isEnsuringAllItems.value).toBe(false)
     })
   })
+  it('computes sidebarItems correctly and sorts them by date', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 2, 8)) // March 2026
+
+    const viewId = ref(23)
+    const orderedFields = ref<Field[]>([
+      makeField({ id: 1, name: 'Title', type: 'text' }),
+      makeField({ id: 2, name: 'Due Date', type: 'date' })
+    ])
+    const items = ref<Item[]>([
+      makeItem(1, { Title: 'Later', 'Due Date': '2026-03-20' }),
+      makeItem(2, { Title: 'Earlier', 'Due Date': '2026-03-05' }),
+      makeItem(3, { Title: 'Other Month', 'Due Date': '2026-04-01' }),
+      makeItem(4, { Title: 'No Date', 'Due Date': '' })
+    ])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(true)
+    const itemsSearch = ref('')
+    const itemsSort = ref<ItemSortSpec[]>([])
+    const loadItems = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(2)
+
+    try {
+      await withScope(async scope => {
+        const calendar = scope.run(() =>
+          useCollectionCalendar({
+            viewId,
+            orderedFields,
+            items,
+            itemsLoading,
+            itemsFullyLoaded,
+            itemsSearch,
+            itemsSort,
+            loadItems,
+            groupingFieldId,
+            cardTitleField: ref(null)
+          })
+        )
+
+        if (!calendar) throw new Error('Failed to init')
+
+        await flushAsyncWork()
+
+        expect(calendar.sidebarItems.value).toHaveLength(2)
+        expect(calendar.sidebarItems.value[0].data.Title).toBe('Earlier')
+        expect(calendar.sidebarItems.value[1].data.Title).toBe('Later')
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('allows setting specific month and year', async () => {
+    const viewId = ref(25)
+    const orderedFields = ref<Field[]>([makeField({ id: 1, name: 'D', type: 'date' })])
+    const items = ref<Item[]>([])
+    const itemsLoading = ref(false)
+    const itemsFullyLoaded = ref(true)
+    const itemsSearch = ref('')
+    const itemsSort = ref<ItemSortSpec[]>([])
+    const loadItems = vi.fn(async () => undefined)
+    const groupingFieldId = ref<number | null>(1)
+
+    await withScope(async scope => {
+      const calendar = scope.run(() =>
+        useCollectionCalendar({
+          viewId,
+          orderedFields,
+          items,
+          itemsLoading,
+          itemsFullyLoaded,
+          itemsSearch,
+          itemsSort,
+          loadItems,
+          groupingFieldId,
+          cardTitleField: ref(null)
+        })
+      )
+
+      if (!calendar) throw new Error('Failed to init')
+
+      calendar.setMonth(11) // December (0-indexed)
+      expect(calendar.displayedMonth.value.getMonth()).toBe(11)
+
+      calendar.setYear(2030)
+      expect(calendar.displayedMonth.value.getFullYear()).toBe(2030)
+    })
+  })
 })
+

@@ -124,6 +124,24 @@ describe("parseStoredViewConfig", () => {
       selectedFieldIds: [1, 9],
     });
   });
+
+  it("covers cardTitleFieldId in parseStoredViewConfig (line 50)", () => {
+    const config: ViewConfig = {
+      columnWidths: { 1: 100 },
+      sort: [],
+      calendarDateField: "Date",
+      calendarDateFieldId: 1,
+      groupingFieldId: 1,
+      kanbanColumnOrder: [],
+      selectedFieldIds: [],
+      cardTitleFieldId: 42
+    };
+    
+    const serialized = JSON.stringify(config);
+    const parsed = parseStoredViewConfig(serialized);
+    
+    expect(parsed?.cardTitleFieldId).toBe(42);
+  });
 });
 
 describe("addView", () => {
@@ -389,18 +407,50 @@ describe("updateViewConfig", () => {
       },
     });
 
-    expect(() =>
-      updateViewConfig(db, {
-        viewId: 12,
-        config: {
-          columnWidths: {},
-          sort: [],
-          selectedFieldIds: [],
-        },
-      }),
-    ).toThrow("Failed to update view config for view 12.");
+      expect(() =>
+        updateViewConfig(db, {
+          viewId: 12,
+          config: {
+            columnWidths: {},
+            sort: [],
+            selectedFieldIds: [],
+          },
+        }),
+      ).toThrow("Failed to update view config for view 12.");
+    });
+
+    it("covers cardTitleFieldId in updateViewConfig (line 259)", () => {
+      const db = new Database(":memory:");
+      db.exec(`
+        CREATE TABLE views (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          collection_id INTEGER,
+          name TEXT,
+          type TEXT,
+          is_default INTEGER,
+          "order" INTEGER,
+          config TEXT
+        )
+      `);
+      
+      db.prepare("INSERT INTO views (collection_id, name, type, is_default, \"order\") VALUES (1, 'Test', 'grid', 0, 1)").run();
+      
+      const config: ViewConfig = {
+        columnWidths: { 1: 100 },
+        sort: [],
+        selectedFieldIds: [],
+        cardTitleFieldId: 99
+      };
+      
+      updateViewConfig(db, { viewId: 1, config });
+      
+      const row = db.prepare("SELECT config FROM views WHERE id = 1").get() as { config: string };
+      const parsed = JSON.parse(row.config);
+      expect(parsed.cardTitleFieldId).toBe(99);
+      
+      db.close();
+    });
   });
-});
 
 describe("reorderViews", () => {
   function createViewSet() {

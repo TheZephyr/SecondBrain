@@ -4,6 +4,7 @@ import {
   mergeViewConfig,
   normalizeKanbanColumnOrder,
   normalizeViewConfig,
+  normalizeColumnWidths,
 } from "../viewConfig";
 
 describe("viewConfig helpers", () => {
@@ -72,5 +73,35 @@ describe("viewConfig helpers", () => {
         "Done",
       ]),
     ).toEqual(["Done", "Todo", "Doing"]);
+  });
+
+  it("normalizes column widths with allowedFieldIds and invalid inputs", () => {
+    const allowed = new Set([1, 2]);
+    expect(
+      normalizeColumnWidths(
+        { 
+          1: 100, 
+          2: 200, 
+          3: 300, // Not allowed
+          "invalid": 400, // Invalid ID
+          "0": 500, // Invalid ID <= 0
+          4: NaN // Invalid width
+        }, 
+        allowed
+      )
+    ).toEqual({
+      1: 100,
+      2: 200
+    });
+  });
+
+  it("handles non-string entries in kanban column order", () => {
+    expect(normalizeKanbanColumnOrder([123, "Todo"] as any, ["Todo"])).toEqual(["Todo"]);
+    expect(normalizeKanbanColumnOrder(["Invalid"], ["Todo"])).toEqual(["Todo"]);
+  });
+
+  it("normalizes cardTitleFieldId", () => {
+    expect(normalizeViewConfig({ cardTitleFieldId: 10 } as any).cardTitleFieldId).toBe(10);
+    expect(normalizeViewConfig({ cardTitleFieldId: -5 } as any).cardTitleFieldId).toBeUndefined();
   });
 });

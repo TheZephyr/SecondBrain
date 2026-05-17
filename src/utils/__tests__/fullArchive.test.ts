@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildFullArchiveFileName,
   parseFullArchiveContent,
+  buildFullArchivePreviewSummary,
 } from "../fullArchive";
 
 describe("full archive utilities", () => {
@@ -123,5 +124,79 @@ describe("full archive utilities", () => {
         }),
       ),
     ).toThrow(/invalid archive structure/i);
+  });
+
+  it("rejects invalid JSON", () => {
+    expect(() => parseFullArchiveContent("not json")).toThrow(/invalid archive json/i);
+  });
+
+  it("builds a preview summary from an archive and current DB state", () => {
+    const archive: any = {
+      appVersion: "1.0.0",
+      exportedAt: "2026-03-22T14:30:00.000Z",
+      description: "Test Archive",
+      stats: {
+        collectionCount: 1,
+        totalFieldCount: 2,
+        totalItemCount: 3,
+      },
+      collections: [
+        {
+          name: "Books",
+          stats: {
+            fieldCount: 2,
+            itemCount: 3,
+          },
+        },
+      ],
+    };
+
+    const currentDbSummary = {
+      isEmpty: false,
+      collectionCount: 5,
+      totalFieldCount: 10,
+      totalItemCount: 100,
+      collectionNames: ["A", "B"],
+    };
+
+    const preview = buildFullArchivePreviewSummary(
+      "/path/to/archive.json",
+      archive,
+      currentDbSummary,
+    );
+
+    expect(preview.filePath).toBe("/path/to/archive.json");
+    expect(preview.archiveSummary.appVersion).toBe("1.0.0");
+    expect(preview.archiveSummary.description).toBe("Test Archive");
+    expect(preview.archiveSummary.collections).toHaveLength(1);
+    expect(preview.archiveSummary.collections[0].name).toBe("Books");
+    expect(preview.currentDbSummary).toEqual(currentDbSummary);
+    expect(preview.willReplaceExistingData).toBe(true);
+  });
+
+  it("sets willReplaceExistingData to false if DB is empty", () => {
+    const archive: any = {
+      appVersion: "1.0.0",
+      exportedAt: "2026-03-22T14:30:00.000Z",
+      description: "",
+      stats: { collectionCount: 0, totalFieldCount: 0, totalItemCount: 0 },
+      collections: [],
+    };
+
+    const currentDbSummary = {
+      isEmpty: true,
+      collectionCount: 0,
+      totalFieldCount: 0,
+      totalItemCount: 0,
+      collectionNames: [],
+    };
+
+    const preview = buildFullArchivePreviewSummary(
+      "test.json",
+      archive,
+      currentDbSummary,
+    );
+
+    expect(preview.willReplaceExistingData).toBe(false);
   });
 });

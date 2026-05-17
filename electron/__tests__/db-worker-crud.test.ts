@@ -29,6 +29,10 @@ import type {
   ViewConfig,
   ReorderViewsInput,
   ReorderItemsInput,
+  InsertItemAtInput,
+  DuplicateItemInput,
+  MoveItemInput,
+  GetNumberFieldRangeInput,
 } from "../../src/types/models";
 
 // ---------------------------------------------------------------------------
@@ -281,6 +285,33 @@ function updateItem(input: UpdateItemInput): boolean {
 
 function deleteItem(id: number): boolean {
   return handleOperation({ type: "deleteItem", id }) as boolean;
+}
+
+function getNumberFieldRange(input: GetNumberFieldRangeInput) {
+  return handleOperation({ type: "getNumberFieldRange", input }) as {
+    min: number | null;
+    max: number | null;
+  };
+}
+
+function insertItemAt(input: InsertItemAtInput) {
+  return handleOperation({ type: "insertItemAt", input }) as {
+    id: number;
+    collection_id: number;
+    data: Record<string, unknown>;
+  };
+}
+
+function duplicateItem(input: DuplicateItemInput) {
+  return handleOperation({ type: "duplicateItem", input }) as {
+    id: number;
+    collection_id: number;
+    data: Record<string, unknown>;
+  };
+}
+
+function moveItem(input: MoveItemInput) {
+  return handleOperation({ type: "moveItem", input }) as boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -649,6 +680,75 @@ describe("field CRUD", () => {
     const fields = getFields(col.id);
     expect(fields.map((f) => f.name)).toEqual(["C", "B", "A"]);
   });
+
+  it("throws when updating a non-existent field", () => {
+    setupInMemoryDb();
+    expect(() =>
+      updateField({
+        id: 999,
+        name: "New",
+        type: "text",
+        options: null,
+      }),
+    ).toThrow(/field 999 not found/i);
+  });
+
+  it("throws when reordering fields with mismatched counts", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    addField({ collectionId: col.id, name: "A", type: "text", options: null });
+
+    expect(() =>
+      handleOperation({
+        type: "reorderFields",
+        input: {
+          collectionId: col.id,
+          fieldOrders: [],
+        },
+      }),
+    ).toThrow(/must include every field/i);
+  });
+
+  it("throws when reordering fields with duplicate IDs", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    const f1 = addField({ collectionId: col.id, name: "A", type: "text", options: null });
+    addField({ collectionId: col.id, name: "B", type: "text", options: null });
+
+    expect(() =>
+      handleOperation({
+        type: "reorderFields",
+        input: {
+          collectionId: col.id,
+          fieldOrders: [
+            { id: f1.id, orderIndex: 0 },
+            { id: f1.id, orderIndex: 1 },
+          ],
+        },
+      }),
+    ).toThrow(/contains duplicate field IDs/i);
+  });
+
+  it("throws when reordering fields with IDs outside the collection", () => {
+    setupInMemoryDb();
+    const col1 = addCollection({ name: "Col1" });
+    const col2 = addCollection({ name: "Col2" });
+    addField({ collectionId: col1.id, name: "A", type: "text", options: null });
+    const f2 = addField({ collectionId: col2.id, name: "B", type: "text", options: null });
+
+    expect(() =>
+      handleOperation({
+        type: "reorderFields",
+        input: {
+          collectionId: col1.id,
+          fieldOrders: [
+            { id: f2.id, orderIndex: 0 },
+          ],
+        },
+      }),
+    ).toThrow(/contains IDs outside the collection/i);
+  });
+
 
   it("returns fields sorted by order_index", () => {
     setupInMemoryDb();
@@ -1683,5 +1783,77 @@ describe("getItems sorting", () => {
 
     const names = result.items.map((i) => JSON.parse(i.data).Name);
     expect(names).toEqual([null, "Beta", "Alpha"]);
+  });
+});
+
+// ======================== ADDITIONAL ITEM OPS ========================
+
+describe("additional item operations", () => {
+  it("insertItemAt inserts an item before a target", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    const target = addItem({ collectionId: col.id, data: { Name: "Target" } });
+    
+    const inserted = insertItemAt({
+      collectionId: col.id,
+      afterOrder: null, // Insert at top
+    });
+
+    const items = getItems(col.id).items;
+    expect(items).toHaveLength(2);
+    expect(items[0].id).toBe(inserted.id); // It should be the first item
+    expect(items[1].id).toBe(target.id);
+  });
+
+  it("duplicateItem duplicates an existing item", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    const original = addItem({ collectionId: col.id, data: { Name: "Original" } });
+
+    const duplicated = duplicateItem({ itemId: original.id, collectionId: col.id });
+
+    const items = getItems(col.id).items;
+    expect(items).toHaveLength(2);
+    expect(JSON.parse(items[0].data).Name).toBe("Original");
+    expect(JSON.parse(items[1].data).Name).toBe("Original");
+    expect(duplicated.id).not.toBe(original.id);
+  });
+
+  it("moveItem moves an item after a target", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    const itemA = addItem({ collectionId: col.id, data: { Name: "A" } });
+    addItem({ collectionId: col.id, data: { Name: "B" } });
+    addItem({ collectionId: col.id, data: { Name: "C" } });
+
+    moveItem({
+      itemId: itemA.id,
+      collectionId: col.id,
+      direction: "down",
+    });
+
+    const items = getItems(col.id).items;
+    expect(JSON.parse(items[0].data).Name).toBe("B");
+    expect(JSON.parse(items[1].data).Name).toBe("A");
+    expect(JSON.parse(items[2].data).Name).toBe("C");
+  });
+
+  it("getNumberFieldRange returns min and max", () => {
+    setupInMemoryDb();
+    const col = addCollection({ name: "Col" });
+    addField({
+      collectionId: col.id,
+      name: "Age",
+      type: "number",
+      options: null,
+    });
+    
+    addItem({ collectionId: col.id, data: { Age: 10 } });
+    addItem({ collectionId: col.id, data: { Age: 50 } });
+    addItem({ collectionId: col.id, data: { Age: 30 } });
+
+    const range = getNumberFieldRange({ collectionId: col.id, fieldName: "Age" });
+    expect(range.min).toBe(10);
+    expect(range.max).toBe(50);
   });
 });

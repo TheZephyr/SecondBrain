@@ -325,6 +325,34 @@ describe("error serialization", () => {
       expect(response.error.details).toBeUndefined();
     }
   });
+
+  it("handles when an error's stack is itself an Error object", () => {
+    const db = { close: vi.fn() } as unknown as MockDb;
+    initDatabaseConnectionMock.mockReturnValue({ db, ftsEnabled: false });
+
+    const innerError = new Error("inner message");
+    const err = new Error("outer message");
+    Object.defineProperty(err, "stack", {
+      get() { return innerError; }
+    });
+
+    getCollectionsMock.mockImplementation(() => {
+      throw err;
+    });
+
+    workerModule.initDatabase(":memory:");
+    const response = workerModule.processRequest({
+      id: 15,
+      operation: { type: "getCollections" },
+    });
+
+    expect(response.ok).toBe(false);
+    if (!response.ok) {
+      expect(response.error.message).toBe("outer message");
+      // innerError is an Error, so it uses details.stack || details.message
+      expect(response.error.details).toBe(innerError.stack || innerError.message);
+    }
+  });
 });
 
 describe("worker wiring", () => {
@@ -361,5 +389,27 @@ describe("worker wiring", () => {
     exitHandler?.();
 
     expect(db.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes getArchiveDatabaseSummary requests through handleOperation", () => {
+    const db = { close: vi.fn() } as unknown as MockDb;
+    initDatabaseConnectionMock.mockReturnValue({ db, ftsEnabled: false });
+    workerModule.initDatabase(":memory:");
+    
+    getArchiveDatabaseSummaryMock.mockReturnValue({ collections: 0 });
+    const response = workerModule.handleOperation({
+      type: "getArchiveDatabaseSummary",
+    });
+
+    expect(response).toEqual({ collections: 0 });
+    expect(getArchiveDatabaseSummaryMock).toHaveBeenCalledWith(db);
+  });
+
+  it("returns the operation as fallback for unknown operation types", () => {
+    const response = workerModule.handleOperation({
+      type: "unknown",
+    } as any);
+
+    expect(response).toEqual({ type: "unknown" });
   });
 });

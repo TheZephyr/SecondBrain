@@ -14,6 +14,7 @@ import {
   pruneBackupSet,
   saveBackupSettings,
   tryCreateStartupBackup,
+  getBackupRetentionLimit,
 } from "../lib/backup-utils";
 
 const tempDirs: string[] = [];
@@ -176,5 +177,58 @@ describe("backup utils", () => {
       "[Startup Backup] Failed to create startup backup:",
       error,
     );
+  });
+
+  it("skips directories in listBackups (line 180)", async () => {
+    const dir = makeTempDir();
+    const backupDir = await ensureBackupDirectory(dir);
+    
+    // Create a directory instead of a file
+    fs.mkdirSync(path.join(backupDir, "not-a-backup-dir"));
+    
+    const backups = await listBackups(dir);
+    expect(backups).toHaveLength(0);
+  });
+
+  it("breaks ties with fileName in listBackups sort (line 195)", async () => {
+    const dir = makeTempDir();
+    const backupDir = await ensureBackupDirectory(dir);
+    
+    // Identical timestamps but different names
+    const fileA = "secondbrain_2026-05-10_12-00-00_manual.db";
+    const fileB = "secondbrain_2026-05-10_12-00-00_startup.db";
+    
+    fs.writeFileSync(path.join(backupDir, fileA), "a");
+    fs.writeFileSync(path.join(backupDir, fileB), "b");
+    
+    const backups = await listBackups(dir);
+    expect(backups).toHaveLength(2);
+    // Sort is descending: higher fileName comes first if createdAt is same
+    // "startup" > "manual" alphabetically
+    expect(backups[0].fileName).toBe(fileB);
+  });
+
+  it("covers manual branch in getBackupRetentionLimit (line 204)", () => {
+    const settings = {
+      automaticBackupsEnabled: true,
+      automaticBackupsLimit: 10,
+      manualBackupsLimit: 20,
+      backupDirectory: "",
+    };
+    expect(getBackupRetentionLimit(settings, "manual")).toBe(20);
+    expect(getBackupRetentionLimit(settings, "startup")).toBe(10);
+  });
+
+  it("returns early in pruneBackupSet for small sets (line 214)", async () => {
+    const backups = [
+      { fileName: "a", filePath: "", label: "manual" as const, createdAt: "", sizeBytes: 0 }
+    ];
+    // limit 1, backups 1 -> no deletion
+    const result = await pruneBackupSet(backups, 1);
+    expect(result).toEqual([]);
+    
+    // limit 0 -> no deletion (special guard)
+    const result0 = await pruneBackupSet(backups, 0);
+    expect(result0).toEqual([]);
   });
 });

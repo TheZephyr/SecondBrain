@@ -898,3 +898,201 @@ describe("migrateLegacySortIfNeeded", () => {
     expect(saveViewConfig).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// useCollectionItemsQuery Coverage Expansion
+// ---------------------------------------------------------------------------
+
+describe("useCollectionItemsQuery Coverage Expansion", () => {
+  it("covers fallbackStorage and window.localStorage (lines 37, 45)", async () => {
+    // Mock window.localStorage
+    const mockStorage = {
+      getItem: vi.fn(() => null),
+      removeItem: vi.fn(),
+      setItem: vi.fn(),
+      clear: vi.fn(),
+      key: vi.fn(),
+      length: 0
+    };
+    
+    const originalWindow = global.window;
+    // @ts-ignore
+    global.window = { localStorage: mockStorage };
+    
+    const collectionId = ref(1);
+    const viewId = ref<number | null>(null);
+    const activeViewType = ref<ViewType | null>("grid");
+    const paging = createPagingState();
+    
+    await withScope(async (scope) => {
+      scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          activeViewType,
+          safeFields: ref([]),
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems: vi.fn(),
+          loadViewConfig: vi.fn(),
+          saveViewConfig: vi.fn(),
+        })
+      );
+    });
+    
+    // Restore window
+    global.window = originalWindow;
+  });
+
+  it("covers parseRawSortMeta catch block (line 56)", async () => {
+    const collectionId = ref(1);
+    const viewId = ref<number | null>(1);
+    const activeViewType = ref<ViewType | null>("grid");
+    const safeFields = ref<Field[]>([]);
+    const paging = createPagingState();
+    const loadItems = vi.fn();
+    const loadViewConfig = vi.fn();
+    const saveViewConfig = vi.fn();
+    
+    // Mock storage to return invalid JSON
+    const storage = {
+      getItem: () => "invalid json {",
+      removeItem: vi.fn(),
+    };
+
+    await withScope(async (scope) => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          activeViewType,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig,
+          storage,
+        })
+      )!;
+      
+      await nextTick();
+      expect(query.multiSortMeta.value).toEqual([]);
+    });
+  });
+
+  it("covers applyPendingSortPreferences early return for non-grid (lines 192-195)", async () => {
+    const collectionId = ref(1);
+    const viewId = ref<number | null>(1);
+    const activeViewType = ref<ViewType | null>("grid");
+    const safeFields = ref<Field[]>([]);
+    const paging = createPagingState();
+    const loadItems = vi.fn();
+    const loadViewConfig = vi.fn(async (): Promise<ViewConfig> => ({ 
+      columnWidths: {},
+      selectedFieldIds: [],
+      sort: [{ field: 'data.Title', order: 1 }] 
+    }));
+    const saveViewConfig = vi.fn();
+
+    await withScope(async (scope) => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          activeViewType,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig,
+        })
+      )!;
+
+      // Switch to calendar before hydration finishes
+      activeViewType.value = "calendar";
+      await nextTick();
+      
+      expect(query.multiSortMeta.value).toEqual([]);
+    });
+  });
+
+  it("covers debouncedSearchQuery watcher early return for non-grid (lines 274-275)", async () => {
+    vi.useFakeTimers();
+    const collectionId = ref(1);
+    const viewId = ref<number | null>(1);
+    const activeViewType = ref<ViewType | null>("calendar");
+    const safeFields = ref<Field[]>([]);
+    const paging = createPagingState();
+    const loadItems = vi.fn();
+    const loadViewConfig = vi.fn();
+    const saveViewConfig = vi.fn();
+
+    await withScope(async (scope) => {
+      const query = scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          activeViewType,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig,
+          debounceMs: 0,
+        })
+      )!;
+
+      query.searchQuery.value = "test";
+      await vi.runAllTimersAsync();
+      
+      expect(loadItems).not.toHaveBeenCalled();
+    });
+    vi.useRealTimers();
+  });
+
+  it("covers safeFields watcher early return for canHydrateSortFromCurrentFields (line 298)", async () => {
+    const collectionId = ref(1);
+    const viewId = ref<number | null>(1);
+    const activeViewType = ref<ViewType | null>("grid");
+    // Fields with wrong collection id
+    const safeFields = ref<Field[]>([
+      makeField({ id: 1, name: "Title", collection_id: 2 })
+    ]);
+    const paging = createPagingState();
+    const loadItems = vi.fn();
+    const loadViewConfig = vi.fn(async (): Promise<ViewConfig> => ({ 
+      columnWidths: {},
+      selectedFieldIds: [],
+      sort: [{ field: 'data.Title', order: 1 }] 
+    }));
+    const saveViewConfig = vi.fn();
+
+    await withScope(async (scope) => {
+      scope.run(() =>
+        useCollectionItemsQuery({
+          collectionId,
+          viewId,
+          activeViewType,
+          safeFields,
+          items: paging.items,
+          itemsLoading: paging.itemsLoading,
+          itemsFullyLoaded: paging.itemsFullyLoaded,
+          loadItems,
+          loadViewConfig,
+          saveViewConfig,
+        })
+      );
+
+      await nextTick();
+      // Should return early in watcher and not call applyPendingSortPreferences
+      expect(loadItems).not.toHaveBeenCalled();
+    });
+  });
+});

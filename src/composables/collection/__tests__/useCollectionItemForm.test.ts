@@ -656,3 +656,73 @@ describe("useCollectionItemForm", () => {
     expect(form.getTextValue("Title")).toBe("Editing");
   });
 });
+
+// ---------------------------------------------------------------------------
+// useCollectionItemForm coverage expansion
+// ---------------------------------------------------------------------------
+
+describe("useCollectionItemForm coverage expansion", () => {
+  it("covers defaultValue as string for date field (lines 44-45)", () => {
+    const fields = [
+      makeField({ 
+        id: 1, 
+        name: "Date", 
+        type: "date", 
+        options: JSON.stringify({ defaultValue: "2026-05-10" }) 
+      })
+    ];
+    const data = createDefaultItemFormData(fields);
+    expect(data["Date"]).toBeInstanceOf(Date);
+    const date = data["Date"] as Date;
+    expect(date.getFullYear()).toBe(2026);
+    expect(date.getMonth()).toBe(4); // May is 4
+    expect(date.getDate()).toBe(10);
+  });
+
+  it("covers empty multiselect in buildItemFormDataFromItem (lines 116-117)", () => {
+    const fields = [makeField({ id: 1, name: "Tags", type: "multiselect" })];
+    const item: Item = { id: 1, collection_id: 1, order: 1, data: { Tags: "" } };
+    const data = buildItemFormDataFromItem(item, fields);
+    expect(data["Tags"]).toBeNull();
+  });
+
+  it("covers invalid multiselect in buildItemDataFromForm (lines 180-181)", () => {
+    const fields = [makeField({ id: 1, name: "Tags", type: "multiselect" })];
+    // Pass a number instead of string/null
+    const formData = { Tags: 123 as any };
+    const data = buildItemDataFromForm(formData, fields);
+    expect(data["Tags"]).toBeNull();
+  });
+
+  it("covers merging initial data with missing keys (line 232)", async () => {
+    const fields = ref([
+      makeField({ id: 1, name: "Field1" }),
+      makeField({ id: 2, name: "Field2" })
+    ]);
+    const initialData = ref({ Field1: "value1" }); // Missing Field2
+    
+    const { formData, startCreate } = useCollectionItemForm(fields, initialData);
+    
+    startCreate();
+    await nextTick();
+    
+    expect(formData.value["Field1"]).toBe("value1");
+    expect(formData.value["Field2"]).toBe(""); // From base
+  });
+
+  it("covers fallback in getTextValue (line 282)", () => {
+    const fields = ref([makeField({ id: 1, name: "Title" })]);
+    const { formData, getTextValue } = useCollectionItemForm(fields);
+    
+    formData.value["Title"] = { toString: () => "custom" } as any;
+    expect(getTextValue("Title")).toBe("custom");
+  });
+
+  it("covers fallback in getNumberValue (line 314)", () => {
+    const fields = ref([makeField({ id: 1, name: "Count", type: "number" })]);
+    const { formData, getNumberValue } = useCollectionItemForm(fields);
+    
+    formData.value["Count"] = true as any; // Invalid type for number
+    expect(getNumberValue("Count")).toBeNull();
+  });
+});

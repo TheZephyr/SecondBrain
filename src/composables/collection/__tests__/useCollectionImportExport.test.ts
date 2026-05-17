@@ -7,6 +7,7 @@ import type {
   Field,
   PaginatedItemsResult,
 } from "../../../types/models";
+import { useNotificationsStore } from "../../../stores/notifications";
 import { useCollectionImportExport } from "../useCollectionImportExport";
 
 function ok<T>(data: T): IpcResult<T> {
@@ -629,4 +630,281 @@ describe("useCollectionImportExport", () => {
       ]);
     });
   });
+
+  it("handles errors and early returns correctly", async () => {
+    // Test inner try-catch for parse error
+    mockApi.showOpenDialog.mockResolvedValue(ok("C:\\imports\\bad.json"));
+    mockApi.readFile.mockResolvedValue(ok("{}")); // JSON not array
+
+    await withScope(async (scope) => {
+      const collection = ref(makeCollection());
+      const fields = ref<Field[]>([]);
+      const composable = scope.run(() =>
+        useCollectionImportExport({ collection, fields })
+      );
+
+      composable!.importFormat.value = "json";
+      await composable!.handleSelectFile();
+      expect(composable!.importPreview.value).toBeNull();
+
+      // Test outer try-catch for read error
+      mockApi.showOpenDialog.mockRejectedValue(new Error("File Error"));
+      await composable!.handleSelectFile();
+      expect(composable!.importPreview.value).toBeNull();
+
+      // Test early return when import preview is null
+      composable!.updateImportPreviewFieldType("Status", "text");
+      
+      // Test early return for handleImport when states are null
+      await composable!.handleImport();
+      expect(mockApi.importCollection).not.toHaveBeenCalled();
+    });
+  });
+
+  it("normalizes data values during import and handles schema choice filtering", async () => {
+    mockApi.showOpenDialog.mockResolvedValue(ok("C:\\imports\\mixed.json"));
+    mockApi.readFile.mockResolvedValue(
+      ok(
+        JSON.stringify({
+          _schema: {
+            SchemaSelect: {
+              type: "select",
+              choices: ["Valid", 123, null], // Should filter non-strings
+            }
+          },
+          data: [
+            { 
+              SchemaSelect: "Valid",
+              Bool1: 1, 
+              Bool2: "yes", 
+              Bool3: "no", 
+              Bool4: 2, // invalid number, falls back to 0
+              Multi1: 123, // not a string
+              Text1: true, // boolean to text
+            },
+          ]
+        })
+      )
+    );
+    mockApi.importCollection.mockResolvedValue(ok(true));
+    mockApi.getFields.mockResolvedValue(ok([]));
+    mockApi.getItems.mockResolvedValue(ok(emptyItemsResult()));
+
+    await withScope(async (scope) => {
+      // Simulate existing fields to hit lines 461, 495, 499
+      const existingField: Field = {
+        id: 10,
+        collection_id: 1,
+        name: "Existing",
+        type: "text",
+        order_index: 0,
+        options: null
+      };
+      
+      const collection = ref(makeCollection());
+      const fields = ref<Field[]>([existingField]);
+      const composable = scope.run(() =>
+        useCollectionImportExport({ collection, fields })
+      );
+
+      composable!.importFormat.value = "json";
+      await composable!.handleSelectFile();
+      
+      const preview = composable!.importPreview.value!;
+      const schemaSelect = preview.newFields.find(f => f.name === "SchemaSelect")!;
+      
+      // Check getImportPreviewChoices (lines 304-305)
+      expect(composable!.getImportPreviewChoices(schemaSelect)).toEqual(["Valid"]);
+      
+      // Test getSchemaBackedFieldOptions cross-type choice filtering (lines 340-342)
+      composable!.updateImportPreviewFieldType("SchemaSelect", "multiselect");
+      
+      // Test getImportPreviewChoices fallback (line 313)
+      composable!.updateImportPreviewFieldType("SchemaSelect", "text");
+      const updatedSchemaSelect = composable!.importPreview.value!.newFields.find(f => f.name === "SchemaSelect")!;
+      expect(composable!.getImportPreviewChoices(updatedSchemaSelect)).toEqual([]);
+
+      composable!.updateImportPreviewFieldType("Bool1", "boolean");
+      composable!.updateImportPreviewFieldType("Bool2", "boolean");
+      composable!.updateImportPreviewFieldType("Bool3", "boolean");
+      composable!.updateImportPreviewFieldType("Bool4", "boolean");
+      composable!.updateImportPreviewFieldType("Multi1", "multiselect");
+      composable!.updateImportPreviewFieldType("Text1", "text");
+
+      await composable!.handleImport();
+
+      expect(mockApi.importCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: [
+            {
+              collectionId: 1,
+              data: expect.objectContaining({
+                Bool1: "1",
+                Bool2: "1",
+                Bool3: "0",
+                Bool4: "0",
+                Multi1: null,
+                Text1: "true"
+              })
+            }
+          ]
+        })
+      );
+    });
+  });
+
+  it("handles invalid fields and failed imports", async () => {
+    await withScope(async (scope) => {
+      const collection = ref(makeCollection());
+      const fields = ref<Field[]>([]);
+      const composable = scope.run(() =>
+        useCollectionImportExport({ collection, fields })
+      );
+      
+      const notificationsStore = useNotificationsStore();
+      const pushSpy = vi.spyOn(notificationsStore, "push");
+
+      // 1. Invalid field names block import
+      mockApi.showOpenDialog.mockResolvedValue(ok("C:\\imports\\invalid.json"));
+      mockApi.readFile.mockResolvedValue(ok(JSON.stringify([{ "": "value" }])));
+      
+      composable!.importFormat.value = "json";
+      await composable!.handleSelectFile();
+      await composable!.handleImport();
+
+      expect(pushSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: "warn", summary: "Invalid field names" })
+      );
+      expect(mockApi.importCollection).not.toHaveBeenCalled();
+
+      // 2. Failed import returns early without reloading stores
+      mockApi.showOpenDialog.mockResolvedValue(ok("C:\\imports\\valid.json"));
+      mockApi.readFile.mockResolvedValue(ok(JSON.stringify([{ valid: "value" }])));
+      mockApi.importCollection.mockResolvedValue(ok(false));
+      
+      await composable!.handleSelectFile();
+      await composable!.handleImport();
+      expect(mockApi.importCollection).toHaveBeenCalledOnce();
+      
+      // 3. Exception in handleImport
+      mockApi.showOpenDialog.mockResolvedValue(ok("C:\\imports\\valid2.json"));
+      mockApi.readFile.mockResolvedValue(ok(JSON.stringify([{ valid: "value" }])));
+      mockApi.importCollection.mockRejectedValue(new Error("API Error"));
+      
+      await composable!.handleSelectFile();
+      await composable!.handleImport();
+    });
+  });
+
+  it("covers export edge cases, parsing errors, and fallback paths", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await withScope(async (scope) => {
+      const collection = ref(makeCollection());
+      collection.value.name = "Test Export 123!";
+      const fields = ref<Field[]>([{ id: 1, collection_id: 1, name: "name", type: "text", order_index: 0, options: null }]);
+      const composable = scope.run(() => useCollectionImportExport({ collection, fields }));
+      
+      mockApi.showSaveDialog.mockResolvedValueOnce(ok("C:\\exports\\test.csv"));
+      mockApi.writeFile.mockResolvedValueOnce(ok(true));
+      mockApi.getItems.mockResolvedValueOnce(ok({ items: [{ id: 1, collection_id: 1, data: { name: "Test" } }], total: 1, limit: 100, offset: 0 }));
+      
+      composable!.exportFormat.value = "csv";
+      await composable!.handleExport();
+      
+      expect(mockApi.showSaveDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultPath: expect.stringContaining("test-export-123-"),
+        })
+      );
+      expect(mockApi.writeFile).toHaveBeenCalled();
+
+      mockApi.showSaveDialog.mockResolvedValueOnce(ok(null));
+      await composable!.handleExport();
+
+      mockApi.showSaveDialog.mockResolvedValueOnce(ok("C:\\exports\\test.json"));
+      mockApi.getItems.mockResolvedValueOnce(ok({ items: [], total: 0, limit: 100, offset: 0 }));
+      mockApi.writeFile.mockResolvedValueOnce(ok(true));
+      composable!.exportFormat.value = "json";
+      composable!.exportIncludeSchema.value = true;
+      await composable!.handleExport();
+
+      mockApi.showSaveDialog.mockResolvedValueOnce(ok("C:\\exports\\fail.csv"));
+      mockApi.getItems.mockResolvedValueOnce(ok({ items: [], total: 0, limit: 100, offset: 0 }));
+      mockApi.writeFile.mockResolvedValueOnce(ok(false));
+      await composable!.handleExport();
+      expect(errorSpy).toHaveBeenCalledWith("Export failed");
+
+      mockApi.showSaveDialog.mockRejectedValueOnce(new Error("Export Error"));
+      await composable!.handleExport();
+      expect(errorSpy).toHaveBeenCalledWith("Export error:", expect.any(Error));
+
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok(null));
+      await composable!.handleSelectFile();
+
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\test.csv"));
+      mockApi.readFile.mockResolvedValueOnce(ok(null));
+      await composable!.handleSelectFile();
+      expect(errorSpy).toHaveBeenCalledWith("Failed to read file");
+
+      const alertMock = vi.fn();
+      vi.stubGlobal("alert", alertMock);
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\test.csv"));
+      mockApi.readFile.mockResolvedValueOnce(ok("   \n  "));
+      await composable!.handleSelectFile();
+      expect(alertMock).toHaveBeenCalledWith("The selected file is empty.");
+
+      const importExportUtils = await import("../../../utils/collectionImportExport");
+      const parseSpy = vi.spyOn(importExportUtils, "parseImportContent").mockImplementationOnce(() => {
+        throw new Error("EMPTY_CSV");
+      });
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\test.csv"));
+      mockApi.readFile.mockResolvedValueOnce(ok("anything"));
+      composable!.importFormat.value = "csv";
+      await composable!.handleSelectFile();
+      expect(errorSpy).toHaveBeenCalledWith("Empty CSV file");
+      parseSpy.mockRestore();
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\test.json"));
+      mockApi.readFile.mockResolvedValueOnce(ok(JSON.stringify({ _schema: {}, data: "not array" })));
+      composable!.importFormat.value = "json";
+      await composable!.handleSelectFile();
+      expect(errorSpy).toHaveBeenCalledWith("JSON schema export must contain a data array");
+
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\test.json"));
+      mockApi.readFile.mockResolvedValueOnce(ok("invalid json {"));
+      await composable!.handleSelectFile();
+      expect(errorSpy).toHaveBeenCalledWith("Error selecting file:", expect.any(Error));
+
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\schema.json"));
+      mockApi.readFile.mockResolvedValueOnce(ok(JSON.stringify({
+        _schema: {
+          testField: { type: "multiselect", choices: ["ValidChoice", 123] }
+        },
+        data: [{ testField: "a" }]
+      })));
+      await composable!.handleSelectFile();
+      composable!.updateImportPreviewFieldType("testField", "select");
+      const fieldPreview = composable!.importPreview.value!.newFields.find(f => f.name === "testField");
+      expect(composable!.getImportPreviewChoices(fieldPreview!)).toEqual(["ValidChoice"]);
+
+      mockApi.importCollection.mockResolvedValueOnce(ok(true));
+      mockApi.showOpenDialog.mockResolvedValueOnce(ok("C:\\bool.json"));
+      mockApi.readFile.mockResolvedValueOnce(ok(JSON.stringify([{ boolField: { an: "object" } }])));
+      await composable!.handleSelectFile();
+      composable!.updateImportPreviewFieldType("boolField", "boolean");
+      await composable!.handleImport();
+      expect(mockApi.importCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              data: expect.objectContaining({ boolField: "0" })
+            })
+          ])
+        })
+      );
+    });
+
+    errorSpy.mockRestore();
+  });
 });
+
